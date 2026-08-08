@@ -10,6 +10,9 @@ import orderRoutes from "./modules/orders/order.routes.js";
 import paymentRoutes from "./modules/payments/payment.routes.js";
 import adminRoutes from "./modules/admin/admin.routes.js";
 import { authRoutes } from "./modules/auth/auth.routes.js";
+import settingsRoutes from "./modules/settings/settings.routes.js";
+import homepageSectionRoutes from "./modules/homepage-sections/homepage-section.routes.js";
+import demoRoutes from "./modules/demo/demo.routes.js";
 
 const app = Fastify({
   logger: {
@@ -46,6 +49,9 @@ async function bootstrap(): Promise<void> {
   await app.register(orderRoutes, { prefix: `${env.API_PREFIX}/orders` });
   await app.register(paymentRoutes, { prefix: `${env.API_PREFIX}/payments` });
   await app.register(adminRoutes, { prefix: `${env.API_PREFIX}/admin` });
+  await app.register(settingsRoutes, { prefix: `${env.API_PREFIX}/settings` });
+  await app.register(homepageSectionRoutes, { prefix: `${env.API_PREFIX}/homepage-sections` });
+  await app.register(demoRoutes, { prefix: `${env.API_PREFIX}/demo` });
 
   app.setErrorHandler((error, _request, reply) => {
     const err = error instanceof Error ? error : new Error(String(error));

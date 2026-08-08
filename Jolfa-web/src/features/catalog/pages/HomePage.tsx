@@ -1,72 +1,90 @@
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router'
-import { CategoryList } from '../components/CategoryList'
-import { ProductGrid } from '../components/ProductGrid'
-import { getCategories, getProducts } from '../api'
+import { getPublicHomepageSections, getPublicSettings } from '@/features/cms/api'
+import { HeroSection } from '@/features/cms/components/HeroSection'
+import { CategoryGridSection } from '@/features/cms/components/CategoryGridSection'
+import { ProductSection } from '@/features/cms/components/ProductSection'
+import { TrustBadgesSection } from '@/features/cms/components/TrustBadgesSection'
+import { NewsletterSection } from '@/features/cms/components/NewsletterSection'
+
+function parseBoolean(value: string | undefined): boolean {
+  if (!value) return false
+  return ['true', '1', 'yes', 'on'].includes(value.toLowerCase())
+}
+
+const sectionFlagMap: Record<string, string> = {
+  hero: 'show_hero',
+  categories: 'show_categories',
+  featured_products: 'show_featured_products',
+  new_products: 'show_new_products',
+  promo_banner: 'show_discounted_products',
+  trust_badges: 'show_trust_badges',
+  newsletter: 'show_newsletter',
+}
 
 export function HomePage() {
-  const { data: categoriesData, isLoading: categoriesLoading } = useQuery({
-    queryKey: ['categories', 'tree'],
-    queryFn: () => getCategories(true),
+  const { data: settingsData, isLoading: settingsLoading } = useQuery({
+    queryKey: ['settings', 'public'],
+    queryFn: getPublicSettings,
   })
 
-  const { data: productsData, isLoading: productsLoading } = useQuery({
-    queryKey: ['products', 'featured'],
-    queryFn: () => getProducts({ featured: true, limit: 8 }),
+  const { data: sections, isLoading: sectionsLoading } = useQuery({
+    queryKey: ['homepage-sections', 'public'],
+    queryFn: getPublicHomepageSections,
+  })
+
+  const flags = useMemo(() => {
+    const map: Record<string, boolean> = {}
+    settingsData?.settings.forEach((setting) => {
+      map[setting.key.toLowerCase()] = parseBoolean(setting.value)
+    })
+    return map
+  }, [settingsData])
+
+  if (settingsLoading || sectionsLoading) {
+    return (
+      <div className="flex flex-1 items-center justify-center py-20">
+        <p className="text-gray-500">در حال بارگذاری ...</p>
+      </div>
+    )
+  }
+
+  const visibleSections = (sections ?? []).filter((section) => {
+    const flagKey = sectionFlagMap[section.key]
+    if (!flagKey) return true
+    return flags[flagKey] ?? false
   })
 
   return (
     <div className="flex-1">
-      <section className="bg-primary py-16 text-primary-foreground">
-        <div className="mx-auto max-w-7xl px-4 text-center">
-          <h1 className="text-3xl font-bold sm:text-4xl md:text-5xl">بازارچه جلفا</h1>
-          <p className="mx-auto mt-4 max-w-2xl text-lg opacity-90">
-            محصولات محلی، سنتی و باکیفیت از بازارچه جلفا مستقیماً به دست شما
-          </p>
-          <div className="mt-8 flex justify-center gap-3">
-            <Link
-              to="/products"
-              className="inline-flex h-11 items-center justify-center rounded-lg bg-background px-6 font-medium text-primary transition-colors hover:bg-background/90"
-            >
-              مشاهده محصولات
-            </Link>
-            <Link
-              to="/categories"
-              className="inline-flex h-11 items-center justify-center rounded-lg border border-primary-foreground/30 px-6 font-medium transition-colors hover:bg-primary-foreground/10"
-            >
-              دسته‌بندی‌ها
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-4 py-12">
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-foreground">دسته‌بندی‌ها</h2>
-          <Link to="/categories" className="text-sm font-medium text-primary hover:underline">
-            مشاهده همه
-          </Link>
-        </div>
-        {categoriesLoading ? (
-          <p className="text-gray-500">در حال بارگذاری ...</p>
-        ) : (
-          <CategoryList categories={categoriesData?.categories ?? []} />
-        )}
-      </section>
-
-      <section className="mx-auto max-w-7xl px-4 py-12">
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-foreground">محصولات ویژه</h2>
-          <Link to="/products" className="text-sm font-medium text-primary hover:underline">
-            مشاهده همه
-          </Link>
-        </div>
-        {productsLoading ? (
-          <p className="text-gray-500">در حال بارگذاری ...</p>
-        ) : (
-          <ProductGrid products={productsData?.products ?? []} />
-        )}
-      </section>
+      {visibleSections.map((section) => {
+        switch (section.type) {
+          case 'hero':
+            return <HeroSection key={section.id} config={section.config} />
+          case 'categories':
+            return <CategoryGridSection key={section.id} config={section.config} />
+          case 'featured_products':
+          case 'new_products':
+          case 'discounted':
+          case 'promo_banner':
+            return (
+              <ProductSection
+                key={section.id}
+                title={section.title}
+                config={{
+                  ...section.config,
+                  filter: section.type === 'promo_banner' ? 'discounted' : section.type,
+                }}
+              />
+            )
+          case 'trust_badges':
+            return <TrustBadgesSection key={section.id} config={section.config} />
+          case 'newsletter':
+            return <NewsletterSection key={section.id} config={section.config} />
+          default:
+            return null
+        }
+      })}
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import type { FastifyRequest, FastifyReply, preHandlerHookHandler } from "fastify";
 import { z, type ZodSchema } from "zod";
-import { ValidationError } from "@/shared/app-error.js";
+import { ValidationError } from "../app-error.js";
 
 interface ValidateRequestOptions {
   body?: ZodSchema;

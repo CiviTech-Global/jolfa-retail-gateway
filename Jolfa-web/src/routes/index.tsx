@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate, type RouteObject } from 'react-router'
 import { RootLayout } from '@/components/layout/RootLayout'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
+import { AdminRoute } from '@/components/layout/AdminRoute'
 import { HomePage } from '@/features/catalog/pages/HomePage'
 import { CategoriesPage } from '@/features/catalog/pages/CategoriesPage'
 import { CategoryPage } from '@/features/catalog/pages/CategoryPage'
@@ -24,6 +25,9 @@ import {
 } from './pages'
 import { AdminOrdersPage } from '@/features/admin/pages/AdminOrdersPage'
 import { AdminProductsPage } from '@/features/admin/pages/AdminProductsPage'
+import { AdminSettingsPage } from '@/features/cms/pages/AdminSettingsPage'
+import { AdminHomepageSectionsPage } from '@/features/cms/pages/AdminHomepageSectionsPage'
+import { AdminDemoDataPage } from '@/features/cms/pages/AdminDemoDataPage'
 
 export const routes: RouteObject[] = [
   {
@@ -50,7 +54,7 @@ export const routes: RouteObject[] = [
   },
   {
     path: '/admin',
-    element: <ProtectedRoute><AdminLayout /></ProtectedRoute>,
+    element: <AdminRoute><AdminLayout /></AdminRoute>,
     children: [
       { index: true, element: <AdminDashboardPage /> },
       { path: 'products', element: <AdminProductsPage /> },
@@ -58,6 +62,9 @@ export const routes: RouteObject[] = [
       { path: 'products/:id/edit', element: <AdminPlaceholderPage title="ویرایش محصول" /> },
       { path: 'categories', element: <AdminPlaceholderPage title="مدیریت دسته‌بندی‌ها" /> },
       { path: 'orders', element: <AdminOrdersPage /> },
+      { path: 'settings', element: <AdminSettingsPage /> },
+      { path: 'homepage-sections', element: <AdminHomepageSectionsPage /> },
+      { path: 'demo', element: <AdminDemoDataPage /> },
       { path: '*', element: <Navigate to="/admin" replace /> },
     ],
   },

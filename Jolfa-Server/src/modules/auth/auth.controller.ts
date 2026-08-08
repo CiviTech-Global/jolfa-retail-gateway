@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { sendSuccess } from "@/shared/reply.js";
+import { sendSuccess } from "../../shared/reply.js";
 import * as authService from "./auth.service.js";
 import type { LoginInput, RegisterInput } from "./auth.types.js";
 

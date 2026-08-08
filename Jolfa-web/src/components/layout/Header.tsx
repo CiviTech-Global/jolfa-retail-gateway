@@ -4,6 +4,7 @@ import { ShoppingCart, Search, Menu, User, LogOut, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/features/auth/context'
 import { useCart } from '@/features/cart/context'
+import { usePublicSettingBoolean, usePublicSettingValue } from '@/features/cms/hooks'
 
 export function Header() {
   const { user, isAuthenticated, logout } = useAuth()
@@ -11,6 +12,11 @@ export function Header() {
   const navigate = useNavigate()
   const [showSearch, setShowSearch] = useState(false)
   const [query, setQuery] = useState('')
+
+  const siteName = usePublicSettingValue('site_name') ?? 'جلفا'
+  const showSearchSetting = usePublicSettingBoolean('show_search')
+  const showCartSetting = usePublicSettingBoolean('show_cart')
+  const showUserMenuSetting = usePublicSettingBoolean('show_user_menu')
 
   function handleSearch(event: React.FormEvent) {
     event.preventDefault()
@@ -25,7 +31,7 @@ export function Header() {
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
         <Link to="/" className="text-xl font-bold text-primary">
-          جلفا
+          {siteName}
         </Link>
 
         {showSearch ? (
@@ -63,46 +69,49 @@ export function Header() {
         )}
 
         <div className="flex items-center gap-2">
-          {!showSearch && (
+          {!showSearch && showSearchSetting && (
             <Button variant="ghost" size="sm" aria-label="جستجو" onClick={() => setShowSearch(true)}>
               <Search className="h-5 w-5" />
             </Button>
           )}
-          <Button variant="ghost" size="sm" aria-label="سبد خرید" asChild>
-            <Link to="/cart" className="relative">
-              <ShoppingCart className="h-5 w-5" />
-              {itemCount > 0 && (
-                <span className="absolute -start-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
-                  {itemCount}
-                </span>
-              )}
-            </Link>
-          </Button>
-
-          {isAuthenticated && user ? (
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" asChild>
-                <Link to="/profile" className="flex items-center gap-1.5">
-                  <User className="h-5 w-5" />
-                  <span className="hidden max-w-[8rem] truncate sm:inline">
-                    {user.firstName || user.phone}
+          {showCartSetting && (
+            <Button variant="ghost" size="sm" aria-label="سبد خرید" asChild>
+              <Link to="/cart" className="relative">
+                <ShoppingCart className="h-5 w-5" />
+                {itemCount > 0 && (
+                  <span className="absolute -start-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                    {itemCount}
                   </span>
-                </Link>
-              </Button>
-              <Button variant="ghost" size="sm" aria-label="خروج" onClick={logout}>
-                <LogOut className="h-5 w-5" />
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="sm" asChild>
-                <Link to="/login">ورود</Link>
-              </Button>
-              <Button variant="solid" size="sm" asChild>
-                <Link to="/register">ثبت‌نام</Link>
-              </Button>
-            </div>
+                )}
+              </Link>
+            </Button>
           )}
+
+          {showUserMenuSetting &&
+            (isAuthenticated && user ? (
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/profile" className="flex items-center gap-1.5">
+                    <User className="h-5 w-5" />
+                    <span className="hidden max-w-[8rem] truncate sm:inline">
+                      {user.firstName || user.phone}
+                    </span>
+                  </Link>
+                </Button>
+                <Button variant="ghost" size="sm" aria-label="خروج" onClick={logout}>
+                  <LogOut className="h-5 w-5" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/login">ورود</Link>
+                </Button>
+                <Button variant="solid" size="sm" asChild>
+                  <Link to="/register">ثبت‌نام</Link>
+                </Button>
+              </div>
+            ))}
 
           <Button variant="ghost" size="sm" className="md:hidden" aria-label="منو">
             <Menu className="h-5 w-5" />

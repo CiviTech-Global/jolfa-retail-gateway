@@ -1,5 +1,5 @@
 import { Link, Outlet } from 'react-router'
-import { LayoutDashboard, Package, Tags, ShoppingBag, LogOut } from 'lucide-react'
+import { LayoutDashboard, Package, Tags, ShoppingBag, Settings, LayoutTemplate, Database, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/features/auth/context'
 
@@ -20,6 +20,9 @@ const navItems = [
   { to: '/admin/products', label: 'محصولات', icon: Package },
   { to: '/admin/categories', label: 'دسته‌بندی‌ها', icon: Tags },
   { to: '/admin/orders', label: 'سفارش‌ها', icon: ShoppingBag },
+  { to: '/admin/homepage-sections', label: 'بخش‌های صفحه اصلی', icon: LayoutTemplate },
+  { to: '/admin/settings', label: 'تنظیمات', icon: Settings },
+  { to: '/admin/demo', label: 'داده‌های نمونه', icon: Database },
 ]
 
 export function AdminLayout() {

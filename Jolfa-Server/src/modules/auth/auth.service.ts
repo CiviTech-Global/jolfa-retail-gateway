@@ -1,9 +1,9 @@
 import bcrypt from "bcrypt";
 import type { FastifyInstance } from "fastify";
 import type { UserRole } from "@prisma/client";
-import { prisma } from "@/shared/prisma.js";
-import { env } from "@/config/env.js";
-import { BadRequestError, ConflictError, NotFoundError, UnauthorizedError } from "@/shared/app-error.js";
+import { prisma } from "../../shared/prisma.js";
+import { env } from "../../config/env.js";
+import { BadRequestError, ConflictError, NotFoundError, UnauthorizedError } from "../../shared/app-error.js";
 import { loginSchema, registerSchema } from "./auth.types.js";
 import type { AuthResponse, AuthTokens, AuthUser, LoginInput, RegisterInput } from "./auth.types.js";
 

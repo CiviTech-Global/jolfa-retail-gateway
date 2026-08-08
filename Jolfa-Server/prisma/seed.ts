@@ -124,6 +124,55 @@ async function main(): Promise<void> {
   }
 
   console.log(`Seeded ${productsData.length} products`);
+
+  // Default settings
+  const defaultSettings = [
+    { key: "site_name", value: "بازارچه جلفا", group: "general", isPublic: true, description: "Site name shown in header and footer" },
+    { key: "site_description", value: "فروشگاه محصولات محلی و سنتی بازارچه جلفا", group: "general", isPublic: true, description: "Meta description and hero subtitle" },
+    { key: "currency", value: "تومان", group: "general", isPublic: true, description: "Currency label" },
+    { key: "show_search", value: "true", group: "header", isPublic: true, description: "Show search input in header" },
+    { key: "show_cart", value: "true", group: "header", isPublic: true, description: "Show cart icon in header" },
+    { key: "show_user_menu", value: "true", group: "header", isPublic: true, description: "Show user account menu in header" },
+    { key: "show_footer_links", value: "true", group: "footer", isPublic: true, description: "Show footer quick links" },
+    { key: "show_hero", value: "true", group: "home_features", isPublic: true, description: "Show hero banner section" },
+    { key: "show_categories", value: "true", group: "home_features", isPublic: true, description: "Show categories grid section" },
+    { key: "show_featured_products", value: "true", group: "home_features", isPublic: true, description: "Show featured products section" },
+    { key: "show_new_products", value: "true", group: "home_features", isPublic: true, description: "Show new products section" },
+    { key: "show_discounted_products", value: "true", group: "home_features", isPublic: true, description: "Show discounted products section" },
+    { key: "show_trust_badges", value: "true", group: "home_features", isPublic: true, description: "Show trust badges section" },
+    { key: "show_newsletter", value: "true", group: "home_features", isPublic: true, description: "Show newsletter section" },
+  ];
+
+  for (const setting of defaultSettings) {
+    await prisma.setting.upsert({
+      where: { key: setting.key },
+      update: {},
+      create: setting,
+    });
+  }
+
+  console.log(`Seeded ${defaultSettings.length} settings`);
+
+  // Default homepage sections
+  const defaultSections = [
+    { key: "hero", title: "اسلایدر اصلی", type: "hero", config: { limit: 3 }, displayOrder: 1, isActive: true },
+    { key: "categories", title: "دسته‌بندی‌ها", type: "categories", config: { limit: 8 }, displayOrder: 2, isActive: true },
+    { key: "featured_products", title: "محصولات ویژه", type: "featured_products", config: { limit: 8 }, displayOrder: 3, isActive: true },
+    { key: "promo_banner", title: "بنر تبلیغاتی", type: "promo_banner", config: {}, displayOrder: 4, isActive: true },
+    { key: "new_products", title: "جدیدترین محصولات", type: "new_products", config: { limit: 8 }, displayOrder: 5, isActive: true },
+    { key: "trust_badges", title: "-badgeهای اعتماد", type: "trust_badges", config: {}, displayOrder: 6, isActive: true },
+    { key: "newsletter", title: "خبرنامه", type: "newsletter", config: {}, displayOrder: 7, isActive: false },
+  ];
+
+  for (const section of defaultSections) {
+    await prisma.homepageSection.upsert({
+      where: { key: section.key },
+      update: {},
+      create: section,
+    });
+  }
+
+  console.log(`Seeded ${defaultSections.length} homepage sections`);
 }
 
 main()
