@@ -1,0 +1,29 @@
+@import "tailwindcss";
+@import "vazirmatn/Vazirmatn-font-face.css";
+
+@theme {
+  --font-sans: 'Vazirmatn', system-ui, sans-serif;
+  --color-primary: #7c3aed;
+  --color-primary-foreground: #ffffff;
+  --color-background: #fafafa;
+  --color-foreground: #171717;
+  --color-muted: #f3f4f6;
+  --color-border: #e5e7eb;
+}
+
+html {
+  direction: rtl;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  min-height: 100svh;
+}
+
+#root {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
