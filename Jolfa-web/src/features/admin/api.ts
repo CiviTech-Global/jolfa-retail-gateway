@@ -1,5 +1,6 @@
 import { apiRequest } from '@/api/client'
 import type { OrderDto, OrderListResponse } from '@/features/orders/types'
+import type { DashboardStats } from './types'
 
 export function getAdminOrders(page = 1, limit = 20, status?: string): Promise<OrderListResponse> {
   const params = new URLSearchParams()
@@ -18,4 +19,8 @@ export function updateOrderStatus(
     method: 'PATCH',
     body: { status, note },
   })
+}
+
+export function getDashboardStats(): Promise<DashboardStats> {
+  return apiRequest<DashboardStats>('/dashboard')
 }

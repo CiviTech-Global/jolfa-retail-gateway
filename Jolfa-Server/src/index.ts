@@ -13,6 +13,7 @@ import { authRoutes } from "./modules/auth/auth.routes.js";
 import settingsRoutes from "./modules/settings/settings.routes.js";
 import homepageSectionRoutes from "./modules/homepage-sections/homepage-section.routes.js";
 import demoRoutes from "./modules/demo/demo.routes.js";
+import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 
 const app = Fastify({
   logger: {
@@ -52,6 +53,7 @@ async function bootstrap(): Promise<void> {
   await app.register(settingsRoutes, { prefix: `${env.API_PREFIX}/settings` });
   await app.register(homepageSectionRoutes, { prefix: `${env.API_PREFIX}/homepage-sections` });
   await app.register(demoRoutes, { prefix: `${env.API_PREFIX}/demo` });
+  await app.register(dashboardRoutes, { prefix: `${env.API_PREFIX}/dashboard` });
 
   app.setErrorHandler((error, _request, reply) => {
     const err = error instanceof Error ? error : new Error(String(error));

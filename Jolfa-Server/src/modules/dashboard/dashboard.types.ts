@@ -14,6 +14,21 @@ export interface DashboardRecentOrder {
   user: DashboardRecentOrderUser | null;
 }
 
+export interface SalesTrendPoint {
+  date: string;
+  sales: number;
+}
+
+export interface OrdersByStatusPoint {
+  status: string;
+  count: number;
+}
+
+export interface TopProductPoint {
+  title: string;
+  sold: number;
+}
+
 export interface DashboardStats {
   totalSales: number;
   totalOrders: number;
@@ -21,4 +36,7 @@ export interface DashboardStats {
   totalProducts: number;
   lowStockProducts: number;
   recentOrders: DashboardRecentOrder[];
+  salesTrend: SalesTrendPoint[];
+  ordersByStatus: OrdersByStatusPoint[];
+  topProducts: TopProductPoint[];
 }

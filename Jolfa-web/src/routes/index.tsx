@@ -18,11 +18,8 @@ import { RegisterPage } from '@/features/auth/pages/RegisterPage'
 import { AboutPage } from '@/features/static/pages/AboutPage'
 import { ContactPage } from '@/features/static/pages/ContactPage'
 import { RulesPage } from '@/features/static/pages/RulesPage'
-import {
-  AdminDashboardPage,
-  AdminPlaceholderPage,
-  NotFoundPage,
-} from './pages'
+import { AdminPlaceholderPage, NotFoundPage } from './pages'
+import { AdminDashboardPage } from '@/features/admin/pages/AdminDashboardPage'
 import { AdminOrdersPage } from '@/features/admin/pages/AdminOrdersPage'
 import { AdminProductsPage } from '@/features/admin/pages/AdminProductsPage'
 import { AdminSettingsPage } from '@/features/cms/pages/AdminSettingsPage'
