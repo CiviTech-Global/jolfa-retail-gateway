@@ -2,9 +2,26 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { ShoppingCart, Search, Menu, User, LogOut, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/Sheet'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/DropdownMenu'
 import { useAuth } from '@/features/auth/context'
 import { useCart } from '@/features/cart/context'
 import { usePublicSettingBoolean, usePublicSettingValue } from '@/features/cms/hooks'
+
+const navLinks = [
+  { to: '/', label: 'خانه' },
+  { to: '/products', label: 'محصولات' },
+  { to: '/categories', label: 'دسته‌بندی‌ها' },
+  { to: '/about', label: 'درباره ما' },
+  { to: '/contact', label: 'تماس' },
+]
 
 export function Header() {
   const { user, isAuthenticated, logout } = useAuth()
@@ -12,8 +29,9 @@ export function Header() {
   const navigate = useNavigate()
   const [showSearch, setShowSearch] = useState(false)
   const [query, setQuery] = useState('')
+  const [mobileOpen, setMobileOpen] = useState(false)
 
-  const siteName = usePublicSettingValue('site_name') ?? 'جلفا'
+  const siteName = usePublicSettingValue('site_name') ?? 'بازارچه جلفا'
   const showSearchSetting = usePublicSettingBoolean('show_search')
   const showCartSetting = usePublicSettingBoolean('show_cart')
   const showUserMenuSetting = usePublicSettingBoolean('show_user_menu')
@@ -28,58 +46,76 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
-        <Link to="/" className="text-xl font-bold text-primary">
+        <Link to="/" className="text-xl font-bold text-foreground">
           {siteName}
         </Link>
 
-        {showSearch ? (
-          <form onSubmit={handleSearch} className="absolute inset-x-0 top-0 flex h-16 items-center bg-background px-4 md:static md:mx-6 md:flex-1 md:bg-transparent md:px-0">
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="جستجوی محصول ..."
-              className="h-10 flex-1 rounded-lg border border-border bg-background px-4 text-sm text-foreground focus:border-primary focus:outline-none"
-              autoFocus
-            />
-            <Button variant="ghost" size="sm" type="submit" aria-label="جستجو" className="me-2">
-              <Search className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="sm" type="button" aria-label="بستن" onClick={() => setShowSearch(false)}>
-              <X className="h-5 w-5" />
-            </Button>
-          </form>
-        ) : (
-          <nav className="hidden items-center gap-6 md:flex">
-            <Link to="/products" className="text-sm text-foreground hover:text-primary">
-              محصولات
+        <nav className="hidden items-center gap-6 md:flex">
+          {navLinks.map((link) => (
+            <Link
+              key={link.to}
+              to={link.to}
+              className="relative text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {link.label}
             </Link>
-            <Link to="/categories" className="text-sm text-foreground hover:text-primary">
-              دسته‌بندی‌ها
-            </Link>
-            <Link to="/about" className="text-sm text-foreground hover:text-primary">
-              درباره ما
-            </Link>
-            <Link to="/contact" className="text-sm text-foreground hover:text-primary">
-              تماس
-            </Link>
-          </nav>
-        )}
+          ))}
+        </nav>
 
         <div className="flex items-center gap-2">
-          {!showSearch && showSearchSetting && (
-            <Button variant="ghost" size="sm" aria-label="جستجو" onClick={() => setShowSearch(true)}>
-              <Search className="h-5 w-5" />
-            </Button>
+          {showSearchSetting && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="جستجو"
+                onClick={() => setShowSearch(true)}
+                className="hidden md:inline-flex"
+              >
+                <Search className="h-5 w-5" />
+              </Button>
+              {showSearch && (
+                <div className="fixed inset-0 z-50 flex items-start justify-center bg-background/90 p-4 pt-24 backdrop-blur-sm">
+                  <form
+                    onSubmit={handleSearch}
+                    className="relative w-full max-w-xl"
+                  >
+                    <Input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="جستجوی محصول ..."
+                      autoFocus
+                      icon={<Search className="h-4 w-4" />}
+                    />
+                    <Button
+                      type="submit"
+                      className="absolute end-1 top-1 h-9"
+                      size="sm"
+                    >
+                      جستجو
+                    </Button>
+                  </form>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute start-4 top-4"
+                    onClick={() => setShowSearch(false)}
+                  >
+                    <X className="h-6 w-6" />
+                  </Button>
+                </div>
+              )}
+            </>
           )}
+
           {showCartSetting && (
-            <Button variant="ghost" size="sm" aria-label="سبد خرید" asChild>
+            <Button variant="ghost" size="icon" aria-label="سبد خرید" asChild>
               <Link to="/cart" className="relative">
                 <ShoppingCart className="h-5 w-5" />
                 {itemCount > 0 && (
-                  <span className="absolute -start-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                  <span className="absolute -start-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-bold text-primary-foreground">
                     {itemCount}
                   </span>
                 )}
@@ -89,33 +125,77 @@ export function Header() {
 
           {showUserMenuSetting &&
             (isAuthenticated && user ? (
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" asChild>
-                  <Link to="/profile" className="flex items-center gap-1.5">
-                    <User className="h-5 w-5" />
-                    <span className="hidden max-w-[8rem] truncate sm:inline">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="gap-2 ps-2">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-soft text-primary">
+                      <User className="h-4 w-4" />
+                    </span>
+                    <span className="hidden max-w-[6rem] truncate sm:inline">
                       {user.firstName || user.phone}
                     </span>
-                  </Link>
-                </Button>
-                <Button variant="ghost" size="sm" aria-label="خروج" onClick={logout}>
-                  <LogOut className="h-5 w-5" />
-                </Button>
-              </div>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => navigate('/profile')}>
+                    سفارش‌های من
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={logout}>
+                    <LogOut className="h-4 w-4" />
+                    خروج
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
-              <div className="flex items-center gap-1">
+              <div className="hidden items-center gap-1 md:flex">
                 <Button variant="ghost" size="sm" asChild>
                   <Link to="/login">ورود</Link>
                 </Button>
-                <Button variant="solid" size="sm" asChild>
+                <Button size="sm" asChild>
                   <Link to="/register">ثبت‌نام</Link>
                 </Button>
               </div>
             ))}
 
-          <Button variant="ghost" size="sm" className="md:hidden" aria-label="منو">
-            <Menu className="h-5 w-5" />
-          </Button>
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="md:hidden" aria-label="منو">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-80">
+              <SheetHeader>
+                <SheetTitle>{siteName}</SheetTitle>
+              </SheetHeader>
+              <nav className="mt-6 flex flex-col gap-2 p-6 pt-0">
+                {navLinks.map((link) => (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    onClick={() => setMobileOpen(false)}
+                    className="rounded-xl px-3 py-2.5 text-foreground transition-colors hover:bg-muted"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+                {!isAuthenticated && (
+                  <div className="mt-4 flex flex-col gap-2">
+                    <Button asChild variant="outline">
+                      <Link to="/login" onClick={() => setMobileOpen(false)}>
+                        ورود
+                      </Link>
+                    </Button>
+                    <Button asChild>
+                      <Link to="/register" onClick={() => setMobileOpen(false)}>
+                        ثبت‌نام
+                      </Link>
+                    </Button>
+                  </div>
+                )}
+              </nav>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
     </header>

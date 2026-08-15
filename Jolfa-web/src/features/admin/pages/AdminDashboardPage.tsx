@@ -1,11 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
-import { DollarSign, Package, ShoppingBag, AlertTriangle } from 'lucide-react'
 import { getDashboardStats } from '../api'
-import { StatCard } from '../components/StatCard'
-import { SalesTrendWidget } from '../components/SalesTrendWidget'
-import { OrdersByStatusWidget } from '../components/OrdersByStatusWidget'
-import { RecentOrdersWidget } from '../components/RecentOrdersWidget'
-import { QuickActionsWidget } from '../components/QuickActionsWidget'
+import { KpiBentoGrid } from '../components/KpiBentoGrid'
+import { SalesChart } from '../components/SalesChart'
+import { OrdersByStatusChart } from '../components/OrdersByStatusChart'
+import { RevenueBarChart } from '../components/RevenueBarChart'
+import { RecentOrdersTable } from '../components/RecentOrdersTable'
+import { TopProductsList } from '../components/TopProductsList'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { ScrollReveal } from '@/components/motion/ScrollReveal'
 
 export function AdminDashboardPage() {
   const { data, isLoading } = useQuery({
@@ -15,9 +17,13 @@ export function AdminDashboardPage() {
 
   if (isLoading) {
     return (
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">داشبورد مدیریت</h1>
-        <p className="mt-2 text-gray-500">در حال بارگذاری ...</p>
+      <div className="space-y-6">
+        <div className="h-8 w-48 animate-pulse rounded-xl bg-muted" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-32 animate-pulse rounded-2xl bg-muted" />
+          ))}
+        </div>
       </div>
     )
   }
@@ -26,49 +32,73 @@ export function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">داشبورد مدیریت</h1>
-        <p className="mt-2 text-gray-600">خلاصه‌ای از عملکرد فروشگاه در یک نگاه.</p>
-      </div>
+      <ScrollReveal>
+        <div>
+          <h1 className="text-2xl font-bold text-foreground md:text-3xl">داشبورد مدیریت</h1>
+          <p className="mt-1 text-muted-foreground">خلاصه‌ای از عملکرد فروشگاه در یک نگاه.</p>
+        </div>
+      </ScrollReveal>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="کل فروش"
-          value={stats?.totalSales ?? 0}
-          icon={DollarSign}
-          accent="bg-green-100 text-green-700"
-        />
-        <StatCard
-          title="کل سفارش‌ها"
-          value={stats?.totalOrders ?? 0}
-          suffix="سفارش"
-          icon={ShoppingBag}
-          accent="bg-blue-100 text-blue-700"
-        />
-        <StatCard
-          title="سفارش‌های در انتظار"
-          value={stats?.pendingOrders ?? 0}
-          suffix="سفارش"
-          icon={Package}
-          accent="bg-amber-100 text-amber-700"
-        />
-        <StatCard
-          title="محصولات رو به اتمام"
-          value={stats?.lowStockProducts ?? 0}
-          suffix="عدد"
-          icon={AlertTriangle}
-          accent="bg-red-100 text-red-700"
-        />
-      </div>
+      <KpiBentoGrid stats={stats!} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <SalesTrendWidget data={stats?.salesTrend ?? []} />
-        <OrdersByStatusWidget data={stats?.ordersByStatus ?? []} />
+        <ScrollReveal>
+          <Card>
+            <CardHeader>
+              <CardTitle>روند فروش</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SalesChart data={stats?.salesTrend ?? []} />
+            </CardContent>
+          </Card>
+        </ScrollReveal>
+
+        <ScrollReveal delay={0.1}>
+          <Card>
+            <CardHeader>
+              <CardTitle>سفارشات بر اساس وضعیت</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <OrdersByStatusChart data={stats?.ordersByStatus ?? []} />
+            </CardContent>
+          </Card>
+        </ScrollReveal>
       </div>
 
-      <RecentOrdersWidget orders={stats?.recentOrders ?? []} />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <ScrollReveal className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>درآمد روزانه</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <RevenueBarChart data={stats?.salesTrend ?? []} />
+            </CardContent>
+          </Card>
+        </ScrollReveal>
 
-      <QuickActionsWidget />
+        <ScrollReveal delay={0.1} className="lg:col-span-1">
+          <Card>
+            <CardHeader>
+              <CardTitle>محصولات برتر</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TopProductsList products={stats?.topProducts ?? []} />
+            </CardContent>
+          </Card>
+        </ScrollReveal>
+      </div>
+
+      <ScrollReveal>
+        <Card>
+          <CardHeader>
+            <CardTitle>سفارشات اخیر</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <RecentOrdersTable orders={stats?.recentOrders ?? []} />
+          </CardContent>
+        </Card>
+      </ScrollReveal>
     </div>
   )
 }

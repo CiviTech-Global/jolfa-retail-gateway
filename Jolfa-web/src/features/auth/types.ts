@@ -8,6 +8,8 @@ export interface User {
   lastName: string | null
   role: UserRole
   isActive: boolean
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface AuthTokens {

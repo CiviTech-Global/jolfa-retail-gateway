@@ -86,23 +86,24 @@ const demoProducts = [
   },
 ];
 
+const demoBanners = [
+  {
+    title: "تازگی محصولات محلی",
+    subtitle: "از کوهستان تا سبد خرید شما",
+    imageUrl: "https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=1200",
+    link: "/products",
+    position: "hero",
+    displayOrder: 0,
+    isActive: true,
+  },
+];
+
 const demoHomepageSections = [
   {
     key: "hero",
     title: "اسلایدر بنر",
     type: "hero",
-    config: {
-      banners: [
-        {
-          id: "b1",
-          title: "تازگی محصولات محلی",
-          subtitle: "از کوهستان تا سبد خرید شما",
-          image: "https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=1200",
-          link: "/products",
-          buttonText: "مشاهده محصولات",
-        },
-      ],
-    },
+    config: { limit: 3 },
     displayOrder: 0,
     isActive: true,
   },
@@ -168,22 +169,36 @@ const demoHomepageSections = [
 ];
 
 const demoSettings = [
-  { key: "show_hero", value: "true" },
-  { key: "show_categories", value: "true" },
-  { key: "show_featured_products", value: "true" },
-  { key: "show_new_products", value: "true" },
-  { key: "show_discounted_products", value: "true" },
-  { key: "show_trust_badges", value: "true" },
-  { key: "show_newsletter", value: "true" },
+  { key: "site_name", value: "بازارچه جلفا", group: "general", isPublic: true, description: "Site name shown in header and footer" },
+  { key: "site_description", value: "فروشگاه محصولات محلی و سنتی بازارچه جلفا", group: "general", isPublic: true, description: "Meta description and hero subtitle" },
+  { key: "currency", value: "تومان", group: "general", isPublic: true, description: "Currency label" },
+  { key: "show_search", value: "true", group: "header", isPublic: true, description: "Show search input in header" },
+  { key: "show_cart", value: "true", group: "header", isPublic: true, description: "Show cart icon in header" },
+  { key: "show_user_menu", value: "true", group: "header", isPublic: true, description: "Show user account menu in header" },
+  { key: "show_footer_links", value: "true", group: "footer", isPublic: true, description: "Show footer quick links" },
+  { key: "show_hero", value: "true", group: "home_features", isPublic: true, description: "Show hero banner section" },
+  { key: "show_categories", value: "true", group: "home_features", isPublic: true, description: "Show categories grid section" },
+  { key: "show_featured_products", value: "true", group: "home_features", isPublic: true, description: "Show featured products section" },
+  { key: "show_new_products", value: "true", group: "home_features", isPublic: true, description: "Show new products section" },
+  { key: "show_discounted_products", value: "true", group: "home_features", isPublic: true, description: "Show discounted products section" },
+  { key: "show_trust_badges", value: "true", group: "home_features", isPublic: true, description: "Show trust badges section" },
+  { key: "show_newsletter", value: "true", group: "home_features", isPublic: true, description: "Show newsletter section" },
 ];
+
+async function snapshotEntity(entityType: string, entityId: string) {
+  await prisma.demoSnapshot.create({
+    data: { entityType, entityId },
+  });
+}
 
 async function seedDemoCategories() {
   for (const cat of demoCategories) {
-    await prisma.category.upsert({
+    const created = await prisma.category.upsert({
       where: { slug: cat.slug },
       update: {},
       create: cat,
     });
+    await snapshotEntity("CATEGORY", created.id);
   }
 }
 
@@ -204,6 +219,8 @@ async function seedDemoProducts() {
       create: { ...productData, categoryId },
     });
 
+    await snapshotEntity("PRODUCT", upserted.id);
+
     await prisma.productImage.deleteMany({ where: { productId: upserted.id } });
     await prisma.productImage.create({
       data: {
@@ -214,6 +231,13 @@ async function seedDemoProducts() {
         sortOrder: 0,
       },
     });
+  }
+}
+
+async function seedDemoBanners() {
+  for (const banner of demoBanners) {
+    const created = await prisma.banner.create({ data: banner });
+    await snapshotEntity("BANNER", created.id);
   }
 }
 
@@ -267,7 +291,7 @@ async function seedDemoOrders() {
       0,
     );
 
-    await prisma.order.create({
+    const order = await prisma.order.create({
       data: {
         userId: admin.id,
         orderNumber: generateOrderNumber(i),
@@ -290,12 +314,14 @@ async function seedDemoOrders() {
         },
       },
     });
+
+    await snapshotEntity("ORDER", order.id);
   }
 }
 
 async function seedDemoHomepageSections() {
   for (const section of demoHomepageSections) {
-    await prisma.homepageSection.upsert({
+    const upserted = await prisma.homepageSection.upsert({
       where: { key: section.key },
       update: {
         title: section.title,
@@ -313,15 +339,18 @@ async function seedDemoHomepageSections() {
         isActive: section.isActive,
       },
     });
+    await snapshotEntity("HOMEPAGE_SECTION", upserted.id);
   }
 }
 
 async function seedDemoSettings() {
   for (const setting of demoSettings) {
-    await prisma.setting.updateMany({
+    const upserted = await prisma.setting.upsert({
       where: { key: setting.key },
-      data: { value: setting.value },
+      update: { value: setting.value },
+      create: setting,
     });
+    await snapshotEntity("SETTING", upserted.id);
   }
 }
 
@@ -329,6 +358,7 @@ export async function seedDemoData() {
   try {
     await seedDemoCategories();
     await seedDemoProducts();
+    await seedDemoBanners();
     await seedDemoOrders();
     await seedDemoHomepageSections();
     await seedDemoSettings();
@@ -340,61 +370,54 @@ export async function seedDemoData() {
 
 export async function clearDemoData() {
   try {
-    const demoCategoryIds = (
-      await prisma.category.findMany({
-        where: { slug: { startsWith: DEMO_CATEGORY_PREFIX } },
-        select: { id: true },
-      })
-    ).map((c) => c.id);
+    const snapshots = await prisma.demoSnapshot.findMany();
 
-    const demoProductIds = (
-      await prisma.product.findMany({
-        where: { slug: { startsWith: DEMO_PRODUCT_PREFIX } },
-        select: { id: true },
-      })
-    ).map((p) => p.id);
-
-    const demoOrderIds = (
-      await prisma.order.findMany({
-        where: { notes: { contains: "سفارش دمو" } },
-        select: { id: true },
-      })
-    ).map((o) => o.id);
+    const orderIds = snapshots.filter((s) => s.entityType === "ORDER").map((s) => s.entityId);
+    const productIds = snapshots.filter((s) => s.entityType === "PRODUCT").map((s) => s.entityId);
+    const categoryIds = snapshots.filter((s) => s.entityType === "CATEGORY").map((s) => s.entityId);
+    const bannerIds = snapshots.filter((s) => s.entityType === "BANNER").map((s) => s.entityId);
+    const homepageSectionIds = snapshots
+      .filter((s) => s.entityType === "HOMEPAGE_SECTION")
+      .map((s) => s.entityId);
 
     await prisma.orderItem.deleteMany({
-      where: { orderId: { in: demoOrderIds } },
+      where: { orderId: { in: orderIds } },
     });
 
     await prisma.order.deleteMany({
-      where: { id: { in: demoOrderIds } },
+      where: { id: { in: orderIds } },
     });
 
     await prisma.cartItem.deleteMany({
-      where: { productId: { in: demoProductIds } },
+      where: { productId: { in: productIds } },
     });
 
     await prisma.productImage.deleteMany({
-      where: { productId: { in: demoProductIds } },
+      where: { productId: { in: productIds } },
     });
 
     await prisma.product.deleteMany({
-      where: { id: { in: demoProductIds } },
+      where: { id: { in: productIds } },
     });
 
     await prisma.category.deleteMany({
-      where: { id: { in: demoCategoryIds } },
+      where: { id: { in: categoryIds } },
+    });
+
+    await prisma.banner.deleteMany({
+      where: { id: { in: bannerIds } },
     });
 
     await prisma.homepageSection.deleteMany({
-      where: { key: { in: demoHomepageSections.map((s) => s.key) } },
+      where: { id: { in: homepageSectionIds } },
     });
 
-    for (const setting of demoSettings) {
-      await prisma.setting.updateMany({
-        where: { key: setting.key },
-        data: { value: "false" },
-      });
-    }
+    await prisma.demoSnapshot.deleteMany();
+
+    await prisma.setting.updateMany({
+      where: { key: { startsWith: "show_" } },
+      data: { value: "false" },
+    });
   } catch (error) {
     console.error("Clear demo data error:", error);
     throw new AppError("خطا در حذف داده‌های نمونه", 500, "DEMO_CLEAR_ERROR");

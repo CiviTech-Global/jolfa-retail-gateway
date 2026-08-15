@@ -70,3 +70,36 @@ These agents may be activated in later phases:
 | Payment integration | Node.js Developer, Security Engineer, QA Engineer |
 | Deployment | DevOps Engineer, Technical Lead |
 | Bug fix | Relevant engineer + QA Engineer |
+
+
+---
+
+## Extended Roster — `online-shop-sample-1/agents/`
+
+A full, curated software-company roster (29 roles) for Persian RTL e-commerce is maintained in the reference sample at:
+
+`C:\Workspace\RTJG-samples\online-shop-sample-1\agents\`
+
+It includes the core Jolfa roles above plus specialized and cross-role agents adapted to e-commerce:
+
+| Agent | Category | Emoji | Vibe |
+|-------|----------|-------|------|
+| E-commerce Strategist | strategy | 🛒 | Turns catalogs into conversions. |
+| UX Researcher | design | 🔍 | Replaces assumptions with evidence. |
+| RTL Accessibility Auditor | design | ♿ | No user left behind. |
+| SEO Specialist | marketing | 🔎 | Makes the shop discoverable. |
+| Persuasive Copywriter | marketing | ✍️ | Words that sell without shouting. |
+| Conversion Optimization Specialist | growth | 📈 | Removes reasons to leave. |
+| SMS Messaging Orchestrator | growth | 💬 | Right message, right time, right channel. |
+| Abandoned-Cart Recovery Strategist | growth | 🛒 | Brings shoppers back. |
+| E-commerce Data Analyst | specialized | 📊 | Numbers tell the story. |
+| Visual Merchandiser | specialized | 🖼️ | Curates the digital shelf. |
+| Customer Success Agent | specialized | 🤝 | Turns buyers into advocates. |
+| Payment & Fraud Safety Agent | specialized | 💳 | Trust but verify. |
+| Persian UX Localizer | specialized | 🇮🇷 | Native by default. |
+| Trust & Compliance Crafter | specialized | 📜 | Trust is a feature. |
+| Micro-Interaction Motion Designer | specialized | ✨ | Delight with purpose. |
+| Commerce Prompt Engineer | specialized | 🤖 | AI that sells. |
+| Notification Orchestrator | specialized | 🔔 | Right message, right channel, right time. |
+
+Use the sample roster for client demos, full-team sprints, and cross-role tasks beyond Level One.

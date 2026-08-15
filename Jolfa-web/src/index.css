@@ -1,29 +1,35 @@
 @import "tailwindcss";
 @import "vazirmatn/Vazirmatn-font-face.css";
-
-@theme {
-  --font-sans: 'Vazirmatn', system-ui, sans-serif;
-  --color-primary: #7c3aed;
-  --color-primary-foreground: #ffffff;
-  --color-background: #fafafa;
-  --color-foreground: #171717;
-  --color-muted: #f3f4f6;
-  --color-border: #e5e7eb;
-}
+@import "./design-system/tokens.css";
+@import "./design-system/animations.css";
 
 html {
   direction: rtl;
+  scroll-behavior: smooth;
 }
 
 body {
   font-family: var(--font-sans);
-  background-color: var(--color-background);
-  color: var(--color-foreground);
+  background-color: var(--background);
+  color: var(--foreground);
   min-height: 100svh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
   min-height: 100svh;
   display: flex;
   flex-direction: column;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

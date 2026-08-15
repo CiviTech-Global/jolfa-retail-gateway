@@ -25,6 +25,8 @@ import { AdminProductsPage } from '@/features/admin/pages/AdminProductsPage'
 import { AdminSettingsPage } from '@/features/cms/pages/AdminSettingsPage'
 import { AdminHomepageSectionsPage } from '@/features/cms/pages/AdminHomepageSectionsPage'
 import { AdminDemoDataPage } from '@/features/cms/pages/AdminDemoDataPage'
+import { UserDashboardPage } from '@/features/user/pages/UserDashboardPage'
+import { UserPlaceholderPage } from '@/features/user/pages/UserPlaceholderPage'
 
 export const routes: RouteObject[] = [
   {
@@ -42,7 +44,10 @@ export const routes: RouteObject[] = [
       { path: 'payment/callback', element: <PaymentCallbackPage /> },
       { path: 'login', element: <LoginPage /> },
       { path: 'register', element: <RegisterPage /> },
-      { path: 'profile', element: <ProtectedRoute><OrdersPage /></ProtectedRoute> },
+      { path: 'profile', element: <ProtectedRoute><UserDashboardPage /></ProtectedRoute> },
+      { path: 'profile/orders', element: <ProtectedRoute><OrdersPage /></ProtectedRoute> },
+      { path: 'profile/addresses', element: <ProtectedRoute><UserPlaceholderPage title="آدرس‌های من" /></ProtectedRoute> },
+      { path: 'profile/edit', element: <ProtectedRoute><UserPlaceholderPage title="ویرایش پروفایل" /></ProtectedRoute> },
       { path: 'about', element: <AboutPage /> },
       { path: 'contact', element: <ContactPage /> },
       { path: 'rules', element: <RulesPage /> },
