@@ -3,6 +3,7 @@ import { RootLayout } from '@/components/layout/RootLayout'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
 import { AdminRoute } from '@/components/layout/AdminRoute'
+import { StaticPageGuard } from '@/components/layout/StaticPageGuard'
 import { HomePage } from '@/features/catalog/pages/HomePage'
 import { CategoriesPage } from '@/features/catalog/pages/CategoriesPage'
 import { CategoryPage } from '@/features/catalog/pages/CategoryPage'
@@ -18,10 +19,18 @@ import { RegisterPage } from '@/features/auth/pages/RegisterPage'
 import { AboutPage } from '@/features/static/pages/AboutPage'
 import { ContactPage } from '@/features/static/pages/ContactPage'
 import { RulesPage } from '@/features/static/pages/RulesPage'
-import { AdminPlaceholderPage, NotFoundPage } from './pages'
+import { NotFoundPage } from './pages'
 import { AdminDashboardPage } from '@/features/admin/pages/AdminDashboardPage'
 import { AdminOrdersPage } from '@/features/admin/pages/AdminOrdersPage'
+import { AdminOrderDetailPage } from '@/features/admin/pages/AdminOrderDetailPage'
 import { AdminProductsPage } from '@/features/admin/pages/AdminProductsPage'
+import { AdminProductFormPage } from '@/features/admin/pages/AdminProductFormPage'
+import { AdminCategoriesPage } from '@/features/admin/pages/AdminCategoriesPage'
+import { AdminBannersPage } from '@/features/admin/pages/AdminBannersPage'
+import { AdminUsersPage } from '@/features/admin/pages/AdminUsersPage'
+import { AdminPaymentsPage } from '@/features/admin/pages/AdminPaymentsPage'
+import { AdminTransactionsPage } from '@/features/admin/pages/AdminTransactionsPage'
+import { AdminActivityLogPage } from '@/features/admin/pages/AdminActivityLogPage'
 import { AdminSettingsPage } from '@/features/cms/pages/AdminSettingsPage'
 import { AdminHomepageSectionsPage } from '@/features/cms/pages/AdminHomepageSectionsPage'
 import { AdminDemoDataPage } from '@/features/cms/pages/AdminDemoDataPage'
@@ -48,9 +57,9 @@ export const routes: RouteObject[] = [
       { path: 'profile/orders', element: <ProtectedRoute><OrdersPage /></ProtectedRoute> },
       { path: 'profile/addresses', element: <ProtectedRoute><UserPlaceholderPage title="آدرس‌های من" /></ProtectedRoute> },
       { path: 'profile/edit', element: <ProtectedRoute><UserPlaceholderPage title="ویرایش پروفایل" /></ProtectedRoute> },
-      { path: 'about', element: <AboutPage /> },
-      { path: 'contact', element: <ContactPage /> },
-      { path: 'rules', element: <RulesPage /> },
+      { path: 'about', element: <StaticPageGuard settingKey="show_about"><AboutPage /></StaticPageGuard> },
+      { path: 'contact', element: <StaticPageGuard settingKey="show_contact"><ContactPage /></StaticPageGuard> },
+      { path: 'rules', element: <StaticPageGuard settingKey="show_rules"><RulesPage /></StaticPageGuard> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },
@@ -60,12 +69,18 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, element: <AdminDashboardPage /> },
       { path: 'products', element: <AdminProductsPage /> },
-      { path: 'products/new', element: <AdminPlaceholderPage title="محصول جدید" /> },
-      { path: 'products/:id/edit', element: <AdminPlaceholderPage title="ویرایش محصول" /> },
-      { path: 'categories', element: <AdminPlaceholderPage title="مدیریت دسته‌بندی‌ها" /> },
+      { path: 'products/new', element: <AdminProductFormPage /> },
+      { path: 'products/:slug/edit', element: <AdminProductFormPage /> },
+      { path: 'categories', element: <AdminCategoriesPage /> },
       { path: 'orders', element: <AdminOrdersPage /> },
-      { path: 'settings', element: <AdminSettingsPage /> },
+      { path: 'orders/:id', element: <AdminOrderDetailPage /> },
+      { path: 'banners', element: <AdminBannersPage /> },
+      { path: 'users', element: <AdminUsersPage /> },
+      { path: 'payments', element: <AdminPaymentsPage /> },
+      { path: 'transactions', element: <AdminTransactionsPage /> },
+      { path: 'activity-log', element: <AdminActivityLogPage /> },
       { path: 'homepage-sections', element: <AdminHomepageSectionsPage /> },
+      { path: 'settings', element: <AdminSettingsPage /> },
       { path: 'demo', element: <AdminDemoDataPage /> },
       { path: '*', element: <Navigate to="/admin" replace /> },
     ],

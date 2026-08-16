@@ -4,8 +4,8 @@ import { asyncHandler } from "../../shared/async-handler.js";
 import {
   listActiveSections,
   listAllSections,
-  createSection,
-  updateSection,
+  createSectionWithAudit,
+  updateSectionWithAudit,
   deleteSection,
 } from "./homepage-section.service.js";
 import type {
@@ -33,7 +33,7 @@ export const createHomepageSection = asyncHandler(
     request: FastifyRequest<{ Body: HomepageSectionCreateBody }>,
     reply: FastifyReply
   ) => {
-    const result = await createSection(request.body);
+    const result = await createSectionWithAudit(request.body, request.user?.id);
     sendSuccess(reply, result.section, 201);
   }
 );
@@ -46,7 +46,7 @@ export const updateHomepageSection = asyncHandler(
     }>,
     reply: FastifyReply
   ) => {
-    const result = await updateSection(request.params.id, request.body);
+    const result = await updateSectionWithAudit(request.params.id, request.body, request.user?.id);
     sendSuccess(reply, result.section);
   }
 );
@@ -56,7 +56,7 @@ export const deleteHomepageSection = asyncHandler(
     request: FastifyRequest<{ Params: HomepageSectionParams }>,
     reply: FastifyReply
   ) => {
-    await deleteSection(request.params.id);
+    await deleteSection(request.params.id, request.user?.id);
     sendSuccess(reply, { success: true });
   }
 );

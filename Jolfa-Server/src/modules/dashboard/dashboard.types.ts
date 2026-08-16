@@ -29,6 +29,20 @@ export interface TopProductPoint {
   sold: number;
 }
 
+export interface DashboardRecentActivity {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  createdAt: Date;
+  user: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    phone: string;
+  } | null;
+}
+
 export interface DashboardStats {
   totalSales: number;
   totalOrders: number;
@@ -39,4 +53,5 @@ export interface DashboardStats {
   salesTrend: SalesTrendPoint[];
   ordersByStatus: OrdersByStatusPoint[];
   topProducts: TopProductPoint[];
+  recentActivity: DashboardRecentActivity[];
 }

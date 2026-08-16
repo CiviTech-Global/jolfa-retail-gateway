@@ -1,20 +1,29 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router'
-import { Plus, Package } from 'lucide-react'
+import { Plus, Package, Pencil, Trash2 } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
-import { getProducts } from '@/features/catalog/api'
+import { getProducts, deleteProduct } from '@/features/catalog/api'
 
 export function AdminProductsPage() {
   const [page, setPage] = useState(1)
+  const queryClient = useQueryClient()
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'products', page],
     queryFn: () => getProducts({ page, limit: 20 }),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteProduct,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'products'] })
+      void queryClient.invalidateQueries({ queryKey: ['products'] })
+    },
   })
 
   return (
@@ -46,18 +55,19 @@ export function AdminProductsPage() {
                   <th className="px-4 py-3 text-right font-medium text-muted-foreground">قیمت</th>
                   <th className="px-4 py-3 text-right font-medium text-muted-foreground">موجودی</th>
                   <th className="px-4 py-3 text-right font-medium text-muted-foreground">وضعیت</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">عملیات</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
+                    <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
                       در حال بارگذاری ...
                     </td>
                   </tr>
                 ) : data?.products.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground">
+                    <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
                       <div className="flex flex-col items-center justify-center gap-3">
                         <Package className="h-10 w-10 text-muted-foreground/60" />
                         <span>محصولی یافت نشد.</span>
@@ -75,6 +85,25 @@ export function AdminProductsPage() {
                         <Badge variant={product.isActive ? 'success' : 'danger'}>
                           {product.isActive ? 'فعال' : 'غیرفعال'}
                         </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-2">
+                          <Button size="sm" variant="outline" asChild>
+                            <Link to={`/admin/products/${product.slug}/edit`}>
+                              <Pencil className="h-4 w-4" />
+                              <span className="sr-only">ویرایش</span>
+                            </Link>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            loading={deleteMutation.isPending}
+                            onClick={() => deleteMutation.mutate(product.slug)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">حذف</span>
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))

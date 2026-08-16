@@ -23,7 +23,7 @@ export const updateSetting = asyncHandler(
     request: FastifyRequest<{ Params: SettingParams; Body: SettingUpdateBody }>,
     reply: FastifyReply
   ): Promise<void> => {
-    const result = await settingsService.updateSetting(request.params.key, request.body);
+    const result = await settingsService.updateSetting(request.params.key, request.body, request.user?.id);
     sendSuccess(reply, result);
   }
 );

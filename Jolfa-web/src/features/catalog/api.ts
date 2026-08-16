@@ -1,10 +1,14 @@
 import { apiRequest } from '@/api/client'
 import type {
+  CategoryCreateBody,
   CategoryDetailResponse,
   CategoryListResponse,
+  CategoryUpdateBody,
+  ProductCreateBody,
   ProductDetailResponse,
   ProductFilters,
   ProductListResponse,
+  ProductUpdateBody,
 } from './types'
 
 export function getCategories(tree?: boolean, parentId?: string): Promise<CategoryListResponse> {
@@ -17,6 +21,26 @@ export function getCategories(tree?: boolean, parentId?: string): Promise<Catego
 
 export function getCategoryBySlug(slug: string): Promise<CategoryDetailResponse> {
   return apiRequest<CategoryDetailResponse>(`/categories/${encodeURIComponent(slug)}`)
+}
+
+export function createCategory(body: CategoryCreateBody): Promise<{ category: import('./types').CategoryDto }> {
+  return apiRequest<{ category: import('./types').CategoryDto }>('/categories', {
+    method: 'POST',
+    body,
+  })
+}
+
+export function updateCategory(slug: string, body: CategoryUpdateBody): Promise<{ category: import('./types').CategoryDto }> {
+  return apiRequest<{ category: import('./types').CategoryDto }>(`/categories/${encodeURIComponent(slug)}`, {
+    method: 'PATCH',
+    body,
+  })
+}
+
+export function deleteCategory(slug: string): Promise<{ success: boolean }> {
+  return apiRequest<{ success: boolean }>(`/categories/${encodeURIComponent(slug)}`, {
+    method: 'DELETE',
+  })
 }
 
 export function getProducts(filters: ProductFilters = {}): Promise<ProductListResponse> {
@@ -35,4 +59,24 @@ export function getProducts(filters: ProductFilters = {}): Promise<ProductListRe
 
 export function getProductBySlug(slug: string): Promise<ProductDetailResponse> {
   return apiRequest<ProductDetailResponse>(`/products/${encodeURIComponent(slug)}`)
+}
+
+export function createProduct(body: ProductCreateBody): Promise<{ product: import('./types').ProductDto }> {
+  return apiRequest<{ product: import('./types').ProductDto }>('/products', {
+    method: 'POST',
+    body,
+  })
+}
+
+export function updateProduct(slug: string, body: ProductUpdateBody): Promise<{ product: import('./types').ProductDto }> {
+  return apiRequest<{ product: import('./types').ProductDto }>(`/products/${encodeURIComponent(slug)}`, {
+    method: 'PATCH',
+    body,
+  })
+}
+
+export function deleteProduct(slug: string): Promise<{ success: boolean }> {
+  return apiRequest<{ success: boolean }>(`/products/${encodeURIComponent(slug)}`, {
+    method: 'DELETE',
+  })
 }

@@ -8,11 +8,14 @@ import {
   Settings,
   LayoutTemplate,
   Database,
-  MessageSquare,
   LogOut,
   Menu,
   Bell,
   Search,
+  Users,
+  CreditCard,
+  ClipboardList,
+  Receipt,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
@@ -24,10 +27,14 @@ const navItems = [
   { to: '/admin/products', label: 'محصولات', icon: Package },
   { to: '/admin/categories', label: 'دسته‌بندی‌ها', icon: Tags },
   { to: '/admin/orders', label: 'سفارش‌ها', icon: ShoppingBag },
+  { to: '/admin/banners', label: 'بنرها', icon: LayoutTemplate },
+  { to: '/admin/users', label: 'کاربران', icon: Users },
+  { to: '/admin/payments', label: 'پرداخت‌ها', icon: CreditCard },
+  { to: '/admin/transactions', label: 'تراکنش‌ها', icon: Receipt },
+  { to: '/admin/activity-log', label: 'گزارش فعالیت', icon: ClipboardList },
   { to: '/admin/homepage-sections', label: 'بخش‌های صفحه اصلی', icon: LayoutTemplate },
   { to: '/admin/settings', label: 'تنظیمات', icon: Settings },
   { to: '/admin/demo', label: 'داده‌های نمونه', icon: Database },
-  { to: '/admin/messages', label: 'پیامک و اعلانات', icon: MessageSquare },
 ]
 
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {

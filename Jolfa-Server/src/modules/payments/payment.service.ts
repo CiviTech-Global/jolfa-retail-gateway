@@ -3,6 +3,7 @@ import { BadRequestError, ConflictError, NotFoundError } from "../../shared/app-
 import { env } from "../../config/env.js";
 import type { PaymentGateway, PaymentStatus } from "@prisma/client";
 import type { PaymentRequestBody, PaymentVerifyBody } from "./payment.types.js";
+import { createTransaction } from "./transaction.service.js";
 
 interface GatewayConfig {
   gateway: PaymentGateway;
@@ -61,7 +62,7 @@ export async function requestPayment(userId: string, data: PaymentRequestBody) {
 
   const authority = `auth-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
 
-  await prisma.payment.upsert({
+  const payment = await prisma.payment.upsert({
     where: { orderId: order.id },
     update: { authority, gateway: config.gateway, amount: order.finalAmount, status: "PENDING" as PaymentStatus },
     create: {
@@ -71,6 +72,16 @@ export async function requestPayment(userId: string, data: PaymentRequestBody) {
       authority,
       status: "PENDING",
     },
+  });
+
+  await createTransaction({
+    orderId: order.id,
+    paymentId: payment.id,
+    type: "PAYMENT",
+    amount: order.finalAmount,
+    status: "PENDING",
+    gateway: config.gateway,
+    authority,
   });
 
   return {
@@ -102,6 +113,16 @@ export async function verifyPayment(data: PaymentVerifyBody) {
       where: { id: payment.id },
       data: { status: "FAILED", gatewayResponse: { status: "NOK" } },
     });
+    await createTransaction({
+      orderId: payment.orderId,
+      paymentId: payment.id,
+      type: "PAYMENT",
+      amount: payment.amount,
+      status: "FAILED",
+      gateway: payment.gateway,
+      authority: payment.authority ?? undefined,
+      metadata: { reason: "NOK callback" },
+    });
     return { success: false, orderId: payment.orderId };
   }
 
@@ -120,6 +141,19 @@ export async function verifyPayment(data: PaymentVerifyBody) {
     prisma.order.update({
       where: { id: payment.orderId },
       data: { paymentStatus: "COMPLETED", status: "PROCESSING" },
+    }),
+    prisma.transaction.create({
+      data: {
+        orderId: payment.orderId,
+        paymentId: payment.id,
+        type: "PAYMENT",
+        amount: payment.amount,
+        status: "COMPLETED",
+        gateway: payment.gateway,
+        authority: payment.authority ?? undefined,
+        refId,
+        metadata: { reason: "Payment verified" },
+      },
     }),
   ]);
 

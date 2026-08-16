@@ -18,9 +18,10 @@ function SettingCard({ setting }: { setting: SettingDto }) {
   const [value, setValue] = useState(setting.value)
 
   const mutation = useMutation({
-    mutationFn: () => updateAdminSetting(setting.key, { value }),
+    mutationFn: (nextValue: string) => updateAdminSetting(setting.key, { value: nextValue }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['admin', 'settings'] })
+      void queryClient.invalidateQueries({ queryKey: ['settings', 'public'] })
     },
   })
 
@@ -41,8 +42,9 @@ function SettingCard({ setting }: { setting: SettingDto }) {
           <Switch
             checked={value === 'true'}
             onCheckedChange={(checked) => {
-              setValue(checked ? 'true' : 'false')
-              mutation.mutate()
+              const nextValue = checked ? 'true' : 'false'
+              setValue(nextValue)
+              mutation.mutate(nextValue)
             }}
           />
         ) : (
@@ -53,7 +55,7 @@ function SettingCard({ setting }: { setting: SettingDto }) {
           />
         )}
         {!booleanMode && (
-          <Button size="sm" disabled={!hasChanged} loading={mutation.isPending} onClick={() => mutation.mutate()}>
+          <Button size="sm" disabled={!hasChanged} loading={mutation.isPending} onClick={() => mutation.mutate(value)}>
             <Save className="h-4 w-4" />
             <span className="sr-only">ذخیره</span>
           </Button>
@@ -84,7 +86,7 @@ export function AdminSettingsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
-          {data?.map((setting) => <SettingCard key={setting.id} setting={setting} />)}
+          {data?.settings.map((setting) => <SettingCard key={setting.id} setting={setting} />)}
         </div>
       )}
     </ScrollReveal>

@@ -1,18 +1,28 @@
 import { Link } from 'react-router'
 import { usePublicSettingBoolean, usePublicSettingValue } from '@/features/cms/hooks'
 
-const footerLinks = [
+const baseFooterLinks = [
   { to: '/products', label: 'محصولات' },
   { to: '/categories', label: 'دسته‌بندی‌ها' },
-  { to: '/about', label: 'درباره ما' },
-  { to: '/contact', label: 'تماس با ما' },
-  { to: '/rules', label: 'قوانین و مقررات' },
+  { to: '/about', label: 'درباره ما', settingKey: 'show_about' },
+  { to: '/contact', label: 'تماس با ما', settingKey: 'show_contact' },
+  { to: '/rules', label: 'قوانین و مقررات', settingKey: 'show_rules' },
 ]
 
 export function Footer() {
   const siteName = usePublicSettingValue('site_name') ?? 'نمونه فروشگاه آنلاین'
   const showFooterLinks = usePublicSettingBoolean('show_footer_links')
   const showTrustBadges = usePublicSettingBoolean('show_trust_badges')
+  const showAbout = usePublicSettingBoolean('show_about')
+  const showContact = usePublicSettingBoolean('show_contact')
+  const showRules = usePublicSettingBoolean('show_rules')
+
+  const footerLinks = baseFooterLinks.filter((link) => {
+    if (link.settingKey === 'show_about') return showAbout
+    if (link.settingKey === 'show_contact') return showContact
+    if (link.settingKey === 'show_rules') return showRules
+    return true
+  })
 
   return (
     <footer className="mt-auto border-t border-border bg-surface">

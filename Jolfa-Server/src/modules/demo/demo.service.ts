@@ -176,6 +176,9 @@ const demoSettings = [
   { key: "show_cart", value: "true", group: "header", isPublic: true, description: "Show cart icon in header" },
   { key: "show_user_menu", value: "true", group: "header", isPublic: true, description: "Show user account menu in header" },
   { key: "show_footer_links", value: "true", group: "footer", isPublic: true, description: "Show footer quick links" },
+  { key: "show_about", value: "true", group: "static_pages", isPublic: true, description: "Show About page link" },
+  { key: "show_contact", value: "true", group: "static_pages", isPublic: true, description: "Show Contact page link" },
+  { key: "show_rules", value: "true", group: "static_pages", isPublic: true, description: "Show Rules page link" },
   { key: "show_hero", value: "true", group: "home_features", isPublic: true, description: "Show hero banner section" },
   { key: "show_categories", value: "true", group: "home_features", isPublic: true, description: "Show categories grid section" },
   { key: "show_featured_products", value: "true", group: "home_features", isPublic: true, description: "Show featured products section" },
@@ -291,11 +294,15 @@ async function seedDemoOrders() {
       0,
     );
 
+    const status = statuses[i % statuses.length];
+    const isPaid = i % 2 === 0;
+
     const order = await prisma.order.create({
       data: {
         userId: admin.id,
         orderNumber: generateOrderNumber(i),
-        status: statuses[i % statuses.length],
+        status,
+        paymentStatus: isPaid ? "COMPLETED" : "PENDING",
         totalAmount,
         shippingCost: 30000,
         discountAmount: 0,
@@ -316,6 +323,35 @@ async function seedDemoOrders() {
     });
 
     await snapshotEntity("ORDER", order.id);
+
+    if (isPaid) {
+      const payment = await prisma.payment.create({
+        data: {
+          orderId: order.id,
+          gateway: "ZARINPAL",
+          amount: order.finalAmount,
+          status: "COMPLETED",
+          authority: `demo-auth-${i}`,
+          refId: `demo-ref-${i}`,
+          paidAt: new Date(),
+        },
+      });
+      await snapshotEntity("PAYMENT", payment.id);
+
+      const transaction = await prisma.transaction.create({
+        data: {
+          orderId: order.id,
+          paymentId: payment.id,
+          type: "PAYMENT",
+          amount: order.finalAmount,
+          status: "COMPLETED",
+          gateway: "ZARINPAL",
+          authority: payment.authority,
+          refId: payment.refId,
+        },
+      });
+      await snapshotEntity("TRANSACTION", transaction.id);
+    }
   }
 }
 
@@ -373,50 +409,66 @@ export async function clearDemoData() {
     const snapshots = await prisma.demoSnapshot.findMany();
 
     const orderIds = snapshots.filter((s) => s.entityType === "ORDER").map((s) => s.entityId);
-    const productIds = snapshots.filter((s) => s.entityType === "PRODUCT").map((s) => s.entityId);
     const categoryIds = snapshots.filter((s) => s.entityType === "CATEGORY").map((s) => s.entityId);
     const bannerIds = snapshots.filter((s) => s.entityType === "BANNER").map((s) => s.entityId);
     const homepageSectionIds = snapshots
       .filter((s) => s.entityType === "HOMEPAGE_SECTION")
       .map((s) => s.entityId);
+    const transactionIds = snapshots
+      .filter((s) => s.entityType === "TRANSACTION")
+      .map((s) => s.entityId);
 
-    await prisma.orderItem.deleteMany({
-      where: { orderId: { in: orderIds } },
-    });
+    await prisma.$transaction(async (tx) => {
+      // Remove demo financial records first.
+      await tx.transaction.deleteMany({
+        where: { id: { in: transactionIds } },
+      });
 
-    await prisma.order.deleteMany({
-      where: { id: { in: orderIds } },
-    });
+      // Remove demo orders and their items (payments cascade with orders).
+      await tx.orderItem.deleteMany({
+        where: { orderId: { in: orderIds } },
+      });
+      await tx.order.deleteMany({
+        where: { id: { in: orderIds } },
+      });
 
-    await prisma.cartItem.deleteMany({
-      where: { productId: { in: productIds } },
-    });
+      // Remove any products that belong to demo categories, plus their related rows.
+      // This also cleans up user-created products that were placed under demo categories.
+      await tx.cartItem.deleteMany({
+        where: { product: { categoryId: { in: categoryIds } } },
+      });
+      await tx.productImage.deleteMany({
+        where: { product: { categoryId: { in: categoryIds } } },
+      });
+      await tx.orderItem.deleteMany({
+        where: { product: { categoryId: { in: categoryIds } } },
+      });
+      await tx.product.deleteMany({
+        where: { categoryId: { in: categoryIds } },
+      });
 
-    await prisma.productImage.deleteMany({
-      where: { productId: { in: productIds } },
-    });
+      // Delete child demo categories before parent ones (if any).
+      await tx.category.deleteMany({
+        where: { id: { in: categoryIds }, parentId: { in: categoryIds } },
+      });
+      await tx.category.deleteMany({
+        where: { id: { in: categoryIds } },
+      });
 
-    await prisma.product.deleteMany({
-      where: { id: { in: productIds } },
-    });
+      await tx.banner.deleteMany({
+        where: { id: { in: bannerIds } },
+      });
 
-    await prisma.category.deleteMany({
-      where: { id: { in: categoryIds } },
-    });
+      await tx.homepageSection.deleteMany({
+        where: { id: { in: homepageSectionIds } },
+      });
 
-    await prisma.banner.deleteMany({
-      where: { id: { in: bannerIds } },
-    });
+      await tx.demoSnapshot.deleteMany();
 
-    await prisma.homepageSection.deleteMany({
-      where: { id: { in: homepageSectionIds } },
-    });
-
-    await prisma.demoSnapshot.deleteMany();
-
-    await prisma.setting.updateMany({
-      where: { key: { startsWith: "show_" } },
-      data: { value: "false" },
+      await tx.setting.updateMany({
+        where: { key: { startsWith: "show_" } },
+        data: { value: "false" },
+      });
     });
   } catch (error) {
     console.error("Clear demo data error:", error);

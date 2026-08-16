@@ -16,11 +16,18 @@ export interface CategoryTreeDto extends CategoryDto {
 }
 
 export interface ProductImageDto {
-  id: string
+  id?: string
   url: string
   altText: string | null
   sortOrder: number
   isPrimary: boolean
+}
+
+export interface ProductImageInput {
+  url: string
+  altText?: string
+  sortOrder?: number
+  isPrimary?: boolean
 }
 
 export interface ProductCategoryDto {
@@ -65,6 +72,62 @@ export interface ProductListResponse {
 
 export interface CategoryListResponse {
   categories: CategoryDto[] | CategoryTreeDto[]
+}
+
+export interface CategoryCreateBody {
+  name: string
+  slug?: string
+  description?: string
+  imageUrl?: string
+  parentId?: string | null
+  displayOrder?: number
+  isActive?: boolean
+}
+
+export interface CategoryUpdateBody {
+  name?: string
+  slug?: string
+  description?: string
+  imageUrl?: string
+  parentId?: string | null
+  displayOrder?: number
+  isActive?: boolean
+}
+
+export interface ProductCreateBody {
+  title: string
+  slug?: string
+  description?: string
+  shortDescription?: string
+  price: number
+  compareAtPrice?: number | null
+  stockQuantity?: number
+  weightGrams?: number | null
+  sku?: string | null
+  categoryId: string
+  isActive?: boolean
+  isFeatured?: boolean
+  metaTitle?: string | null
+  metaDescription?: string | null
+  images: ProductImageInput[]
+}
+
+export interface ProductUpdateBody {
+  title?: string
+  slug?: string
+  description?: string
+  shortDescription?: string
+  price?: number
+  compareAtPrice?: number | null
+  stockQuantity?: number
+  weightGrams?: number | null
+  sku?: string | null
+  categoryId?: string
+  isActive?: boolean
+  isFeatured?: boolean
+  metaTitle?: string | null
+  metaDescription?: string | null
+  images?: ProductImageInput[]
 }
 
 export interface CategoryDetailResponse {

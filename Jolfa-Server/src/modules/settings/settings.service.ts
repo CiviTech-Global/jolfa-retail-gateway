@@ -1,5 +1,6 @@
 import { prisma } from "../../shared/prisma.js";
 import { NotFoundError } from "../../shared/app-error.js";
+import { logAudit, buildChangeMetadata } from "../../shared/audit/audit.service.js";
 import type { SettingUpdateBody } from "./settings.types.js";
 
 export async function listPublicSettings() {
@@ -23,7 +24,7 @@ export async function listAllSettings() {
   return { settings };
 }
 
-export async function updateSetting(key: string, data: SettingUpdateBody) {
+export async function updateSetting(key: string, data: SettingUpdateBody, actorId?: string) {
   const existing = await prisma.setting.findUnique({ where: { key } });
   if (!existing) {
     throw new NotFoundError("Setting");
@@ -33,6 +34,16 @@ export async function updateSetting(key: string, data: SettingUpdateBody) {
     where: { key },
     data: { value: data.value },
   });
+
+  if (actorId) {
+    await logAudit({
+      userId: actorId,
+      action: "UPDATE",
+      entityType: "Setting",
+      entityId: existing.id,
+      metadata: buildChangeMetadata({ value: existing.value }, { value: data.value }),
+    });
+  }
 
   return { setting };
 }

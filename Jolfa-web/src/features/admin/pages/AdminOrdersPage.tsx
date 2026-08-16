@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Link } from 'react-router'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatPrice } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
-import { getAdminOrders, updateOrderStatus } from '../api'
+import { getAdminOrders, updateOrderStatus } from '@/features/admin/api'
 import type { OrderDto } from '@/features/orders/types'
 
 const statusLabels: Record<string, string> = {
@@ -93,7 +94,11 @@ export function AdminOrdersPage() {
                 ) : (
                   data?.orders.map((order: OrderDto) => (
                     <tr key={order.id}>
-                      <td className="px-4 py-3 font-medium text-foreground">{order.orderNumber}</td>
+                      <td className="px-4 py-3 font-medium text-foreground">
+                        <Link to={`/admin/orders/${order.id}`} className="hover:text-primary">
+                          {order.orderNumber}
+                        </Link>
+                      </td>
                       <td className="px-4 py-3 text-foreground">
                         {order.user?.firstName || order.user?.phone || 'مهمان'}
                       </td>
@@ -108,6 +113,9 @@ export function AdminOrdersPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-2">
+                          <Button size="sm" variant="outline" asChild>
+                            <Link to={`/admin/orders/${order.id}`}>مشاهده</Link>
+                          </Button>
                           {nextStatuses[order.status]?.map((status) => (
                             <Button
                               key={status}

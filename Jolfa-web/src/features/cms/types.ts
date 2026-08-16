@@ -53,6 +53,39 @@ export interface UpdateHomepageSectionBody {
   isActive?: boolean
 }
 
+export interface BannerDto {
+  id: string
+  title: string
+  subtitle: string | null
+  imageUrl: string
+  link: string | null
+  position: string
+  displayOrder: number
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface BannerCreateBody {
+  title: string
+  subtitle?: string
+  imageUrl: string
+  link?: string
+  position?: string
+  displayOrder?: number
+  isActive?: boolean
+}
+
+export interface BannerUpdateBody {
+  title?: string
+  subtitle?: string
+  imageUrl?: string
+  link?: string
+  position?: string
+  displayOrder?: number
+  isActive?: boolean
+}
+
 export type DemoAction = 'seed' | 'clear'
 
 export interface DemoActionBody {

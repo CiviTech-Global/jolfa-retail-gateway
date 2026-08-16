@@ -1,18 +1,21 @@
 import { useQuery } from '@tanstack/react-query'
 import { getDashboardStats } from '../api'
+import type { DashboardStats } from '../types'
 import { KpiBentoGrid } from '../components/KpiBentoGrid'
 import { SalesChart } from '../components/SalesChart'
 import { OrdersByStatusChart } from '../components/OrdersByStatusChart'
 import { RevenueBarChart } from '../components/RevenueBarChart'
 import { RecentOrdersTable } from '../components/RecentOrdersTable'
 import { TopProductsList } from '../components/TopProductsList'
+import { QuickActionsWidget } from '../components/QuickActionsWidget'
+import { RecentActivityWidget } from '../components/RecentActivityWidget'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
 
 export function AdminDashboardPage() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading } = useQuery<DashboardStats, Error>({
     queryKey: ['admin', 'dashboard'],
-    queryFn: getDashboardStats,
+    queryFn: () => getDashboardStats(7),
   })
 
   if (isLoading) {
@@ -28,7 +31,7 @@ export function AdminDashboardPage() {
     )
   }
 
-  const stats = data
+  const stats: DashboardStats | undefined = data
 
   return (
     <div className="space-y-6">
@@ -40,6 +43,15 @@ export function AdminDashboardPage() {
       </ScrollReveal>
 
       <KpiBentoGrid stats={stats!} />
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <ScrollReveal className="lg:col-span-2">
+          <QuickActionsWidget />
+        </ScrollReveal>
+        <ScrollReveal delay={0.1} className="lg:col-span-1">
+          <RecentActivityWidget activity={stats?.recentActivity ?? []} />
+        </ScrollReveal>
+      </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <ScrollReveal>

@@ -21,6 +21,14 @@ const envSchema = z.object({
   KAVENEGAR_API_KEY: z.string().optional(),
   SMS_IR_API_KEY: z.string().optional(),
   SMS_SENDER_NUMBER: z.string().optional(),
+
+  ADMIN_SEED_EMAIL: z.string().email().optional(),
+  ADMIN_SEED_PHONE: z.string().optional(),
+  ADMIN_SEED_PASSWORD: z.string().min(1).optional(),
+
+  USER_SEED_EMAIL: z.string().email().optional(),
+  USER_SEED_PHONE: z.string().optional(),
+  USER_SEED_PASSWORD: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

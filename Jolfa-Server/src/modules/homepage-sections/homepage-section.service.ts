@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../shared/prisma.js";
 import { ConflictError, NotFoundError } from "../../shared/app-error.js";
+import { logAudit, buildChangeMetadata } from "../../shared/audit/audit.service.js";
 import type {
   HomepageSectionCreateBody,
   HomepageSectionUpdateBody,
@@ -49,6 +50,23 @@ export async function createSection(data: HomepageSectionCreateBody) {
   return { section };
 }
 
+export async function createSectionWithAudit(
+  data: HomepageSectionCreateBody,
+  actorId?: string,
+) {
+  const result = await createSection(data);
+  if (actorId) {
+    await logAudit({
+      userId: actorId,
+      action: "CREATE",
+      entityType: "HomepageSection",
+      entityId: result.section.id,
+      metadata: { key: result.section.key, title: result.section.title },
+    });
+  }
+  return result;
+}
+
 export async function updateSection(id: string, data: HomepageSectionUpdateBody) {
   const section = await prisma.homepageSection.findUnique({ where: { id } });
   if (!section) {
@@ -70,12 +88,52 @@ export async function updateSection(id: string, data: HomepageSectionUpdateBody)
   return { section: updated };
 }
 
-export async function deleteSection(id: string) {
+export async function updateSectionWithAudit(
+  id: string,
+  data: HomepageSectionUpdateBody,
+  actorId?: string,
+) {
+  const existing = await prisma.homepageSection.findUnique({ where: { id } });
+  const before = existing
+    ? { title: existing.title, isActive: existing.isActive, displayOrder: existing.displayOrder }
+    : {};
+
+  const result = await updateSection(id, data);
+
+  if (actorId) {
+    await logAudit({
+      userId: actorId,
+      action: "UPDATE",
+      entityType: "HomepageSection",
+      entityId: id,
+      metadata: buildChangeMetadata(before, {
+        title: result.section.title,
+        isActive: result.section.isActive,
+        displayOrder: result.section.displayOrder,
+      }),
+    });
+  }
+
+  return result;
+}
+
+export async function deleteSection(id: string, actorId?: string) {
   const section = await prisma.homepageSection.findUnique({ where: { id } });
   if (!section) {
     throw new NotFoundError("HomepageSection");
   }
 
   await prisma.homepageSection.delete({ where: { id } });
+
+  if (actorId) {
+    await logAudit({
+      userId: actorId,
+      action: "DELETE",
+      entityType: "HomepageSection",
+      entityId: id,
+      metadata: { key: section.key, title: section.title },
+    });
+  }
+
   return { success: true };
 }

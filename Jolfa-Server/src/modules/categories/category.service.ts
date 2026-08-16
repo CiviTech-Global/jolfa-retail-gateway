@@ -1,5 +1,6 @@
 import { prisma } from "../../shared/prisma.js";
 import { AppError, ConflictError, NotFoundError } from "../../shared/app-error.js";
+import { logAudit, buildChangeMetadata } from "../../shared/audit/audit.service.js";
 import type { CategoryCreateBody, CategoryUpdateBody } from "./category.types.js";
 
 export interface CategoryTreeNode {
@@ -137,6 +138,20 @@ export async function createCategory(data: CategoryCreateBody) {
   return { category };
 }
 
+export async function createCategoryWithAudit(data: CategoryCreateBody, actorId?: string) {
+  const result = await createCategory(data);
+  if (actorId) {
+    await logAudit({
+      userId: actorId,
+      action: "CREATE",
+      entityType: "Category",
+      entityId: result.category.id,
+      metadata: { slug: result.category.slug, name: result.category.name },
+    });
+  }
+  return result;
+}
+
 export async function updateCategory(slug: string, data: CategoryUpdateBody) {
   const category = await prisma.category.findUnique({
     where: { slug },
@@ -182,7 +197,36 @@ export async function updateCategory(slug: string, data: CategoryUpdateBody) {
   return { category: updated };
 }
 
-export async function deleteCategory(slug: string): Promise<{ success: true }> {
+export async function updateCategoryWithAudit(
+  slug: string,
+  data: CategoryUpdateBody,
+  actorId?: string,
+) {
+  const existing = await prisma.category.findUnique({ where: { slug } });
+  const before = existing
+    ? { name: existing.name, isActive: existing.isActive, parentId: existing.parentId }
+    : {};
+
+  const result = await updateCategory(slug, data);
+
+  if (actorId) {
+    await logAudit({
+      userId: actorId,
+      action: "UPDATE",
+      entityType: "Category",
+      entityId: result.category.id,
+      metadata: buildChangeMetadata(before, {
+        name: result.category.name,
+        isActive: result.category.isActive,
+        parentId: result.category.parentId,
+      }),
+    });
+  }
+
+  return result;
+}
+
+export async function deleteCategory(slug: string, actorId?: string): Promise<{ success: true }> {
   const category = await prisma.category.findUnique({
     where: { slug },
     include: {
@@ -204,6 +248,16 @@ export async function deleteCategory(slug: string): Promise<{ success: true }> {
   }
 
   await prisma.category.delete({ where: { slug } });
+
+  if (actorId) {
+    await logAudit({
+      userId: actorId,
+      action: "DELETE",
+      entityType: "Category",
+      entityId: category.id,
+      metadata: { slug, name: category.name },
+    });
+  }
 
   return { success: true };
 }

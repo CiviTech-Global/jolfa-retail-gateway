@@ -1,6 +1,7 @@
 import { prisma } from "../../shared/prisma.js";
 import { ConflictError, NotFoundError } from "../../shared/app-error.js";
 import { Prisma } from "@prisma/client";
+import { logAudit, buildChangeMetadata } from "../../shared/audit/audit.service.js";
 import type { ProductCreateBody, ProductUpdateBody } from "./product.types.js";
 
 export interface ProductListFilters {
@@ -189,6 +190,20 @@ export async function createProduct(data: ProductCreateBody) {
   return { product };
 }
 
+export async function createProductWithAudit(data: ProductCreateBody, actorId?: string) {
+  const result = await createProduct(data);
+  if (actorId) {
+    await logAudit({
+      userId: actorId,
+      action: "CREATE",
+      entityType: "Product",
+      entityId: result.product.id,
+      metadata: { slug: result.product.slug, title: result.product.title },
+    });
+  }
+  return result;
+}
+
 export async function updateProduct(slug: string, data: ProductUpdateBody) {
   const product = await prisma.product.findUnique({
     where: { slug },
@@ -252,10 +267,47 @@ export async function updateProduct(slug: string, data: ProductUpdateBody) {
   return { product: updated };
 }
 
-export async function deleteProduct(slug: string): Promise<{ success: true }> {
+export async function updateProductWithAudit(
+  slug: string,
+  data: ProductUpdateBody,
+  actorId?: string,
+) {
+  const existing = await prisma.product.findUnique({ where: { slug } });
+  const before = existing
+    ? {
+        title: existing.title,
+        price: existing.price,
+        stockQuantity: existing.stockQuantity,
+        isActive: existing.isActive,
+        isFeatured: existing.isFeatured,
+      }
+    : {};
+
+  const result = await updateProduct(slug, data);
+
+  if (actorId) {
+    await logAudit({
+      userId: actorId,
+      action: "UPDATE",
+      entityType: "Product",
+      entityId: result.product.id,
+      metadata: buildChangeMetadata(before, {
+        title: result.product.title,
+        price: result.product.price,
+        stockQuantity: result.product.stockQuantity,
+        isActive: result.product.isActive,
+        isFeatured: result.product.isFeatured,
+      }),
+    });
+  }
+
+  return result;
+}
+
+export async function deleteProduct(slug: string, actorId?: string): Promise<{ success: true }> {
   const product = await prisma.product.findUnique({
     where: { slug },
-    select: { id: true },
+    select: { id: true, title: true },
   });
   if (!product) {
     throw new NotFoundError("Product");
@@ -265,6 +317,16 @@ export async function deleteProduct(slug: string): Promise<{ success: true }> {
     where: { slug },
     data: { isActive: false },
   });
+
+  if (actorId) {
+    await logAudit({
+      userId: actorId,
+      action: "DELETE",
+      entityType: "Product",
+      entityId: product.id,
+      metadata: { title: product.title, slug },
+    });
+  }
 
   return { success: true };
 }

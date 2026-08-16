@@ -56,6 +56,8 @@ model User {
   orders           Order[]
   carts            Cart[]
   smsNotifications SmsNotification[]
+  auditLogs        AuditLog[]
+  statusChanges    OrderStatusHistory[]
 
   @@index([role])
   @@index([isActive])
@@ -179,6 +181,8 @@ model Order {
   shippingAddress Address     @relation(fields: [shippingAddressId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   items           OrderItem[]
   payment         Payment?
+  transactions    Transaction[]
+  statusHistory   OrderStatusHistory[]
 
   @@index([userId, createdAt])
   @@index([status, createdAt])
@@ -219,7 +223,8 @@ model Payment {
   createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  transactions  Transaction[]
 
   @@index([authority])
   @@index([status])
@@ -329,6 +334,83 @@ model HomepageSection {
   @@index([isActive])
   @@index([displayOrder])
   @@map("homepage_sections")
+}
+
+model AuditLog {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String?  @map("user_id") @db.Uuid
+  action     String   @db.VarChar(50)
+  entityType String   @map("entity_type") @db.VarChar(50)
+  entityId   String   @map("entity_id") @db.Uuid
+  metadata   Json?
+  ipAddress  String?  @map("ip_address") @db.VarChar(100)
+  userAgent  String?  @map("user_agent") @db.Text
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([userId])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model Transaction {
+  id        String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId   String?         @map("order_id") @db.Uuid
+  paymentId String?         @map("payment_id") @db.Uuid
+  type      TransactionType
+  amount    Int
+  status    TransactionStatus @default(PENDING)
+  gateway   String?         @db.VarChar(50)
+  authority String?         @db.VarChar(255)
+  refId     String?         @map("ref_id") @db.VarChar(255)
+  metadata  Json?
+  createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  order   Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([orderId])
+  @@index([paymentId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("transactions")
+}
+
+model OrderStatusHistory {
+  id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId        String      @map("order_id") @db.Uuid
+  previousStatus String?     @map("previous_status") @db.VarChar(50)
+  newStatus      String      @map("new_status") @db.VarChar(50)
+  changedById    String?     @map("changed_by_id") @db.Uuid
+  note           String?     @db.Text
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  order     Order  @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  changedBy User?  @relation(fields: [changedById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([orderId])
+  @@index([changedById])
+  @@index([createdAt])
+  @@map("order_status_history")
+}
+
+enum TransactionType {
+  PAYMENT
+  REFUND
+  RETRY
+  FEE
+  ADJUSTMENT
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
 }
 
 model DemoSnapshot {

@@ -52,7 +52,7 @@ export const updateOrderStatus = asyncHandler(
     request: FastifyRequest<{ Params: OrderParams; Body: OrderStatusUpdateBody }>,
     reply: FastifyReply
   ): Promise<void> => {
-    const result = await orderService.updateOrderStatus(request.params.id, request.body);
+    const result = await orderService.updateOrderStatus(request.params.id, request.body, request.user?.id);
     sendSuccess(reply, result);
   }
 );

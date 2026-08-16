@@ -73,8 +73,8 @@ async function getTopProducts(limit = 5): Promise<DashboardStats["topProducts"]>
   }));
 }
 
-export async function getDashboardStats(): Promise<DashboardStats> {
-  const [salesAggregate, totalOrders, pendingOrders, totalProducts, lowStockProducts, recentOrders, salesTrend, ordersByStatus, topProducts] =
+export async function getDashboardStats(days = 7): Promise<DashboardStats> {
+  const [salesAggregate, totalOrders, pendingOrders, totalProducts, lowStockProducts, recentOrders, salesTrend, ordersByStatus, topProducts, recentActivity] =
     await Promise.all([
       prisma.order.aggregate({
         where: { status: "DELIVERED" },
@@ -103,9 +103,28 @@ export async function getDashboardStats(): Promise<DashboardStats> {
           },
         },
       }),
-      getSalesTrend(),
+      getSalesTrend(days),
       getOrdersByStatus(),
       getTopProducts(),
+      prisma.auditLog.findMany({
+        take: 20,
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          action: true,
+          entityType: true,
+          entityId: true,
+          createdAt: true,
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              phone: true,
+            },
+          },
+        },
+      }),
     ]);
 
   return {
@@ -118,5 +137,6 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     salesTrend,
     ordersByStatus,
     topProducts,
+    recentActivity,
   };
 }

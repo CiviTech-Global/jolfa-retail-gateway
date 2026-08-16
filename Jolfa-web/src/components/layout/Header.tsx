@@ -15,12 +15,12 @@ import { useAuth } from '@/features/auth/context'
 import { useCart } from '@/features/cart/context'
 import { usePublicSettingBoolean, usePublicSettingValue } from '@/features/cms/hooks'
 
-const navLinks = [
+const baseNavLinks = [
   { to: '/', label: 'خانه' },
   { to: '/products', label: 'محصولات' },
   { to: '/categories', label: 'دسته‌بندی‌ها' },
-  { to: '/about', label: 'درباره ما' },
-  { to: '/contact', label: 'تماس' },
+  { to: '/about', label: 'درباره ما', settingKey: 'show_about' },
+  { to: '/contact', label: 'تماس', settingKey: 'show_contact' },
 ]
 
 export function Header() {
@@ -35,6 +35,14 @@ export function Header() {
   const showSearchSetting = usePublicSettingBoolean('show_search')
   const showCartSetting = usePublicSettingBoolean('show_cart')
   const showUserMenuSetting = usePublicSettingBoolean('show_user_menu')
+  const showAbout = usePublicSettingBoolean('show_about')
+  const showContact = usePublicSettingBoolean('show_contact')
+
+  const navLinks = baseNavLinks.filter((link) => {
+    if (link.settingKey === 'show_about') return showAbout
+    if (link.settingKey === 'show_contact') return showContact
+    return true
+  })
 
   function handleSearch(event: React.FormEvent) {
     event.preventDefault()

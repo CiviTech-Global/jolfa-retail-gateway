@@ -3,6 +3,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
 import multipart from "@fastify/multipart";
+import fastifyStatic from "@fastify/static";
 import { env } from "./config/env.js";
 import categoryRoutes from "./modules/categories/category.routes.js";
 import productRoutes from "./modules/products/product.routes.js";
@@ -15,6 +16,13 @@ import homepageSectionRoutes from "./modules/homepage-sections/homepage-section.
 import demoRoutes from "./modules/demo/demo.routes.js";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 import bannerRoutes from "./modules/banners/banner.routes.js";
+import uploadRoutes from "./modules/uploads/upload.routes.js";
+import { getUploadDir } from "./modules/uploads/upload.service.js";
+import auditRoutes from "./modules/audit/audit.routes.js";
+import userRoutes from "./modules/users/user.routes.js";
+import { seedDefaults } from "./shared/seed.js";
+import paymentAdminRoutes from "./modules/payments/payment.admin.routes.js";
+import orderAdminRoutes from "./modules/orders/order.admin.routes.js";
 
 const app = Fastify({
   logger: {
@@ -38,6 +46,11 @@ async function bootstrap(): Promise<void> {
     },
   });
 
+  await app.register(fastifyStatic, {
+    root: getUploadDir(),
+    prefix: env.PUBLIC_UPLOAD_PATH,
+  });
+
   app.get("/health", async (_request, reply) => {
     return reply.status(200).send({
       success: true,
@@ -51,11 +64,18 @@ async function bootstrap(): Promise<void> {
   await app.register(orderRoutes, { prefix: `${env.API_PREFIX}/orders` });
   await app.register(paymentRoutes, { prefix: `${env.API_PREFIX}/payments` });
   await app.register(adminRoutes, { prefix: `${env.API_PREFIX}/admin` });
+  await app.register(auditRoutes, { prefix: `${env.API_PREFIX}/admin` });
+  await app.register(userRoutes, { prefix: `${env.API_PREFIX}/admin` });
+  await app.register(paymentAdminRoutes, { prefix: `${env.API_PREFIX}/admin` });
+  await app.register(orderAdminRoutes, { prefix: `${env.API_PREFIX}/admin` });
   await app.register(settingsRoutes, { prefix: `${env.API_PREFIX}/settings` });
   await app.register(homepageSectionRoutes, { prefix: `${env.API_PREFIX}/homepage-sections` });
   await app.register(demoRoutes, { prefix: `${env.API_PREFIX}/demo` });
   await app.register(dashboardRoutes, { prefix: `${env.API_PREFIX}/dashboard` });
   await app.register(bannerRoutes, { prefix: `${env.API_PREFIX}/banners` });
+  await app.register(uploadRoutes, { prefix: `${env.API_PREFIX}/uploads` });
+
+  await seedDefaults();
 
   app.setErrorHandler((error, _request, reply) => {
     const err = error instanceof Error ? error : new Error(String(error));
