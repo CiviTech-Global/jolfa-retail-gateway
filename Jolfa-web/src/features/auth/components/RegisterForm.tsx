@@ -41,7 +41,7 @@ export function RegisterForm({ onSubmit, isLoading, error }: RegisterFormProps) 
           </label>
           <Input id="firstName" type="text" autoComplete="given-name" {...register('firstName')} />
           {errors.firstName && (
-            <p className="mt-1 text-sm text-red-600">{errors.firstName.message}</p>
+            <p className="mt-1 text-sm text-danger">{errors.firstName.message}</p>
           )}
         </div>
         <div>
@@ -50,7 +50,7 @@ export function RegisterForm({ onSubmit, isLoading, error }: RegisterFormProps) 
           </label>
           <Input id="lastName" type="text" autoComplete="family-name" {...register('lastName')} />
           {errors.lastName && (
-            <p className="mt-1 text-sm text-red-600">{errors.lastName.message}</p>
+            <p className="mt-1 text-sm text-danger">{errors.lastName.message}</p>
           )}
         </div>
       </div>
@@ -67,7 +67,7 @@ export function RegisterForm({ onSubmit, isLoading, error }: RegisterFormProps) 
           autoComplete="email"
           {...register('email')}
         />
-        {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>}
+        {errors.email && <p className="mt-1 text-sm text-danger">{errors.email.message}</p>}
       </div>
 
       <div>
@@ -83,7 +83,7 @@ export function RegisterForm({ onSubmit, isLoading, error }: RegisterFormProps) 
           autoComplete="tel"
           {...register('phone')}
         />
-        {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone.message}</p>}
+        {errors.phone && <p className="mt-1 text-sm text-danger">{errors.phone.message}</p>}
       </div>
 
       <div>
@@ -98,10 +98,10 @@ export function RegisterForm({ onSubmit, isLoading, error }: RegisterFormProps) 
           autoComplete="new-password"
           {...register('password')}
         />
-        {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>}
+        {errors.password && <p className="mt-1 text-sm text-danger">{errors.password.message}</p>}
       </div>
 
-      {error && <p className="rounded-md bg-red-50 p-2 text-sm text-red-600">{error}</p>}
+      {error && <p className="rounded-md bg-danger-soft p-2 text-sm text-danger">{error}</p>}
 
       <Button type="submit" loading={isLoading} className="w-full">
         ثبت‌نام

@@ -16,7 +16,7 @@ export function StatCard({ title, value, suffix, icon: Icon, accent = 'bg-primar
     <div className="rounded-xl border border-border bg-background p-5 shadow-sm">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm text-gray-500">{title}</p>
+          <p className="text-sm text-muted-foreground">{title}</p>
           <p className="mt-1 text-2xl font-bold text-foreground">{displayValue}</p>
         </div>
         <div className={`flex h-12 w-12 items-center justify-center rounded-full ${accent}`}>

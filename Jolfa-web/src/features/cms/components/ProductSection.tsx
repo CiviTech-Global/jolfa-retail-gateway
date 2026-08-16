@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { getProducts } from '@/features/catalog/api'
 import { ProductGrid } from '@/features/catalog/components/ProductGrid'
+import { ScrollReveal } from '@/components/motion/ScrollReveal'
 import type { ProductDto } from '@/features/catalog/types'
 
 interface ProductSectionProps {
@@ -47,14 +48,27 @@ export function ProductSection({ title, config }: ProductSectionProps) {
   }, [data, filter, limit])
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-12">
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-foreground">{displayTitle}</h2>
-        <Link to="/products" className="text-sm font-medium text-primary hover:underline">
+    <section className="mx-auto max-w-7xl px-4 py-14">
+      <ScrollReveal direction="up" className="mb-8 flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">{displayTitle}</h2>
+          <div className="mt-2 h-1 w-12 rounded-full bg-accent" />
+        </div>
+        <Link
+          to="/products"
+          className="text-sm font-medium text-primary transition-colors hover:text-accent"
+        >
           مشاهده همه
         </Link>
-      </div>
-      {isLoading ? <p className="text-gray-500">در حال بارگذاری ...</p> : <ProductGrid products={products} />}
+      </ScrollReveal>
+
+      {isLoading ? (
+        <div className="rounded-2xl border border-border bg-surface p-12 text-center text-muted-foreground">
+          در حال بارگذاری ...
+        </div>
+      ) : (
+        <ProductGrid products={products} />
+      )}
     </section>
   )
 }

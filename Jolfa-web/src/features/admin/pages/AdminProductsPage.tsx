@@ -2,16 +2,19 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router'
 import { Plus, Package, Pencil, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { formatPrice } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import { getProducts, deleteProduct } from '@/features/catalog/api'
 
 export function AdminProductsPage() {
   const [page, setPage] = useState(1)
   const queryClient = useQueryClient()
+  const { confirm, Dialog } = useConfirmDialog()
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'products', page],
@@ -23,8 +26,20 @@ export function AdminProductsPage() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['admin', 'products'] })
       void queryClient.invalidateQueries({ queryKey: ['products'] })
+      toast.success('محصول حذف شد')
     },
   })
+
+  async function handleDelete(slug: string) {
+    const ok = await confirm({
+      title: 'حذف محصول',
+      description: 'آیا مطمئنید؟ این عملیات قابل بازگشت نیست.',
+      confirmText: 'حذف',
+      cancelText: 'انصراف',
+      variant: 'danger',
+    })
+    if (ok) deleteMutation.mutate(slug)
+  }
 
   return (
     <ScrollReveal className="space-y-6">
@@ -98,7 +113,7 @@ export function AdminProductsPage() {
                             size="sm"
                             variant="danger"
                             loading={deleteMutation.isPending}
-                            onClick={() => deleteMutation.mutate(product.slug)}
+                            onClick={() => handleDelete(product.slug)}
                           >
                             <Trash2 className="h-4 w-4" />
                             <span className="sr-only">حذف</span>
@@ -137,6 +152,8 @@ export function AdminProductsPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog />
     </ScrollReveal>
   )
 }

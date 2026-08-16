@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
+import { toast } from 'sonner'
 import { LoginForm, type LoginFormData } from '../components/LoginForm'
 import { useAuth } from '../context'
 
@@ -14,6 +15,7 @@ export function LoginPage() {
     setIsLoading(true)
     try {
       await login(data)
+      toast.success('با موفقیت وارد شدید')
       navigate('/')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'خطا در ورود به حساب')
@@ -26,7 +28,7 @@ export function LoginPage() {
     <div className="mx-auto max-w-md px-4 py-12">
       <div className="rounded-xl border border-border bg-background p-6 shadow-sm">
         <h1 className="text-2xl font-bold text-foreground">ورود به حساب</h1>
-        <p className="mt-2 text-sm text-gray-600">برای ادامه شماره موبایل و رمز عبور خود را وارد کنید.</p>
+        <p className="mt-2 text-sm text-muted-foreground">برای ادامه شماره موبایل و رمز عبور خود را وارد کنید.</p>
 
         <div className="mt-6">
           <LoginForm onSubmit={handleSubmit} isLoading={isLoading} error={error} />

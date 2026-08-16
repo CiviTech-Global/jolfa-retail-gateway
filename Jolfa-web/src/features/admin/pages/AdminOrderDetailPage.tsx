@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useParams } from 'react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { formatPrice } from '@/lib/utils'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -8,6 +9,7 @@ import { Input } from '@/components/ui/Input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import { cancelOrder, getAdminOrder, updateOrderStatus, updateOrderTracking } from '@/features/admin/api'
 
 const statusLabels: Record<string, string> = {
@@ -29,6 +31,7 @@ const statusVariants: Record<string, Parameters<typeof Badge>[0]['variant']> = {
 export function AdminOrderDetailPage() {
   const { id } = useParams<{ id: string }>()
   const queryClient = useQueryClient()
+  const { confirm, Dialog } = useConfirmDialog()
   const [status, setStatus] = useState('')
   const [note, setNote] = useState('')
   const [trackingNumber, setTrackingNumber] = useState('')
@@ -44,6 +47,7 @@ export function AdminOrderDetailPage() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['admin', 'orders', id] })
       setNote('')
+      toast.success('وضعیت سفارش به‌روزرسانی شد')
     },
   })
 
@@ -52,6 +56,7 @@ export function AdminOrderDetailPage() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['admin', 'orders', id] })
       setTrackingNumber('')
+      toast.success('کد رهگیری ثبت شد')
     },
   })
 
@@ -59,8 +64,20 @@ export function AdminOrderDetailPage() {
     mutationFn: () => cancelOrder(id!, 'لغو توسط ادمین'),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['admin', 'orders', id] })
+      toast.success('سفارش لغو شد')
     },
   })
+
+  async function handleCancel() {
+    const ok = await confirm({
+      title: 'لغو سفارش',
+      description: 'آیا مطمئنید که می‌خواهید این سفارش را لغو کنید؟',
+      confirmText: 'لغو سفارش',
+      cancelText: 'انصراف',
+      variant: 'danger',
+    })
+    if (ok) cancelMutation.mutate()
+  }
 
   if (isLoading || !data) {
     return <div className="py-12 text-center text-muted-foreground">در حال بارگذاری ...</div>
@@ -187,7 +204,7 @@ export function AdminOrderDetailPage() {
             <Button loading={trackingMutation.isPending} onClick={() => trackingMutation.mutate()} disabled={!trackingNumber}>
               ثبت رهگیری
             </Button>
-            <Button variant="danger" loading={cancelMutation.isPending} onClick={() => cancelMutation.mutate()}>
+            <Button variant="danger" loading={cancelMutation.isPending} onClick={handleCancel}>
               لغو سفارش
             </Button>
           </div>
@@ -269,6 +286,8 @@ export function AdminOrderDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog />
     </ScrollReveal>
   )
 }

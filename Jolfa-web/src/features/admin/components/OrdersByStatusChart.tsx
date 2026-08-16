@@ -14,11 +14,11 @@ const statusLabels: Record<string, string> = {
 }
 
 const colors = [
-  'hsl(38 92% 55%)',
-  'hsl(199 89% 48%)',
-  'hsl(258 90% 58%)',
-  'hsl(158 64% 42%)',
-  'hsl(0 84% 60%)',
+  'var(--warning)',
+  'var(--secondary)',
+  'var(--primary)',
+  'var(--success)',
+  'var(--danger)',
 ]
 
 export function OrdersByStatusChart({ data }: OrdersByStatusChartProps) {

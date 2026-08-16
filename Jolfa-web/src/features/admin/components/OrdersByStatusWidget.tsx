@@ -9,11 +9,11 @@ const statusLabels: Record<string, string> = {
 }
 
 const statusColors: Record<string, string> = {
-  PENDING: 'bg-amber-500',
-  PROCESSING: 'bg-blue-500',
-  SHIPPED: 'bg-indigo-500',
-  DELIVERED: 'bg-green-500',
-  CANCELLED: 'bg-red-500',
+  PENDING: 'bg-warning',
+  PROCESSING: 'bg-secondary',
+  SHIPPED: 'bg-primary',
+  DELIVERED: 'bg-success',
+  CANCELLED: 'bg-danger',
 }
 
 interface OrdersByStatusWidgetProps {
@@ -31,13 +31,13 @@ export function OrdersByStatusWidget({ data }: OrdersByStatusWidgetProps) {
           const widthPercent = (item.count / maxCount) * 100
           return (
             <div key={item.status} className="flex items-center gap-3">
-              <span className="w-28 shrink-0 text-sm text-gray-500">
+              <span className="w-28 shrink-0 text-sm text-muted-foreground">
                 {statusLabels[item.status] ?? item.status}
               </span>
               <div className="flex-1">
                 <div className="h-2.5 w-full rounded-full bg-muted">
                   <div
-                    className={`h-2.5 rounded-full ${statusColors[item.status] ?? 'bg-gray-500'}`}
+                    className={`h-2.5 rounded-full ${statusColors[item.status] ?? 'bg-muted-foreground'}`}
                     style={{ width: `${widthPercent}%` }}
                   />
                 </div>

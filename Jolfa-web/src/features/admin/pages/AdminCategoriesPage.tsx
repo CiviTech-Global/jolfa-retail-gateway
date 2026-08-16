@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Switch } from '@/components/ui/Switch'
@@ -8,6 +9,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/Dialog'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import { getCategories, createCategory, updateCategory, deleteCategory } from '@/features/catalog/api'
 import type { CategoryDto, CategoryCreateBody, CategoryUpdateBody } from '@/features/catalog/types'
 
@@ -59,6 +61,7 @@ function categoryToForm(category: CategoryDto): CategoryFormData {
 
 export function AdminCategoriesPage() {
   const queryClient = useQueryClient()
+  const { confirm, Dialog: ConfirmDialogComponent } = useConfirmDialog()
   const [isOpen, setIsOpen] = useState(false)
   const [editing, setEditing] = useState<CategoryDto | null>(null)
   const [form, setForm] = useState<CategoryFormData>(emptyForm())
@@ -74,6 +77,7 @@ export function AdminCategoriesPage() {
       void queryClient.invalidateQueries({ queryKey: ['categories'] })
       setIsOpen(false)
       setForm(emptyForm())
+      toast.success('دسته‌بندی ایجاد شد')
     },
   })
 
@@ -84,6 +88,7 @@ export function AdminCategoriesPage() {
       setIsOpen(false)
       setEditing(null)
       setForm(emptyForm())
+      toast.success('دسته‌بندی به‌روزرسانی شد')
     },
   })
 
@@ -91,6 +96,7 @@ export function AdminCategoriesPage() {
     mutationFn: deleteCategory,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['categories'] })
+      toast.success('دسته‌بندی حذف شد')
     },
   })
 
@@ -113,6 +119,17 @@ export function AdminCategoriesPage() {
     } else {
       createMutation.mutate(formToBody(form))
     }
+  }
+
+  async function handleDelete(slug: string) {
+    const ok = await confirm({
+      title: 'حذف دسته‌بندی',
+      description: 'آیا مطمئنید؟ این عملیات قابل بازگشت نیست.',
+      confirmText: 'حذف',
+      cancelText: 'انصراف',
+      variant: 'danger',
+    })
+    if (ok) deleteMutation.mutate(slug)
   }
 
   const categories = (data?.categories as CategoryDto[]) ?? []
@@ -172,7 +189,12 @@ export function AdminCategoriesPage() {
                             <Pencil className="h-4 w-4" />
                             <span className="sr-only">ویرایش</span>
                           </Button>
-                          <Button size="sm" variant="danger" loading={deleteMutation.isPending} onClick={() => deleteMutation.mutate(category.slug)}>
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            loading={deleteMutation.isPending}
+                            onClick={() => handleDelete(category.slug)}
+                          >
                             <Trash2 className="h-4 w-4" />
                             <span className="sr-only">حذف</span>
                           </Button>
@@ -233,6 +255,8 @@ export function AdminCategoriesPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialogComponent />
     </ScrollReveal>
   )
 }

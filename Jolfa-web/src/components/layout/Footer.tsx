@@ -26,8 +26,8 @@ export function Footer() {
 
   return (
     <footer className="mt-auto border-t border-border bg-surface">
-      <div className="mx-auto max-w-7xl px-4 py-12">
-        <div className="grid gap-8 md:grid-cols-3">
+      <div className="mx-auto max-w-7xl px-4 py-14">
+        <div className="grid gap-10 md:grid-cols-3">
           <div>
             <h3 className="mb-3 text-lg font-bold text-foreground">{siteName}</h3>
             <p className="max-w-xs text-sm leading-7 text-muted-foreground">
@@ -41,7 +41,10 @@ export function Footer() {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 {footerLinks.map((link) => (
                   <li key={link.to}>
-                    <Link to={link.to} className="transition-colors hover:text-primary">
+                    <Link
+                      to={link.to}
+                      className="transition-colors hover:text-primary"
+                    >
                       {link.label}
                     </Link>
                   </li>
@@ -57,7 +60,7 @@ export function Footer() {
         </div>
 
         {showTrustBadges && (
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3 rounded-2xl border border-border bg-background p-4">
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-3 rounded-2xl border border-border bg-background p-4">
             {['ضمانت اصالت کالا', 'ارسال سریع', 'بازگشت وجه', 'پشتیبانی ۷ روز هفته'].map((item) => (
               <span
                 key={item}
@@ -69,7 +72,7 @@ export function Footer() {
           </div>
         )}
 
-        <div className="mt-8 border-t border-border pt-6 text-center text-sm text-muted-foreground">
+        <div className="mt-10 border-t border-border pt-6 text-center text-sm text-muted-foreground">
           © {new Date().getFullYear()} {siteName}. تمامی حقوق محفوظ است.
         </div>
       </div>

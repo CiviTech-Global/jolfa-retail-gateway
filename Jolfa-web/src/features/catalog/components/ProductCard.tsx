@@ -38,7 +38,7 @@ export function ProductCard({ product }: ProductCardProps) {
           </h3>
         </Link>
         {product.shortDescription && (
-          <p className="mt-1 line-clamp-2 text-sm text-gray-500">{product.shortDescription}</p>
+          <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{product.shortDescription}</p>
         )}
         <div className="mt-auto flex items-center justify-between pt-4">
           <div className="flex flex-col">

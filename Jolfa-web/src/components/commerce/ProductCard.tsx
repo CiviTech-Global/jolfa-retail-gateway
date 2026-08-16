@@ -52,10 +52,7 @@ export function ProductCard({ product }: ProductCardProps) {
           loading="lazy"
         />
         {hasDiscount && (
-          <Badge
-            variant="danger"
-            className="absolute end-3 top-3"
-          >
+          <Badge variant="danger" className="absolute end-3 top-3">
             {Math.round(((compareAtPrice - product.price) / compareAtPrice) * 100)}% تخفیف
           </Badge>
         )}

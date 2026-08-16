@@ -13,7 +13,7 @@ export function CategoriesPage() {
       <h1 className="text-2xl font-bold text-foreground">دسته‌بندی‌ها</h1>
       <div className="mt-6">
         {isLoading ? (
-          <p className="text-gray-500">در حال بارگذاری ...</p>
+          <p className="text-muted-foreground">در حال بارگذاری ...</p>
         ) : (
           <CategoryList categories={data?.categories ?? []} />
         )}

@@ -33,7 +33,7 @@ export function PaymentCallbackPage() {
   if (status === 'loading') {
     return (
       <div className="mx-auto max-w-7xl px-4 py-20 text-center">
-        <p className="text-gray-600">در حال بررسی نتیجه پرداخت ...</p>
+        <p className="text-muted-foreground">در حال بررسی نتیجه پرداخت ...</p>
       </div>
     )
   }
@@ -55,7 +55,7 @@ export function PaymentCallbackPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-20 text-center">
-      <div className="rounded-xl border border-red-200 bg-red-50 p-8">
+      <div className="rounded-xl border border-danger/30 bg-danger-soft p-8">
         <h1 className="text-2xl font-bold text-red-800">پرداخت ناموفق</h1>
         <p className="mt-2 text-red-700">متأسفانه پرداخت با خطا مواجه شد. لطفاً دوباره تلاش کنید.</p>
         <Link to="/cart">

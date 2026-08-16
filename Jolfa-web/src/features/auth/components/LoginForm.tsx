@@ -44,7 +44,7 @@ export function LoginForm({ onSubmit, isLoading, error }: LoginFormProps) {
           autoComplete="tel"
           {...register('phone')}
         />
-        {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone.message}</p>}
+        {errors.phone && <p className="mt-1 text-sm text-danger">{errors.phone.message}</p>}
       </div>
 
       <div>
@@ -59,10 +59,10 @@ export function LoginForm({ onSubmit, isLoading, error }: LoginFormProps) {
           autoComplete="current-password"
           {...register('password')}
         />
-        {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>}
+        {errors.password && <p className="mt-1 text-sm text-danger">{errors.password.message}</p>}
       </div>
 
-      {error && <p className="rounded-md bg-red-50 p-2 text-sm text-red-600">{error}</p>}
+      {error && <p className="rounded-md bg-danger-soft p-2 text-sm text-danger">{error}</p>}
 
       <Button type="submit" loading={isLoading} className="w-full">
         ورود

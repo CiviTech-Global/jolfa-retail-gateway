@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Switch } from '@/components/ui/Switch'
@@ -8,6 +9,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/Dialog'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import { getAdminBanners, createBanner, updateBanner, deleteBanner } from '@/features/cms/api'
 import type { BannerDto, BannerCreateBody, BannerUpdateBody } from '@/features/cms/types'
 
@@ -51,6 +53,7 @@ function bannerToForm(banner: BannerDto): BannerFormData {
 
 export function AdminBannersPage() {
   const queryClient = useQueryClient()
+  const { confirm, Dialog: ConfirmDialogComponent } = useConfirmDialog()
   const [isOpen, setIsOpen] = useState(false)
   const [editing, setEditing] = useState<BannerDto | null>(null)
   const [form, setForm] = useState<BannerFormData>(emptyForm())
@@ -66,6 +69,7 @@ export function AdminBannersPage() {
       void queryClient.invalidateQueries({ queryKey: ['admin', 'banners'] })
       setIsOpen(false)
       setForm(emptyForm())
+      toast.success('بنر ایجاد شد')
     },
   })
 
@@ -76,6 +80,7 @@ export function AdminBannersPage() {
       setIsOpen(false)
       setEditing(null)
       setForm(emptyForm())
+      toast.success('بنر به‌روزرسانی شد')
     },
   })
 
@@ -83,6 +88,7 @@ export function AdminBannersPage() {
     mutationFn: deleteBanner,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['admin', 'banners'] })
+      toast.success('بنر حذف شد')
     },
   })
 
@@ -105,6 +111,17 @@ export function AdminBannersPage() {
     } else {
       createMutation.mutate(formToBody(form))
     }
+  }
+
+  async function handleDelete(id: string) {
+    const ok = await confirm({
+      title: 'حذف بنر',
+      description: 'آیا مطمئنید؟ این عملیات قابل بازگشت نیست.',
+      confirmText: 'حذف',
+      cancelText: 'انصراف',
+      variant: 'danger',
+    })
+    if (ok) deleteMutation.mutate(id)
   }
 
   const banners = data?.banners ?? []
@@ -164,7 +181,12 @@ export function AdminBannersPage() {
                             <Pencil className="h-4 w-4" />
                             <span className="sr-only">ویرایش</span>
                           </Button>
-                          <Button size="sm" variant="danger" loading={deleteMutation.isPending} onClick={() => deleteMutation.mutate(banner.id)}>
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            loading={deleteMutation.isPending}
+                            onClick={() => handleDelete(banner.id)}
+                          >
                             <Trash2 className="h-4 w-4" />
                             <span className="sr-only">حذف</span>
                           </Button>
@@ -221,6 +243,8 @@ export function AdminBannersPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialogComponent />
     </ScrollReveal>
   )
 }

@@ -1,16 +1,19 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Search, UserCog, Power } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import { getAdminUsers, updateUserRole, updateUserStatus } from '@/features/admin/api'
 import type { AdminUserDto } from '@/features/admin/types'
 
 export function AdminUsersPage() {
   const queryClient = useQueryClient()
+  const { confirm, Dialog } = useConfirmDialog()
   const [page, setPage] = useState(1)
   const [q, setQ] = useState('')
 
@@ -23,6 +26,7 @@ export function AdminUsersPage() {
     mutationFn: ({ id, role }: { id: string; role: 'CUSTOMER' | 'ADMIN' }) => updateUserRole(id, role),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
+      toast.success('نقش کاربر تغییر کرد')
     },
   })
 
@@ -30,8 +34,33 @@ export function AdminUsersPage() {
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) => updateUserStatus(id, isActive),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
+      toast.success('وضعیت کاربر تغییر کرد')
     },
   })
+
+  async function handleRoleToggle(user: AdminUserDto) {
+    const nextRole = user.role === 'ADMIN' ? 'CUSTOMER' : 'ADMIN'
+    const ok = await confirm({
+      title: 'تغییر نقش کاربر',
+      description: `آیا می‌خواهید نقش این کاربر را به «${nextRole === 'ADMIN' ? 'مدیر' : 'مشتری'}» تغییر دهید؟`,
+      confirmText: 'تأیید',
+      cancelText: 'انصراف',
+      variant: 'primary',
+    })
+    if (ok) roleMutation.mutate({ id: user.id, role: nextRole })
+  }
+
+  async function handleStatusToggle(user: AdminUserDto) {
+    const nextActive = !user.isActive
+    const ok = await confirm({
+      title: nextActive ? 'فعال‌سازی کاربر' : 'غیرفعال‌سازی کاربر',
+      description: `آیا مطمئنید که می‌خواهید این کاربر را ${nextActive ? 'فعال' : 'غیرفعال'} کنید؟`,
+      confirmText: 'تأیید',
+      cancelText: 'انصراف',
+      variant: nextActive ? 'primary' : 'danger',
+    })
+    if (ok) statusMutation.mutate({ id: user.id, isActive: nextActive })
+  }
 
   const users = data?.users ?? []
 
@@ -96,7 +125,7 @@ export function AdminUsersPage() {
                             size="sm"
                             variant="outline"
                             loading={roleMutation.isPending}
-                            onClick={() => roleMutation.mutate({ id: user.id, role: user.role === 'ADMIN' ? 'CUSTOMER' : 'ADMIN' })}
+                            onClick={() => handleRoleToggle(user)}
                           >
                             <UserCog className="h-4 w-4" />
                             {user.role === 'ADMIN' ? 'مشتری کردن' : 'مدیر کردن'}
@@ -105,7 +134,7 @@ export function AdminUsersPage() {
                             size="sm"
                             variant={user.isActive ? 'danger' : 'solid'}
                             loading={statusMutation.isPending}
-                            onClick={() => statusMutation.mutate({ id: user.id, isActive: !user.isActive })}
+                            onClick={() => handleStatusToggle(user)}
                           >
                             <Power className="h-4 w-4" />
                             {user.isActive ? 'غیرفعال کردن' : 'فعال کردن'}
@@ -128,6 +157,8 @@ export function AdminUsersPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog />
     </ScrollReveal>
   )
 }

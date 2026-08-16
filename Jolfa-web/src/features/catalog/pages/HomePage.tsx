@@ -44,7 +44,7 @@ export function HomePage() {
   if (settingsLoading || sectionsLoading) {
     return (
       <div className="flex flex-1 items-center justify-center py-20">
-        <p className="text-gray-500">در حال بارگذاری ...</p>
+        <p className="text-muted-foreground">در حال بارگذاری ...</p>
       </div>
     )
   }

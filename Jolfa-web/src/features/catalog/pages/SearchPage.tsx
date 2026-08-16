@@ -21,7 +21,7 @@ export function SearchPage() {
 
       <div className="mt-6">
         {isLoading ? (
-          <p className="text-gray-500">در حال بارگذاری ...</p>
+          <p className="text-muted-foreground">در حال بارگذاری ...</p>
         ) : (
           <ProductGrid products={data?.products ?? []} />
         )}

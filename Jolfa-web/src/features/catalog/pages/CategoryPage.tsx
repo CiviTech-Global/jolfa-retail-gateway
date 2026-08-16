@@ -21,7 +21,7 @@ export function CategoryPage() {
   if (categoryLoading) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-12">
-        <p className="text-gray-500">در حال بارگذاری ...</p>
+        <p className="text-muted-foreground">در حال بارگذاری ...</p>
       </div>
     )
   }
@@ -42,7 +42,7 @@ export function CategoryPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       <h1 className="text-2xl font-bold text-foreground">{category.name}</h1>
-      {category.description && <p className="mt-2 text-gray-600">{category.description}</p>}
+      {category.description && <p className="mt-2 text-muted-foreground">{category.description}</p>}
 
       {category.children.length > 0 && (
         <div className="mt-6 flex flex-wrap gap-2">
@@ -60,7 +60,7 @@ export function CategoryPage() {
 
       <div className="mt-8">
         {productsLoading ? (
-          <p className="text-gray-500">در حال بارگذاری ...</p>
+          <p className="text-muted-foreground">در حال بارگذاری ...</p>
         ) : (
           <ProductGrid products={productsData?.products ?? []} />
         )}

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
+import { toast } from 'sonner'
 import { RegisterForm, type RegisterFormData } from '../components/RegisterForm'
 import { useAuth } from '../context'
 
@@ -17,6 +18,7 @@ export function RegisterPage() {
         ...data,
         email: data.email || undefined,
       })
+      toast.success('ثبت‌نام با موفقیت انجام شد')
       navigate('/')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'خطا در ثبت‌نام')
@@ -29,7 +31,7 @@ export function RegisterPage() {
     <div className="mx-auto max-w-md px-4 py-12">
       <div className="rounded-xl border border-border bg-background p-6 shadow-sm">
         <h1 className="text-2xl font-bold text-foreground">ثبت‌نام</h1>
-        <p className="mt-2 text-sm text-gray-600">حساب کاربری جدید بسازید و از خرید لذت ببرید.</p>
+        <p className="mt-2 text-sm text-muted-foreground">حساب کاربری جدید بسازید و از خرید لذت ببرید.</p>
 
         <div className="mt-6">
           <RegisterForm onSubmit={handleSubmit} isLoading={isLoading} error={error} />

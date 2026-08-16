@@ -32,7 +32,7 @@ export function RevenueBarChart({ data }: RevenueBarChartProps) {
             }}
             formatter={(value) => [String(value), 'درآمد']}
           />
-          <Bar dataKey="sales" fill="hsl(199 89% 48%)" radius={[6, 6, 0, 0]} />
+          <Bar dataKey="sales" fill="var(--secondary)" radius={[6, 6, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

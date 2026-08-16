@@ -22,7 +22,7 @@ export function SalesTrendWidget({ data }: SalesTrendWidgetProps) {
 
           return (
             <div key={point.date} className="flex items-center gap-3">
-              <span className="w-20 shrink-0 text-sm text-gray-500">{label}</span>
+              <span className="w-20 shrink-0 text-sm text-muted-foreground">{label}</span>
               <div className="flex-1">
                 <div className="h-2.5 w-full rounded-full bg-muted">
                   <div

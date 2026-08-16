@@ -11,11 +11,11 @@ const statusLabels: Record<string, string> = {
 }
 
 const statusClasses: Record<string, string> = {
-  PENDING: 'bg-amber-100 text-amber-700',
-  PROCESSING: 'bg-blue-100 text-blue-700',
-  SHIPPED: 'bg-indigo-100 text-indigo-700',
-  DELIVERED: 'bg-green-100 text-green-700',
-  CANCELLED: 'bg-red-100 text-red-700',
+  PENDING: 'bg-warning-soft text-warning',
+  PROCESSING: 'bg-secondary-soft text-secondary',
+  SHIPPED: 'bg-primary-soft text-primary',
+  DELIVERED: 'bg-success-soft text-success',
+  CANCELLED: 'bg-danger-soft text-danger',
 }
 
 interface RecentOrdersWidgetProps {
@@ -52,11 +52,11 @@ export function RecentOrdersWidget({ orders }: RecentOrdersWidgetProps) {
                 </td>
                 <td className="px-4 py-3 text-foreground">{formatPrice(order.finalAmount)}</td>
                 <td className="px-4 py-3">
-                  <span className={`rounded-full px-2 py-1 text-xs ${statusClasses[order.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                  <span className={`rounded-full px-2 py-1 text-xs ${statusClasses[order.status] ?? 'bg-muted text-muted-foreground'}`}>
                     {statusLabels[order.status] ?? order.status}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-gray-500">
+                <td className="px-4 py-3 text-muted-foreground">
                   {new Date(order.createdAt).toLocaleDateString('fa-IR')}
                 </td>
               </tr>

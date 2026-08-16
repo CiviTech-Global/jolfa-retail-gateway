@@ -4,6 +4,7 @@ import { ShoppingCart, Search, Menu, User, LogOut, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/Sheet'
+import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -130,6 +131,8 @@ export function Header() {
               </Link>
             </Button>
           )}
+
+          <ThemeToggle className="hidden md:inline-flex" />
 
           {showUserMenuSetting &&
             (isAuthenticated && user ? (

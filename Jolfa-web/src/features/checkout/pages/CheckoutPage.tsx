@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { formatPrice } from '@/lib/utils'
 import { useCart } from '@/features/cart/context'
 import { createOrder, requestPayment } from '@/features/orders/api'
+import { toast } from 'sonner'
 
 const checkoutSchema = z.object({
   recipientName: z.string().min(1, 'نام گیرنده الزامی است'),
@@ -74,6 +75,7 @@ export function CheckoutPage() {
 
       const paymentResult = await requestPayment(orderResult.order.id)
       clearCart()
+      toast.success('در حال انتقال به درگاه پرداخت ...')
       // eslint-disable-next-line react-hooks/immutability
       window.location.href = paymentResult.paymentUrl
     } catch (err) {
@@ -87,7 +89,7 @@ export function CheckoutPage() {
     return (
       <div className="mx-auto max-w-7xl px-4 py-20 text-center">
         <h1 className="text-2xl font-bold text-foreground">سبد خرید خالی است</h1>
-        <p className="mt-2 text-gray-600">برای تسویه حساب ابتدا محصولی به سبد خرید اضافه کنید.</p>
+        <p className="mt-2 text-muted-foreground">برای تسویه حساب ابتدا محصولی به سبد خرید اضافه کنید.</p>
       </div>
     )
   }
@@ -105,31 +107,31 @@ export function CheckoutPage() {
                 <label className="mb-1 block text-sm font-medium">نام و نام خانوادگی گیرنده</label>
                 <Input {...register('recipientName')} />
                 {errors.recipientName && (
-                  <p className="mt-1 text-sm text-red-600">{errors.recipientName.message}</p>
+                  <p className="mt-1 text-sm text-danger">{errors.recipientName.message}</p>
                 )}
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">شماره موبایل</label>
                 <Input {...register('phone')} dir="ltr" />
-                {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone.message}</p>}
+                {errors.phone && <p className="mt-1 text-sm text-danger">{errors.phone.message}</p>}
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">استان</label>
                 <Input {...register('province')} />
                 {errors.province && (
-                  <p className="mt-1 text-sm text-red-600">{errors.province.message}</p>
+                  <p className="mt-1 text-sm text-danger">{errors.province.message}</p>
                 )}
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">شهر</label>
                 <Input {...register('city')} />
-                {errors.city && <p className="mt-1 text-sm text-red-600">{errors.city.message}</p>}
+                {errors.city && <p className="mt-1 text-sm text-danger">{errors.city.message}</p>}
               </div>
               <div className="sm:col-span-2">
                 <label className="mb-1 block text-sm font-medium">آدرس</label>
                 <Input {...register('addressLine')} />
                 {errors.addressLine && (
-                  <p className="mt-1 text-sm text-red-600">{errors.addressLine.message}</p>
+                  <p className="mt-1 text-sm text-danger">{errors.addressLine.message}</p>
                 )}
               </div>
               <div>
@@ -151,7 +153,7 @@ export function CheckoutPage() {
                 />
                 <div>
                   <p className="font-medium text-foreground">پست</p>
-                  <p className="text-sm text-gray-500">{formatPrice(80_000)}</p>
+                  <p className="text-sm text-muted-foreground">{formatPrice(80_000)}</p>
                 </div>
               </label>
               <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-4 has-[:checked]:border-primary">
@@ -163,7 +165,7 @@ export function CheckoutPage() {
                 />
                 <div>
                   <p className="font-medium text-foreground">پیک</p>
-                  <p className="text-sm text-gray-500">{formatPrice(150_000)}</p>
+                  <p className="text-sm text-muted-foreground">{formatPrice(150_000)}</p>
                 </div>
               </label>
             </div>
@@ -178,7 +180,7 @@ export function CheckoutPage() {
             />
           </div>
 
-          {error && <p className="rounded-md bg-red-50 p-3 text-sm text-red-600">{error}</p>}
+          {error && <p className="rounded-md bg-danger-soft p-3 text-sm text-danger">{error}</p>}
 
           <Button type="submit" loading={isSubmitting} className="w-full">
             پرداخت {formatPrice(finalTotal)}
@@ -198,7 +200,7 @@ export function CheckoutPage() {
             ))}
             <div className="border-t border-border pt-3">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">هزینه ارسال</span>
+                <span className="text-muted-foreground">هزینه ارسال</span>
                 <span className="text-foreground">{formatPrice(shippingCost)}</span>
               </div>
               <div className="mt-2 flex justify-between text-lg font-bold">

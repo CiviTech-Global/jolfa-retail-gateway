@@ -10,7 +10,7 @@ export function CartPage() {
     return (
       <div className="mx-auto max-w-7xl px-4 py-20 text-center">
         <h1 className="text-2xl font-bold text-foreground">سبد خرید خالی است</h1>
-        <p className="mt-2 text-gray-600">هنوز هیچ محصولی به سبد خرید خود اضافه نکرده‌اید.</p>
+        <p className="mt-2 text-muted-foreground">هنوز هیچ محصولی به سبد خرید خود اضافه نکرده‌اید.</p>
         <Link to="/products">
           <Button className="mt-6">مشاهده محصولات</Button>
         </Link>
@@ -45,7 +45,7 @@ export function CartPage() {
                 >
                   {item.product.title}
                 </Link>
-                <p className="mt-1 text-sm text-gray-500">{formatPrice(item.product.price)}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{formatPrice(item.product.price)}</p>
 
                 <div className="mt-auto flex items-center justify-between">
                   <div className="flex items-center rounded-lg border border-border">

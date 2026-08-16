@@ -7,7 +7,7 @@ interface ProductGridProps {
 
 export function ProductGrid({ products }: ProductGridProps) {
   if (products.length === 0) {
-    return <p className="text-gray-500">هیچ محصولی یافت نشد.</p>
+    return <p className="text-muted-foreground">هیچ محصولی یافت نشد.</p>
   }
 
   return (

@@ -1,12 +1,15 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Database, Trash2, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Database, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import { runDemoAction } from '../api'
 
 export function AdminDemoDataPage() {
   const queryClient = useQueryClient()
+  const { confirm, Dialog } = useConfirmDialog()
 
   const seedMutation = useMutation({
     mutationFn: () => runDemoAction({ action: 'seed' }),
@@ -17,6 +20,7 @@ export function AdminDemoDataPage() {
       void queryClient.invalidateQueries({ queryKey: ['settings'] })
       void queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] })
       void queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] })
+      toast.success('داده‌های نمونه ایجاد شدند')
     },
   })
 
@@ -29,8 +33,31 @@ export function AdminDemoDataPage() {
       void queryClient.invalidateQueries({ queryKey: ['settings'] })
       void queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] })
       void queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] })
+      toast.success('داده‌های نمونه حذف شدند')
     },
   })
+
+  async function handleSeed() {
+    const ok = await confirm({
+      title: 'ایجاد داده‌های نمونه',
+      description: 'این عملیات داده‌های نمونه جدیدی به فروشگاه اضافه می‌کند. ادامه می‌دهید؟',
+      confirmText: 'ایجاد',
+      cancelText: 'انصراف',
+      variant: 'primary',
+    })
+    if (ok) seedMutation.mutate()
+  }
+
+  async function handleClear() {
+    const ok = await confirm({
+      title: 'حذف داده‌های نمونه',
+      description: 'تمامی داده‌های نمونه شامل محصولات، دسته‌بندی‌ها و تنظیمات پیش‌فرض حذف خواهند شد. این عملیات قابل بازگشت نیست.',
+      confirmText: 'حذف',
+      cancelText: 'انصراف',
+      variant: 'danger',
+    })
+    if (ok) clearMutation.mutate()
+  }
 
   return (
     <ScrollReveal className="space-y-6">
@@ -51,15 +78,9 @@ export function AdminDemoDataPage() {
             <p className="text-sm text-muted-foreground">
               محصولات، دسته‌بندی‌ها، تنظیمات و بخش‌های صفحه اصلی نمونه را به پایگاه داده اضافه می‌کند.
             </p>
-            <Button loading={seedMutation.isPending} onClick={() => seedMutation.mutate()}>
+            <Button loading={seedMutation.isPending} onClick={handleSeed}>
               ایجاد داده‌های نمونه
             </Button>
-            {seedMutation.isSuccess && (
-              <div className="flex items-center gap-2 text-sm text-success">
-                <CheckCircle2 className="h-4 w-4" />
-                داده‌های نمونه با موفقیت ایجاد شدند.
-              </div>
-            )}
           </CardContent>
         </Card>
 
@@ -74,25 +95,14 @@ export function AdminDemoDataPage() {
             <p className="text-sm text-muted-foreground">
               تمامی داده‌های نمونه شامل محصولات، دسته‌بندی‌ها و تنظیمات پیش‌فرض را حذف می‌کند.
             </p>
-            <Button variant="danger" loading={clearMutation.isPending} onClick={() => clearMutation.mutate()}>
+            <Button variant="danger" loading={clearMutation.isPending} onClick={handleClear}>
               حذف داده‌های نمونه
             </Button>
-            {clearMutation.isSuccess && (
-              <div className="flex items-center gap-2 text-sm text-success">
-                <CheckCircle2 className="h-4 w-4" />
-                داده‌های نمونه با موفقیت حذف شدند.
-              </div>
-            )}
           </CardContent>
         </Card>
       </div>
 
-      {(seedMutation.error ?? clearMutation.error) && (
-        <div className="flex items-center gap-2 rounded-2xl border border-danger/30 bg-danger-soft p-4 text-sm text-danger">
-          <AlertCircle className="h-5 w-5" />
-          عملیات با خطا مواجه شد.
-        </div>
-      )}
+      <Dialog />
     </ScrollReveal>
   )
 }
