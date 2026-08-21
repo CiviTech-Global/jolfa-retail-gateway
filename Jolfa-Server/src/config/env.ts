@@ -10,6 +10,7 @@ const envSchema = z.object({
   JWT_ACCESS_EXPIRES_IN: z.string().default("24h"),
   JWT_REFRESH_EXPIRES_IN: z.string().default("7d"),
   CORS_ORIGIN: z.string().default("*"),
+  APP_URL: z.string().default("http://localhost:3001"),
   UPLOAD_DIR: z.string().default("uploads"),
   PUBLIC_UPLOAD_PATH: z.string().default("/uploads"),
   MAX_FILE_SIZE: z.coerce.number().int().positive().default(5 * 1024 * 1024),

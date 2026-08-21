@@ -7,7 +7,7 @@ import { ProductGrid } from '../components/ProductGrid'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice, FALLBACK_IMAGE_URL } from '@/lib/utils'
 import { useCart } from '@/features/cart/context'
 import { toast } from 'sonner'
 
@@ -71,11 +71,8 @@ export function ProductDetailPage() {
         <ScrollReveal direction="up" className="space-y-4">
           <div className="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
             <img
-              src={
-                selectedImage?.url ??
-                `https://placehold.co/600x600/e2e8f0/475569?text=${encodeURIComponent(product.title)}`
-              }
-              alt={product.title}
+              src={selectedImage?.url ?? FALLBACK_IMAGE_URL}
+              alt={selectedImage?.altText || product.title}
               className="aspect-square w-full object-cover"
             />
           </div>
@@ -94,7 +91,7 @@ export function ProductDetailPage() {
                 >
                   <img
                     src={image.url}
-                    alt={product.title}
+                    alt={image.altText || product.title}
                     className="aspect-square h-20 w-20 object-cover"
                   />
                 </button>
@@ -104,10 +101,14 @@ export function ProductDetailPage() {
         </ScrollReveal>
 
         {/* Product info */}
-        <ScrollReveal direction="up" delay={0.1} className="flex flex-col">
+        <ScrollReveal direction="up" delay={0.1} className="flex flex-col lg:sticky lg:top-24 lg:self-start">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary">{product.category.name}</Badge>
-            {hasDiscount && <Badge variant="danger">تخفیف ویژه</Badge>}
+            {hasDiscount && (
+              <span className="rounded-full bg-sale px-2.5 py-1 text-xs font-bold text-sale-foreground">
+                تخفیف ویژه
+              </span>
+            )}
           </div>
 
           <h1 className="mt-4 text-2xl font-bold text-foreground sm:text-3xl">{product.title}</h1>

@@ -1,10 +1,14 @@
 # Level One — Deployment Guide
 
+> **Current Status:** ⚠️ Ready but not yet executed. The deployment scripts and Nginx/PM2/Certbot instructions are documented; the application has only been run locally and via `npm run preview`. See `../PROGRESS.md` for live-site status.
+
+> **Legend:** ✅ Completed · ⚠️ Documented but not executed / partial · ❌ Not implemented
+
 This guide covers deploying Jolfa Retail Gateway to an Iranian VPS.
 
 ---
 
-## Target Architecture
+## ⚠️ Target Architecture
 
 ```
 Internet → Nginx (HTTPS) → Frontend static files
@@ -15,7 +19,7 @@ PostgreSQL runs locally on the VPS
 
 ---
 
-## 1. Server Preparation (Ubuntu 24.04)
+## ⚠️ 1. Server Preparation (Ubuntu 24.04)
 
 ```bash
 # Update system
@@ -35,7 +39,7 @@ sudo npm install -g pm2
 
 ---
 
-## 2. Database Setup on VPS
+## ⚠️ 2. Database Setup on VPS
 
 ```bash
 sudo -u postgres psql -c "CREATE USER jolfa_app WITH PASSWORD 'STRONG_PASSWORD';"
@@ -45,7 +49,7 @@ sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE jolfa TO jolfa_app;"
 
 ---
 
-## 3. Project Deployment
+## ⚠️ 3. Project Deployment
 
 ```bash
 # Clone repository
@@ -67,7 +71,7 @@ npm run build
 
 ---
 
-## 4. Environment Configuration
+## ⚠️ 4. Environment Configuration
 
 Create `/var/www/jolfa-retail-gateway/Jolfa-Server/.env`:
 
@@ -99,7 +103,7 @@ SMS_SENDER_NUMBER=your-sender-number
 
 ---
 
-## 5. PM2 Process
+## ⚠️ 5. PM2 Process
 
 ```bash
 cd /var/www/jolfa-retail-gateway/Jolfa-Server
@@ -110,7 +114,7 @@ pm2 startup
 
 ---
 
-## 6. Nginx Configuration
+## ⚠️ 6. Nginx Configuration
 
 Create `/etc/nginx/sites-available/jolfa`:
 
@@ -152,7 +156,7 @@ sudo systemctl reload nginx
 
 ---
 
-## 7. SSL with Let's Encrypt
+## ⚠️ 7. SSL with Let's Encrypt
 
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
@@ -161,12 +165,14 @@ sudo certbot --nginx -d your-domain.ir -d www.your-domain.ir
 
 ---
 
-## 8. Post-Deployment Checklist
+## ❌ 8. Post-Deployment Checklist
 
-- [ ] API health check passes: `curl https://your-domain.ir/health`
-- [ ] Frontend loads without 404s
-- [ ] Admin login works
-- [ ] Payment gateway callback URL is correct
-- [ ] Uploads directory is writable by Node process
-- [ ] Firewall allows 80/443 and blocks 3001 externally
-- [ ] Automated database backups configured
+- [❌] API health check passes: `curl https://your-domain.ir/health`
+- [❌] Frontend loads without 404s
+- [❌] Admin login works
+- [❌] Payment gateway callback URL is correct
+- [❌] Uploads directory is writable by Node process
+- [❌] Firewall allows 80/443 and blocks 3001 externally
+- [❌] Automated database backups configured
+
+> These items will be checked once the production VPS deployment is performed.

@@ -63,7 +63,7 @@ Frontend runs at `http://localhost:5173`.
 ### Default Admin Account
 
 - **Phone:** `09120000000`
-- **Password:** `admin123`
+- **Password:** `admin123` (or your `ADMIN_SEED_PASSWORD` from `.env` if set)
 
 ---
 

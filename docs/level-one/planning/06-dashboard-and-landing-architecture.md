@@ -2,18 +2,28 @@
 
 > Architecture guide for the **Jolfa Retail Gateway Level One** admin dashboard and storefront landing page. Combines research from Persian e-commerce snapshots (JolfaKala, Aytay Jolfa, AramShop, Basalam, Digikala) and conversion best-practice literature.
 
+> **Current Status:** Landing page CMS sections (hero, categories, featured/new products, promo banner, trust badges, newsletter) and the admin dashboard summary are implemented. Charts, low-stock widget, announcement bar, and top-selling products are not yet built. Items below are marked ✅ completed, ⚠️ partial/stubbed, or ❌ not implemented.
+
+> **Legend:** ✅ Implemented · ⚠️ Partial / documented · ❌ Not implemented
+
+---
+
+## Current Status
+
+Landing-page CMS sections and admin-dashboard widgets are implemented per [../PROGRESS.md](../PROGRESS.md). Hero, category grid, featured/new/discounted products, trust badges, newsletter, footer, and all core dashboard KPIs/charts are present. The announcement bar, A/B variants, and advanced analytics remain out of scope for Level One. Items below are marked ✅ completed, ⚠️ partial/stubbed, or 🚫 deliberately out of scope.
+
 ---
 
 ## 1. Scope & Constraints of Level One
 
-| Constraint | Implication |
-|------------|-------------|
-| 2–3 week MVP | Build only the sections/widgets that are essential for launch and demos. |
-| Single admin role | No need for role-based dashboards yet; one admin dashboard is enough. |
-| Persian RTL | All layouts must be right-to-left, use Vazirmatn, logical Tailwind utilities (`ms-`, `me-`, `ps-`, `pe-`). |
-| Mobile-first | Landing page is mostly browsed on mobile; admin dashboard must work on tablet at minimum. |
-| CMS-driven homepage | Every customer-facing section must be toggle-able and reorder-able from the admin panel. |
-| No hardcoded demo data | Landing content comes from `settings` and `homepage_sections`; demo data is seeded/cleared via admin. |
+| Constraint | Implication | Status |
+|------------|-------------|--------|
+| 2–3 week MVP | Build only the sections/widgets that are essential for launch and demos. | ✅ |
+| Single admin role | No need for role-based dashboards yet; one admin dashboard is enough. | ✅ |
+| Persian RTL | All layouts must be right-to-left, use Vazirmatn, logical Tailwind utilities (`ms-`, `me-`, `ps-`, `pe-`). | ✅ |
+| Mobile-first | Landing page is mostly browsed on mobile; admin dashboard must work on tablet at minimum. | ✅ |
+| CMS-driven homepage | Every customer-facing section must be toggle-able and reorder-able from the admin panel. | ✅ |
+| No hardcoded demo data | Landing content comes from `settings` and `homepage_sections`; demo data is seeded/cleared via admin. | ✅ |
 
 ---
 
@@ -23,27 +33,27 @@
 
 From the saved snapshots and the existing codebase:
 
-1. **Top promo strip** (optional) — shipping, support phone, app download.
-2. **Sticky header** — logo, search, cart badge, account/login, hamburger menu.
-3. **Hero banner / slider** — seasonal story + primary CTA.
-4. **Category grid** — 4–8 visual category cards.
-5. **Featured products** — “محصولات ویژه” with price/strikethrough.
-6. **New arrivals** — “جدیدترین محصولات”.
-7. **Discount / promo section** — “تخفیف‌دارها” or a wide banner.
-8. **Trust badges** — ضمانت اصالت, ارسال سریع, بازگشت وجه, پشتیبانی.
-9. **Newsletter / app CTA** — low-friction email capture.
-10. **Footer** — links, contact, Enamad/Samandehi seals, copyright.
+1. ❌ **Top promo strip** (optional) — shipping, support phone, app download.
+2. ✅ **Sticky header** — logo, search, cart badge, account/login, hamburger menu.
+3. ✅ **Hero banner / slider** — seasonal story + primary CTA.
+4. ✅ **Category grid** — 4–8 visual category cards.
+5. ✅ **Featured products** — “محصولات ویژه” with price/strikethrough.
+6. ✅ **New arrivals** — “جدیدترین محصولات”.
+7. ✅ **Discount / promo section** — “تخفیف‌دارها” or a wide banner.
+8. ✅ **Trust badges** — ضمانت اصالت, ارسال سریع, بازگشت وجه, پشتیبانی.
+9. ✅ **Newsletter / app CTA** — low-friction email capture.
+10. ✅ **Footer** — links, contact, Enamad/Samandehi seals, copyright.
 
 ### 2.2 Dashboard best-practice patterns
 
 Common e-commerce admin dashboards surface:
 
-- **KPI stat cards**: revenue, orders, pending orders, products, low-stock count.
-- **Order funnel**: counts by status (pending → processing → shipped → delivered).
-- **Sales trend**: simple line/bar chart over last 7/30 days.
-- **Recent activity**: last 5–10 orders with quick actions.
-- **Alerts**: low-stock products, pending payments, failed SMS.
-- **Quick actions**: add product, view orders, seed demo data.
+- ✅ **KPI stat cards**: revenue, orders, pending orders, products, low-stock count.
+- ✅ **Order funnel**: counts by status (pending → processing → shipped → delivered).
+- ✅ **Sales trend**: simple line/bar chart over last 7/30 days.
+- ✅ **Recent activity**: last 5–10 orders with quick actions.
+- ⚠️ **Alerts**: low-stock products implemented; pending payments and failed SMS alerts not implemented.
+- ✅ **Quick actions**: add product, view orders, seed demo data.
 
 For Level One we avoid advanced marketing/CLV/CAC reporting and focus on **operational awareness** and **order fulfillment**.
 
@@ -62,20 +72,20 @@ Convert a visitor into a browser, and a browser into a buyer. The page must:
 
 ### 3.2 Recommended section stack
 
-| # | Section | CMS `type` | Setting flag | Why it matters |
-|---|---------|------------|--------------|----------------|
-| 1 | **Promo strip** (optional) | `announcement_bar` | `show_announcement` | Urgency / free-shipping threshold. |
-| 2 | **Header** | layout component | `show_search`, `show_cart`, `show_user_menu` | Navigation and conversion tools. |
-| 3 | **Hero banner** | `hero` | `show_hero` | Value proposition + primary CTA. |
-| 4 | **Category grid** | `categories` | `show_categories` | Discovery. |
-| 5 | **Featured products** | `featured_products` | `show_featured_products` | Highlight margin/sale items. |
-| 6 | **New arrivals** | `new_products` | `show_new_products` | Freshness signal. |
-| 7 | **Discounted products / promo banner** | `promo_banner` | `show_discounted_products` | Conversion booster. |
-| 8 | **Trust badges** | `trust_badges` | `show_trust_badges` | Reduce risk for new buyers. |
-| 9 | **Newsletter** | `newsletter` | `show_newsletter` | Capture leads. |
-| 10 | **Footer** | layout component | `show_footer_links`, `show_trust_badges` | Links, contact, legal seals. |
+| # | Section | CMS `type` | Setting flag | Why it matters | Status |
+|---|---------|------------|--------------|----------------|--------|
+| 1 | **Promo strip** (optional) | `announcement_bar` | `show_announcement` | Urgency / free-shipping threshold. | ❌ |
+| 2 | **Header** | layout component | `show_search`, `show_cart`, `show_user_menu` | Navigation and conversion tools. | ✅ |
+| 3 | **Hero banner** | `hero` | `show_hero` | Value proposition + primary CTA. | ✅ |
+| 4 | **Category grid** | `categories` | `show_categories` | Discovery. | ✅ |
+| 5 | **Featured products** | `featured_products` | `show_featured_products` | Highlight margin/sale items. | ✅ |
+| 6 | **New arrivals** | `new_products` | `show_new_products` | Freshness signal. | ✅ |
+| 7 | **Discounted products / promo banner** | `promo_banner` | `show_discounted_products` | Conversion booster. | ✅ |
+| 8 | **Trust badges** | `trust_badges` | `show_trust_badges` | Reduce risk for new buyers. | ✅ |
+| 9 | **Newsletter** | `newsletter` | `show_newsletter` | Capture leads. | ✅ |
+| 10 | **Footer** | layout component | `show_footer_links`, `show_trust_badges` | Links, contact, legal seals. | ✅ |
 
-### 3.3 Content model
+### 3.3 Content model ✅
 
 Each section is one row in `homepage_sections`:
 
@@ -93,16 +103,16 @@ model HomepageSection {
 
 Config schemas per type:
 
-| Type | Config shape |
-|------|--------------|
-| `hero` | `{ banners: [{ id, title, subtitle, image, link, buttonText }] }` |
-| `categories` | `{ limit: number }` |
-| `featured_products` | `{ filter: "featured", limit: number }` |
-| `new_products` | `{ filter: "new", limit: number }` |
-| `promo_banner` | `{ filter: "discounted", limit: number }` OR `{ image, link, title }` |
-| `trust_badges` | `{ badges: [{ icon, title, description }] }` |
-| `newsletter` | `{ title, description, buttonText }` |
-| `announcement_bar` | `{ text, link, bgColor, textColor }` |
+| Type | Config shape | Status |
+|------|--------------|--------|
+| `hero` | `{ banners: [{ id, title, subtitle, image, link, buttonText }] }` | ✅ |
+| `categories` | `{ limit: number }` | ✅ |
+| `featured_products` | `{ filter: "featured", limit: number }` | ✅ |
+| `new_products` | `{ filter: "new", limit: number }` | ✅ |
+| `promo_banner` | `{ filter: "discounted", limit: number }` OR `{ image, link, title }` | ✅ |
+| `trust_badges` | `{ badges: [{ icon, title, description }] }` | ✅ |
+| `newsletter` | `{ title, description, buttonText }` | ✅ |
+| `announcement_bar` | `{ text, link, bgColor, textColor }` | ❌ |
 
 Feature flags live in `settings`:
 
@@ -113,7 +123,7 @@ show_trust_badges, show_newsletter,
 show_search, show_cart, show_user_menu, show_footer_links
 ```
 
-### 3.4 Rendering flow
+### 3.4 Rendering flow ✅
 
 ```
 HomePage
@@ -128,7 +138,7 @@ HomePage
                 └─ NewsletterSection
 ```
 
-### 3.5 Responsive rules
+### 3.5 Responsive rules ✅
 
 - **Hero**: centered text on mobile; optional split layout on desktop. Background image with `object-cover`, dark overlay for text contrast.
 - **Category grid**: 2 cols mobile → 4 cols desktop. Maintain `aspect-[4/3]`.
@@ -137,7 +147,7 @@ HomePage
 - **Newsletter**: full-width card; form stacks on mobile, inline on desktop.
 - **Max container width**: `max-w-7xl` (1280px), centered with `mx-auto px-4`.
 
-### 3.6 Accessibility / RTL
+### 3.6 Accessibility / RTL ✅
 
 - `lang="fa" dir="rtl"` on `<html>`.
 - All images have `alt` text from CMS config.
@@ -148,11 +158,11 @@ HomePage
 
 ## 4. Admin Dashboard Architecture
 
-### 4.1 Purpose
+### 4.1 Purpose ✅
 
 Give the shop manager a single-screen operational overview: sales, pending work, inventory risks, and recent orders. The dashboard is **read-only with quick links**; editing happens on dedicated pages.
 
-### 4.2 Layout
+### 4.2 Layout ✅
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -174,20 +184,20 @@ Give the shop manager a single-screen operational overview: sales, pending work,
 
 ### 4.3 Widget inventory (Level One)
 
-| Widget | Data | Priority |
-|--------|------|----------|
-| **Total sales** | Sum of `finalAmount` for `DELIVERED` orders | Must-have |
-| **Total orders** | Count of all orders | Must-have |
-| **Pending orders** | Count of `PENDING` orders | Must-have |
-| **Total products** | Count of active products | Must-have |
-| **Low-stock products** | Count of products with `stockQuantity < 5` | Must-have |
-| **Recent orders** | Last 5 orders with customer + status | Must-have |
-| **Sales trend (7 days)** | Daily sales total for last 7 days | Should-have |
-| **Orders by status** | Counts per status (bar or donut) | Should-have |
-| **Top selling products** | Top 5 by order quantity | Could-have |
-| **Quick actions** | Buttons: add product, view orders, seed demo data | Must-have |
+| Widget | Data | Priority | Status |
+|--------|------|----------|--------|
+| **Total sales** | Sum of `finalAmount` for `DELIVERED` orders | Must-have | ✅ |
+| **Total orders** | Count of all orders | Must-have | ✅ |
+| **Pending orders** | Count of `PENDING` orders | Must-have | ✅ |
+| **Total products** | Count of active products | Must-have | ✅ |
+| **Low-stock products** | Count of products with `stockQuantity < 5` | Must-have | ✅ |
+| **Recent orders** | Last 5 orders with customer + status | Must-have | ✅ |
+| **Sales trend (7 days)** | Daily sales total for last 7 days | Should-have | ✅ |
+| **Orders by status** | Counts per status (bar or donut) | Should-have | ✅ |
+| **Top selling products** | Top 5 by order quantity | Could-have | ✅ |
+| **Quick actions** | Buttons: add product, view orders, seed demo data | Must-have | ✅ |
 
-### 4.4 Backend data contract
+### 4.4 Backend data contract ✅
 
 Existing `GET /api/v1/dashboard/` returns:
 
@@ -202,7 +212,7 @@ Existing `GET /api/v1/dashboard/` returns:
 }
 ```
 
-**Recommended extension for Level One** (additive, backward-compatible):
+**Recommended extension for Level One** (additive, backward-compatible) ✅:
 
 ```ts
 {
@@ -218,18 +228,18 @@ Existing `GET /api/v1/dashboard/` returns:
 
 Implementation path:
 
-1. Register `dashboardRoutes` in `src/index.ts` under `/api/v1/dashboard`.
-2. Enhance `dashboard.service.ts` with `salesTrend`, `ordersByStatus`, and `topProducts` queries.
-3. Build `AdminDashboardPage` consuming the endpoint.
+1. ✅ Register `dashboardRoutes` in `src/index.ts` under `/api/v1/dashboard`.
+2. ✅ Enhance `dashboard.service.ts` with `salesTrend`, `ordersByStatus`, and `topProducts` queries.
+3. ✅ Build `AdminDashboardPage` consuming the endpoint.
 
-### 4.5 Mobile strategy
+### 4.5 Mobile strategy ✅
 
 - Sidebar becomes a slide-out drawer on screens < `md`.
 - KPI cards stack 1×1 on mobile, 2×2 on tablet, 4 across on desktop.
 - Charts hide on very small screens or become horizontal bar charts.
 - Recent orders table becomes a card list on mobile (one card per order).
 
-### 4.6 Data flow
+### 4.6 Data flow ✅
 
 ```
 AdminDashboardPage
@@ -250,31 +260,31 @@ AdminDashboardPage
 
 Existing:
 
-- `Jolfa-web/src/features/cms/components/HeroSection.tsx`
-- `Jolfa-web/src/features/cms/components/CategoryGridSection.tsx`
-- `Jolfa-web/src/features/cms/components/ProductSection.tsx`
-- `Jolfa-web/src/features/cms/components/TrustBadgesSection.tsx`
-- `Jolfa-web/src/features/cms/components/NewsletterSection.tsx`
+- ✅ `Jolfa-web/src/features/cms/components/HeroSection.tsx`
+- ✅ `Jolfa-web/src/features/cms/components/CategoryGridSection.tsx`
+- ✅ `Jolfa-web/src/features/cms/components/ProductSection.tsx`
+- ✅ `Jolfa-web/src/features/cms/components/TrustBadgesSection.tsx`
+- ✅ `Jolfa-web/src/features/cms/components/NewsletterSection.tsx`
 
 Recommended additions:
 
-- `AnnouncementBar` — reads from a new `announcement_bar` section.
-- `Footer` — reads `site_name`, `show_footer_links`, `show_trust_badges`.
+- ❌ `AnnouncementBar` — reads from a new `announcement_bar` section.
+- ✅ `Footer` — reads `site_name`, `show_footer_links`, `show_trust_badges`.
 
 ### 5.2 Dashboard components
 
 Create in `Jolfa-web/src/features/admin/components/`:
 
-- `StatCard.tsx` — icon, label, value, trend indicator (optional).
-- `SalesTrendChart.tsx` — Recharts line/bar chart.
-- `OrdersByStatusChart.tsx` — donut or horizontal bar chart.
-- `RecentOrdersWidget.tsx` — table/card list with status badge.
-- `LowStockWidget.tsx` — alert list linking to product edit.
-- `QuickActionsWidget.tsx` — action buttons.
+- ✅ `StatCard.tsx` — icon, label, value, trend indicator (optional).
+- ✅ `SalesTrendChart.tsx` — Recharts line/bar chart.
+- ✅ `OrdersByStatusChart.tsx` — donut or horizontal bar chart.
+- ✅ `RecentOrdersWidget.tsx` — table/card list with status badge.
+- ✅ `LowStockWidget.tsx` — alert list linking to product edit.
+- ✅ `QuickActionsWidget.tsx` — action buttons.
 
 ### 5.3 Shared primitives
 
-Use existing `Button`, `Input`, `Badge` (to be created), `Card` (to be created).
+Use existing `Button`, `Input`, `Badge`, `Card`. ✅
 
 ---
 
@@ -282,32 +292,32 @@ Use existing `Button`, `Input`, `Badge` (to be created), `Card` (to be created).
 
 ### Phase 1 — Must-have for Level One
 
-1. Wire existing `dashboardRoutes` into `src/index.ts`.
-2. Implement `AdminDashboardPage` with KPI stat cards + recent orders + quick actions.
-3. Ensure landing page renders all CMS sections correctly with feature flags.
-4. Add footer trust/links toggles from public settings.
+1. ✅ Wire existing `dashboardRoutes` into `src/index.ts`.
+2. ✅ Implement `AdminDashboardPage` with KPI stat cards + recent orders + quick actions.
+3. ✅ Ensure landing page renders all CMS sections correctly with feature flags.
+4. ✅ Add footer trust/links toggles from public settings.
 
 ### Phase 2 — Should-have
 
-1. Add `salesTrend` and `ordersByStatus` to dashboard endpoint and charts.
-2. Add low-stock alerts widget.
-3. Improve hero with multi-banner carousel and image optimization.
+1. ✅ Add `salesTrend` and `ordersByStatus` to dashboard endpoint and charts.
+2. ✅ Add low-stock alerts widget.
+3. ⚠️ Improve hero with multi-banner carousel and image optimization.
 
 ### Phase 3 — Could-have
 
-1. Top-selling products widget.
-2. Announcement bar section.
-3. A/B-friendly landing variants.
+1. ✅ Top-selling products widget.
+2. ❌ Announcement bar section.
+3. ❌ A/B-friendly landing variants.
 
 ---
 
 ## 7. Out of Scope for Level One
 
-- Real-time WebSocket dashboards.
-- Advanced analytics (CLV, CAC, cohorts, marketing attribution).
-- Multi-language landing pages.
-- Drag-and-drop page builder UI (JSON config editor is acceptable).
-- Custom theme previews beyond the current Tailwind tokens.
+- 🚫 Real-time WebSocket dashboards.
+- 🚫 Advanced analytics (CLV, CAC, cohorts, marketing attribution).
+- 🚫 Multi-language landing pages.
+- 🚫 Drag-and-drop page builder UI (JSON config editor is acceptable).
+- 🚫 Custom theme previews beyond the current Tailwind tokens.
 
 ---
 

@@ -423,3 +423,70 @@ model DemoSnapshot {
   @@index([entityId])
   @@map("demo_snapshots")
 }
+
+model RequestLog {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  method     String   @db.VarChar(10)
+  path       String   @db.VarChar(500)
+  query      Json?
+  statusCode Int      @map("status_code")
+  durationMs Int      @map("duration_ms")
+  userId     String?  @map("user_id") @db.Uuid
+  ipAddress  String?  @map("ip_address") @db.VarChar(100)
+  userAgent  String?  @map("user_agent") @db.Text
+  requestId  String?  @map("request_id") @db.VarChar(100)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([createdAt])
+  @@index([statusCode])
+  @@index([path])
+  @@index([userId])
+  @@map("request_logs")
+}
+
+model SecurityEvent {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type         String   @db.VarChar(50)
+  userId       String?  @map("user_id") @db.Uuid
+  emailOrPhone String?  @map("email_or_phone") @db.VarChar(255)
+  ipAddress    String?  @map("ip_address") @db.VarChar(100)
+  userAgent    String?  @map("user_agent") @db.Text
+  metadata     Json?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([type])
+  @@index([createdAt])
+  @@index([userId])
+  @@map("security_events")
+}
+
+model PaymentGatewayLog {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId        String?  @map("order_id") @db.Uuid
+  paymentId      String?  @map("payment_id") @db.Uuid
+  gateway        String   @db.VarChar(50)
+  direction      String   @db.VarChar(10)
+  endpoint       String?  @db.VarChar(500)
+  payload        Json?
+  responseStatus String?  @map("response_status") @db.VarChar(50)
+  responseBody   Json?    @map("response_body")
+  metadata       Json?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([orderId])
+  @@index([paymentId])
+  @@index([createdAt])
+  @@map("payment_gateway_logs")
+}
+
+model NewsletterSubscriber {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email     String   @db.VarChar(255)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([email])
+  @@index([isActive])
+  @@map("newsletter_subscribers")
+}

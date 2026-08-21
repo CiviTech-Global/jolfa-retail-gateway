@@ -14,11 +14,24 @@ interface Banner {
   buttonText?: string
 }
 
-interface HeroCarouselProps {
-  banners?: Banner[]
+interface HeroCarouselSectionProps {
+  config: Record<string, unknown>
 }
 
-export function HeroCarousel({ banners }: HeroCarouselProps) {
+const defaultSlides: Banner[] = [
+  {
+    title: 'بازارچه جلفا',
+    subtitle: 'محصولات محلی، سنتی و باکیفیت از بازارچه جلفا مستقیماً به دست شما',
+    link: '/products',
+    buttonText: 'مشاهده محصولات',
+  },
+]
+
+export function HeroCarouselSection({ config }: HeroCarouselSectionProps) {
+  const banners = (config.banners as Banner[] | undefined) ?? []
+  const autoplayMs = (config.autoplayMs as number | undefined) ?? 6000
+  const slides = banners.length > 0 ? banners : defaultSlides
+
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, align: 'start', direction: 'rtl' })
   const [selectedIndex, setSelectedIndex] = useState(0)
 
@@ -37,38 +50,27 @@ export function HeroCarousel({ banners }: HeroCarouselProps) {
   }, [emblaApi])
 
   useEffect(() => {
-    if (!emblaApi) return
-    const interval = setInterval(() => emblaApi.scrollNext(), 6000)
+    if (!emblaApi || slides.length <= 1 || autoplayMs <= 0) return
+    const interval = setInterval(() => emblaApi.scrollNext(), autoplayMs)
     return () => clearInterval(interval)
-  }, [emblaApi])
-
-  const slides =
-    banners && banners.length > 0
-      ? banners
-      : [
-          {
-            title: 'جدیدترین محصولات',
-            subtitle: 'بهترین کیفیت را با بهترین قیمت تجربه کنید.',
-            link: '/products',
-            buttonText: 'مشاهده محصولات',
-          },
-        ]
+  }, [emblaApi, slides.length, autoplayMs])
 
   return (
-    <section className="relative overflow-hidden bg-background py-8 md:py-12">
+    <section className="relative overflow-hidden bg-background py-6 md:py-10">
       <div className="mx-auto max-w-7xl px-4">
-        <div className="overflow-hidden rounded-3xl" ref={emblaRef}>
+        <div className="overflow-hidden rounded-3xl shadow-lg" ref={emblaRef}>
           <div className="flex">
             {slides.map((slide, index) => (
               <div
                 key={slide.id ?? index}
-                className="relative min-w-0 flex-[0_0_100%] overflow-hidden bg-gradient-to-br from-primary to-secondary px-6 py-16 text-white md:px-16 md:py-24"
+                className="relative min-w-0 flex-[0_0_100%] overflow-hidden bg-gradient-to-br from-primary via-primary to-[hsl(230_55%_18%)] px-6 py-16 text-primary-foreground md:px-16 md:py-24"
               >
                 {slide.image && (
                   <img
                     src={slide.image}
-                    alt={slide.title ?? ''}
+                    alt={slide.title ?? 'اسلاید تبلیغاتی'}
                     className="absolute inset-0 h-full w-full object-cover opacity-20"
+                    loading={index === 0 ? 'eager' : 'lazy'}
                   />
                 )}
                 <div className="relative z-10 mx-auto max-w-2xl text-center">
@@ -104,25 +106,27 @@ export function HeroCarousel({ banners }: HeroCarouselProps) {
           </div>
         </div>
 
-        <div className="mt-4 flex items-center justify-center gap-2">
-          <Button variant="ghost" size="icon" onClick={scrollPrev} aria-label="اسلاید قبلی">
-            <ChevronRight className="h-5 w-5" />
-          </Button>
-          {slides.map((_, index) => (
-            <button
-              key={index}
-              type="button"
-              onClick={() => scrollTo(index)}
-              aria-label={`اسلاید ${index + 1}`}
-              className={`h-2 rounded-full transition-all ${
-                selectedIndex === index ? 'w-6 bg-primary' : 'w-2 bg-border hover:bg-muted-foreground'
-              }`}
-            />
-          ))}
-          <Button variant="ghost" size="icon" onClick={scrollNext} aria-label="اسلاید بعدی">
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-        </div>
+        {slides.length > 1 && (
+          <div className="mt-4 flex items-center justify-center gap-2">
+            <Button variant="ghost" size="icon" onClick={scrollPrev} aria-label="اسلاید قبلی">
+              <ChevronRight className="h-5 w-5" />
+            </Button>
+            {slides.map((_, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={() => scrollTo(index)}
+                aria-label={`اسلاید ${index + 1}`}
+                className={`h-2 rounded-full transition-all ${
+                  selectedIndex === index ? 'w-6 bg-primary' : 'w-2 bg-border hover:bg-muted-foreground'
+                }`}
+              />
+            ))}
+            <Button variant="ghost" size="icon" onClick={scrollNext} aria-label="اسلاید بعدی">
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+          </div>
+        )}
       </div>
     </section>
   )

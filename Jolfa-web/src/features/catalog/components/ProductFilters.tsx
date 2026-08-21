@@ -9,7 +9,7 @@ interface ProductFiltersProps {
 
 export function ProductFilters({ filters, onChange }: ProductFiltersProps) {
   return (
-    <div className="space-y-4 rounded-xl border border-border bg-background p-4">
+    <div className="space-y-4 rounded-2xl border border-border bg-surface p-4">
       <div>
         <label htmlFor="search" className="mb-1 block text-sm font-medium text-foreground">
           جستجو

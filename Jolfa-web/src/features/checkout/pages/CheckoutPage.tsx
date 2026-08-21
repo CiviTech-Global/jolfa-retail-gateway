@@ -100,7 +100,7 @@ export function CheckoutPage() {
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 lg:col-span-2">
-          <div className="rounded-xl border border-border bg-background p-6">
+          <div className="rounded-2xl border border-border bg-surface p-6">
             <h2 className="text-lg font-bold text-foreground">اطلاعات گیرنده</h2>
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
@@ -141,7 +141,7 @@ export function CheckoutPage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-border bg-background p-6">
+          <div className="rounded-2xl border border-border bg-surface p-6">
             <h2 className="text-lg font-bold text-foreground">نحوه ارسال</h2>
             <div className="mt-4 space-y-3">
               <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-4 has-[:checked]:border-primary">
@@ -171,7 +171,7 @@ export function CheckoutPage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-border bg-background p-6">
+          <div className="rounded-2xl border border-border bg-surface p-6">
             <h2 className="text-lg font-bold text-foreground">توضیحات سفارش</h2>
             <textarea
               {...register('customerNote')}
@@ -187,7 +187,7 @@ export function CheckoutPage() {
           </Button>
         </form>
 
-        <div className="h-fit rounded-xl border border-border bg-background p-6">
+        <div className="h-fit rounded-2xl border border-border bg-surface p-6 lg:sticky lg:top-20">
           <h2 className="text-lg font-bold text-foreground">خلاصه سفارش</h2>
           <div className="mt-4 space-y-3">
             {items.map((item) => (

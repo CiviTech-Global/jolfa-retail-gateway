@@ -4,6 +4,14 @@
 **Goal:** Define the MVP Persian RTL e-commerce experience for customer and admin users.  
 **Based on:** `docs/level-one/ROADMAP.md`, agent roles for Product Manager and UX/UI Designer, inspection of `Jolfa-web/src/`.
 
+> **Current Status:** ✅ Most customer and admin stories are implemented. ⚠️ JWT is stored in `localStorage` rather than `httpOnly` cookies, the address book is checkout-only, payment verification is mocked, and SMS notifications are not wired. ❌ Customer order detail, contact form submission, and password reset are not implemented. See [PROGRESS.md](../PROGRESS.md) for details.
+
+---
+
+## Current Status
+
+Core customer and admin flows are largely implemented per [../PROGRESS.md](../PROGRESS.md). The public storefront, catalog, cart, checkout, authentication, admin CRUDs, and dashboard are all functional. Remaining gaps include SMS notifications, customer order detail, saved address book, real payment verification, and several profile sub-pages. Items below are marked ✅ completed, ⚠️ partial/stubbed, ❌ missing, or 🚫 deliberately out of scope.
+
 ---
 
 ## 1. Executive Summary
@@ -19,111 +27,111 @@ The current frontend (`Jolfa-web/src/`) is a stock Vite + React 19 starter with 
 **US-C-01 Browse categories**
 - As a customer, I want to see product categories on the landing page, so that I can quickly navigate to what I need.
 - **AC:**
-  - At least 4 category cards are visible on the landing page.
-  - Clicking a category navigates to `/category/:slug` with a filtered product list.
-  - Category names are displayed in Persian.
-  - Empty category state shows "محصولی یافت نشد" with a return link.
+  - ✅ At least 4 category cards are visible on the landing page.
+  - ✅ Clicking a category navigates to `/category/:slug` with a filtered product list.
+  - ✅ Category names are displayed in Persian.
+  - ✅ Empty category state shows "محصولی یافت نشد" with a return link.
 
 **US-C-02 Search products**
 - As a customer, I want to search products by name, so that I can find a specific item fast.
 - **AC:**
-  - Search input is accessible from the site header on all pages.
-  - Typing ≥2 characters triggers a search results page `/search?q=...`.
-  - Results update with title, price, and thumbnail.
-  - No-results state shows a clear message.
+  - ✅ Search input is accessible from the site header on all pages.
+  - ✅ Typing ≥2 characters triggers a search results page `/search?q=...`.
+  - ✅ Results update with title, price, and thumbnail.
+  - ✅ No-results state shows a clear message.
 
 **US-C-03 View product detail**
 - As a customer, I want to see product images, price, stock status, and description, so that I can decide to purchase.
 - **AC:**
-  - Product page loads at `/product/:slug`.
-  - Shows title, description, price in Toman (تومان), stock status, and primary image.
-  - Supports adding a quantity to cart.
-  - Out-of-stock products disable the add-to-cart button.
+  - ✅ Product page loads at `/product/:slug`.
+  - ✅ Shows title, description, price in Toman (تومان), stock status, and primary image.
+  - ✅ Supports adding a quantity to cart.
+  - ✅ Out-of-stock products disable the add-to-cart button.
 
 **US-C-04 Add to cart**
 - As a customer, I want to add products to a persistent cart, so that I can collect items before checkout.
 - **AC:**
-  - Cart is stored in React Context and persisted to `localStorage`.
-  - Cart icon in header shows item count badge.
-  - Clicking add shows a toast/inline confirmation.
-  - Cart page lists items, quantities, per-line prices, and total.
+  - ✅ Cart is stored in React Context and persisted to `localStorage`.
+  - ✅ Cart icon in header shows item count badge.
+  - ✅ Clicking add shows a toast/inline confirmation.
+  - ✅ Cart page lists items, quantities, per-line prices, and total.
 
 ### 2.2 Customer — Checkout & Orders
 
 **US-C-05 Register / login**
 - As a customer, I want to create an account or log in, so that my address and order history are saved.
 - **AC:**
-  - `/register` and `/login` pages accept phone/email and password.
-  - Form validation shows inline errors in Persian.
-  - Authenticated users see a profile menu in the header.
-  - JWT token is stored securely (httpOnly cookie preferred; if not feasible, memory + refresh token pattern).
+  - ✅ `/register` and `/login` pages accept phone/email and password.
+  - ✅ Form validation shows inline errors in Persian.
+  - ✅ Authenticated users see a profile menu in the header.
+  - ⚠️ JWT token is stored in `localStorage`; `httpOnly` cookie / refresh-token rotation is not yet implemented.
 
 **US-C-06 Enter shipping address**
 - As a customer, I want to enter my name, phone, province, city, and full address, so that my order can be delivered.
 - **AC:**
-  - Address form is part of checkout step 1.
-  - All fields are required; phone validates Iranian mobile format (09xxxxxxxx).
-  - Address is saved to user profile for reuse.
+  - ✅ Address form is part of checkout step 1.
+  - ✅ All fields are required; phone validates Iranian mobile format (09xxxxxxxx).
+  - ❌ Address is saved to user profile for reuse (no address-book CRUD yet).
 
 **US-C-07 Select shipping method**
 - As a customer, I want to choose a shipping option, so that I know the delivery cost and method.
 - **AC:**
-  - Checkout step 2 shows at least one default shipping method.
-  - Total updates to include shipping cost.
-  - Shipping method is stored with the order.
+  - ⚠️ Checkout step 2 shows a default shipping method, but shipping rules are hardcoded.
+  - ✅ Total updates to include shipping cost.
+  - ✅ Shipping method is stored with the order.
 
 **US-C-08 Pay online**
 - As a customer, I want to pay with Zarinpal or Zibal, so that my order is confirmed immediately.
 - **AC:**
-  - Clicking pay redirects to the selected gateway sandbox/production URL.
-  - On return, the order status updates to "Paid" or "Payment Failed".
-  - Failed payment shows retry option and order summary.
+  - ⚠️ Clicking pay redirects to the gateway URL, but real verification is mocked (no live Zarinpal/Zibal API call).
+  - ⚠️ On return, order/payment status updates based on mocked verification.
+  - ✅ Failed payment shows retry option and order summary.
 
 **US-C-09 View order history**
 - As a customer, I want to see my past orders and their statuses, so that I can track deliveries.
 - **AC:**
-  - `/profile/orders` lists orders with status badge, date, and total.
-  - Clicking an order opens a detail view with items and tracking info.
+  - ✅ `/profile/orders` lists orders with status badge, date, and total.
+  - ❌ Clicking an order opens a detail view with items and tracking info (customer order detail not implemented).
 
 ### 2.3 Customer — Static Content
 
 **US-C-10 Static pages**
 - As a customer, I want to read About, Contact, and Rules pages, so that I trust the store.
 - **AC:**
-  - `/about`, `/contact`, `/rules` are reachable from footer.
-  - Contact page includes phone, address, and a simple message form (no backend required for MVP).
+  - ✅ `/about`, `/contact`, `/rules` are reachable from footer.
+  - ✅ Contact page includes phone, address, and a simple message form (no backend required for MVP).
 
 ### 2.4 Admin — Management
 
 **US-A-01 Manage products**
 - As an admin, I want to create, edit, activate/deactivate, and delete products, so that the catalog stays up to date.
 - **AC:**
-  - Admin product list shows title, price, stock, status.
-  - Add/edit form validates title, price > 0, stock ≥ 0, category.
-  - Image upload supports at least one primary image.
-  - Deleted products are soft-deleted or marked inactive (decision: soft delete via `isActive`).
+  - ✅ Admin product list shows title, price, stock, status.
+  - ⚠️ Add/edit form has basic validation but currently uses uncontrolled inputs without Zod.
+  - ✅ Image upload supports at least one primary image.
+  - ✅ Deleted products are soft-deleted or marked inactive via `isActive`.
 
 **US-A-02 Manage categories**
 - As an admin, I want to add and edit categories, so that products can be organized.
 - **AC:**
-  - Category form includes name and slug.
-  - Slug is auto-generated from Persian name with URL-safe fallback.
+  - ✅ Category form includes name and slug.
+  - ✅ Slug is auto-generated from Persian name with URL-safe fallback.
 
 **US-A-03 Manage orders**
 - As an admin, I want to view orders, update status, and see payment state, so that I can fulfill orders.
 - **AC:**
-  - Order list supports filter by status and date.
-  - Order detail shows customer info, items, address, payment status.
-  - Status changes trigger SMS notification to customer.
+  - ✅ Order list supports filter by status and date.
+  - ✅ Order detail shows customer info, items, address, payment status.
+  - ❌ Status changes trigger SMS notification to customer (SMS service not wired).
 
 ### 2.5 Notifications
 
 **US-N-01 SMS order status**
 - As a customer, I want to receive an SMS when my order status changes, so that I stay informed.
 - **AC:**
-  - SMS is sent on status changes: Paid, Processing, Shipped, Delivered, Cancelled.
-  - SMS provider configurable (Kavenegar / SMS.ir).
-  - Failed SMS is logged but does not block order updates.
+  - ❌ SMS is sent on status changes: Paid, Processing, Shipped, Delivered, Cancelled.
+  - ❌ SMS provider configurable (Kavenegar / SMS.ir).
+  - ❌ Failed SMS is logged but does not block order updates.
 
 ---
 
@@ -131,36 +139,36 @@ The current frontend (`Jolfa-web/src/`) is a stock Vite + React 19 starter with 
 
 ### 3.1 Customer Pages
 
-| Page | Route | Purpose | Priority |
-|---|---|---|---|
-| Landing | `/` | Hero, categories, featured products | P0 |
-| Category | `/category/:slug` | Filtered product grid | P0 |
-| Search | `/search` | Search results | P1 |
-| Product Detail | `/product/:slug` | Product info + add to cart | P0 |
-| Cart | `/cart` | Review items, edit quantities, proceed | P0 |
-| Checkout | `/checkout` | Address, shipping, payment | P0 |
-| Payment Callback | `/payment/callback` | Gateway return handling | P0 |
-| Login | `/login` | Authenticate | P0 |
-| Register | `/register` | Create account | P0 |
-| Profile | `/profile` | Account overview | P1 |
-| Order History | `/profile/orders` | Past orders | P1 |
-| Order Detail | `/profile/orders/:id` | Single order details | P1 |
-| About | `/about` | Store story | P2 |
-| Contact | `/contact` | Contact info + form | P2 |
-| Rules | `/rules` | Terms and policies | P2 |
-| 404 | `*` | Not found page | P2 |
+| Page | Route | Purpose | Priority | Status |
+|---|---|---|---|---|
+| Landing | `/` | Hero, categories, featured products | P0 | ✅ |
+| Category | `/category/:slug` | Filtered product grid | P0 | ✅ |
+| Search | `/search` | Search results | P1 | ✅ |
+| Product Detail | `/product/:slug` | Product info + add to cart | P0 | ✅ |
+| Cart | `/cart` | Review items, edit quantities, proceed | P0 | ✅ |
+| Checkout | `/checkout` | Address, shipping, payment | P0 | ✅ |
+| Payment Callback | `/payment/callback` | Gateway return handling | P0 | ✅ |
+| Login | `/login` | Authenticate | P0 | ✅ |
+| Register | `/register` | Create account | P0 | ✅ |
+| Profile | `/profile` | Account overview | P1 | ✅ |
+| Order History | `/profile/orders` | Past orders | P1 | ✅ |
+| Order Detail | `/profile/orders/:id` | Single order details | P1 | ❌ |
+| About | `/about` | Store story | P2 | ✅ |
+| Contact | `/contact` | Contact info + form | P2 | ⚠️ |
+| Rules | `/rules` | Terms and policies | P2 | ✅ |
+| 404 | `*` | Not found page | P2 | ✅ |
 
 ### 3.2 Admin Pages
 
-| Page | Route | Purpose | Priority |
-|---|---|---|---|
-| Admin Dashboard | `/admin` | Overview cards: orders, revenue, low stock | P1 |
-| Products | `/admin/products` | Product list with actions | P0 |
-| Product Form | `/admin/products/new`, `/admin/products/:id/edit` | Add/edit product | P0 |
-| Categories | `/admin/categories` | Category list | P1 |
-| Category Form | `/admin/categories/new`, `/admin/categories/:id/edit` | Add/edit category | P1 |
-| Orders | `/admin/orders` | Order list with filters | P0 |
-| Order Detail | `/admin/orders/:id` | View/update order | P0 |
+| Page | Route | Purpose | Priority | Status |
+|---|---|---|---|---|
+| Admin Dashboard | `/admin` | Overview cards: orders, revenue, low stock | P1 | ✅ |
+| Products | `/admin/products` | Product list with actions | P0 | ✅ |
+| Product Form | `/admin/products/new`, `/admin/products/:id/edit` | Add/edit product | P0 | ✅ |
+| Categories | `/admin/categories` | Category list | P1 | ✅ |
+| Category Form | `/admin/categories/new`, `/admin/categories/:id/edit` | Add/edit category | P1 | ✅ |
+| Orders | `/admin/orders` | Order list with filters | P0 | ✅ |
+| Order Detail | `/admin/orders/:id` | View/update order | P0 | ✅ |
 
 ---
 
@@ -250,58 +258,58 @@ The current frontend (`Jolfa-web/src/`) is a stock Vite + React 19 starter with 
 
 ### 5.1 Primitives
 
-| Component | Notes |
-|---|---|
-| `Button` | Variants: primary, secondary, outline, ghost, danger. Sizes: sm, md, lg. Loading state. |
-| `Input` | Text, email, password, tel. Error state, helper text, icon support. |
-| `Textarea` | For product description and contact message. |
-| `Select` | Native select styled with chevron icon. |
-| `Checkbox` | Label on right for RTL. |
-| `RadioGroup` | Shipping method selector. |
-| `Badge` | Variants: default, success, warning, danger, info. |
-| `IconButton` | Touch target ≥ 44×44px. |
-| `Spinner` | Inline loading indicator. |
-| `Skeleton` | Placeholder for async content. |
-| `Toast` | Short-lived confirmation/error messages. |
-| `Modal` | Confirm delete, quick product preview. |
+| Component | Notes | Status |
+|---|---|---|
+| `Button` | Variants: primary, secondary, outline, ghost, danger. Sizes: sm, md, lg. Loading state. | ✅ |
+| `Input` | Text, email, password, tel. Error state, helper text, icon support. | ✅ |
+| `Textarea` | For product description and contact message. | ✅ |
+| `Select` | Native select styled with chevron icon. | ✅ |
+| `Checkbox` | Label on right for RTL. | ✅ |
+| `RadioGroup` | Shipping method selector. | ❌ |
+| `Badge` | Variants: default, success, warning, danger, info. | ✅ |
+| `IconButton` | Touch target ≥ 44×44px. | ✅ |
+| `Spinner` | Inline loading indicator. | ✅ |
+| `Skeleton` | Placeholder for async content. | ✅ |
+| `Toast` | Short-lived confirmation/error messages. | ✅ |
+| `Modal` | Confirm delete, quick product preview. | ✅ |
 
 ### 5.2 Layout
 
-| Component | Notes |
-|---|---|
-| `Header` | Logo, search, cart icon, auth actions, mobile hamburger. |
-| `Footer` | Links, contact info, social placeholders. |
-| `Container` | Max-width wrapper with responsive padding. |
-| `PageHeader` | Title + breadcrumb/back action. |
-| `Sidebar` | Admin navigation drawer (mobile) / sidebar (desktop). |
-| `MobileNav` | Bottom nav or sheet menu for customer pages. |
+| Component | Notes | Status |
+|---|---|---|
+| `Header` | Logo, search, cart icon, auth actions, mobile hamburger. | ✅ |
+| `Footer` | Links, contact info, social placeholders. | ✅ |
+| `Container` | Max-width wrapper with responsive padding. | ✅ |
+| `PageHeader` | Title + breadcrumb/back action. | ✅ |
+| `Sidebar` | Admin navigation drawer (mobile) / sidebar (desktop). | ✅ |
+| `MobileNav` | Bottom nav or sheet menu for customer pages. | ❌ |
 
 ### 5.3 Customer Components
 
-| Component | Notes |
-|---|---|
-| `CategoryCard` | Image, title, link. |
-| `ProductCard` | Image, title, price, stock badge, quick add button. |
-| `ProductGallery` | Main image + thumbnail list (MVP: single image). |
-| `ProductInfo` | Title, price, description, quantity stepper, add-to-cart. |
-| `CartItem` | Product thumb, title, price, qty stepper, remove. |
-| `CartSummary` | Subtotal, shipping, total, checkout CTA. |
-| `AddressForm` | Fields: full name, phone, province, city, postal code, address. |
-| `ShippingSelector` | Radio list of shipping methods. |
-| `OrderCard` | Order number, date, status badge, total, items preview. |
-| `OrderTimeline` | Status steps: Pending → Paid → Processing → Shipped → Delivered. |
+| Component | Notes | Status |
+|---|---|---|
+| `CategoryCard` | Image, title, link. | ✅ |
+| `ProductCard` | Image, title, price, stock badge, quick add button. | ✅ |
+| `ProductGallery` | Main image + thumbnail list (MVP: single image). | ⚠️ |
+| `ProductInfo` | Title, price, description, quantity stepper, add-to-cart. | ✅ |
+| `CartItem` | Product thumb, title, price, qty stepper, remove. | ✅ |
+| `CartSummary` | Subtotal, shipping, total, checkout CTA. | ✅ |
+| `AddressForm` | Fields: full name, phone, province, city, postal code, address. | ✅ |
+| `ShippingSelector` | Radio list of shipping methods. | ⚠️ |
+| `OrderCard` | Order number, date, status badge, total, items preview. | ✅ |
+| `OrderTimeline` | Status steps: Pending → Paid → Processing → Shipped → Delivered. | ❌ |
 
 ### 5.4 Admin Components
 
-| Component | Notes |
-|---|---|
-| `StatCard` | Title, value, trend icon. |
-| `DataTable` | Sortable columns, pagination, row actions. |
-| `StatusBadge` | Order/payment status colors. |
-| `ImageUploader` | Drag-and-drop or file input with preview. |
-| `ProductForm` | Title, slug, description, price, stock, category, images, active toggle. |
-| `OrderActions` | Status dropdown, SMS resend. |
-| `FilterBar` | Search + status filter + date range. |
+| Component | Notes | Status |
+|---|---|---|
+| `StatCard` | Title, value, trend icon. | ✅ |
+| `DataTable` | Sortable columns, pagination, row actions. | ✅ |
+| `StatusBadge` | Order/payment status colors. | ✅ |
+| `ImageUploader` | Drag-and-drop or file input with preview. | ⚠️ |
+| `ProductForm` | Title, slug, description, price, stock, category, images, active toggle. | ✅ |
+| `OrderActions` | Status dropdown, SMS resend. | ⚠️ |
+| `FilterBar` | Search + status filter + date range. | ✅ |
 
 ---
 
@@ -344,16 +352,16 @@ The current frontend (`Jolfa-web/src/`) is a stock Vite + React 19 starter with 
 
 ### 7.1 Decisions Made
 
-1. **No multi-language:** Phase 1 is Persian only.
-2. **No advanced PWA:** Standard responsive web; service worker deferred.
-3. **No recommendation engine:** Featured products are manually curated by admin.
-4. **No loyalty program:** Deferred.
-5. **No advanced reporting:** Admin dashboard shows only summary cards.
-6. **Soft delete for products:** Use `isActive` flag rather than hard delete.
-7. **Single image per product for MVP:** Gallery support added to component list but multi-image is P1.
-8. **Jalali calendar:** Display can use Persian locale; full Jalali conversion deferred if it adds complexity.
-9. **Payment gateway:** Start with Zarinpal sandbox; keep Zibal as fallback/configurable.
-10. **SMS provider:** Start with Kavenegar; SMS.ir as fallback.
+1. 🚫 **No multi-language:** Phase 1 is Persian only.
+2. 🚫 **No advanced PWA:** Standard responsive web; service worker deferred.
+3. 🚫 **No recommendation engine:** Featured products are manually curated by admin.
+4. 🚫 **No loyalty program:** Deferred.
+5. 🚫 **No advanced reporting:** Admin dashboard shows only summary cards.
+6. ✅ **Soft delete for products:** Use `isActive` flag rather than hard delete.
+7. ⚠️ **Single image per product for MVP:** Schema supports multiple images; UI currently focuses on a single primary image.
+8. 🚫 **Jalali calendar:** Display can use Persian locale; full Jalali conversion deferred.
+9. ⚠️ **Payment gateway:** Zarinpal primary / Zibal fallback architecture is in place, but verification is mocked.
+10. ❌ **SMS provider:** Start with Kavenegar; SMS.ir as fallback — not implemented.
 
 ### 7.2 Clarifying Questions for Client / Technical Lead
 
@@ -381,8 +389,8 @@ The current frontend (`Jolfa-web/src/`) is a stock Vite + React 19 starter with 
 
 ## 8. Next Steps
 
-1. Validate this plan with the client and technical lead.
-2. Finalize brand colors and gather sample content.
-3. Set up Tailwind CSS 4 and Vazirmatn in `Jolfa-web`.
-4. Build the design-system primitives (Button, Input, Card, Badge, Header, Footer).
-5. Begin backend schema implementation based on the ROADMAP draft.
+1. ✅ Validate this plan with the client and technical lead.
+2. ✅ Finalize brand colors and gather sample content.
+3. ✅ Set up Tailwind CSS 4 and Vazirmatn in `Jolfa-web`.
+4. ✅ Build the design-system primitives (Button, Input, Card, Badge, Header, Footer).
+5. ✅ Begin backend schema implementation based on the ROADMAP draft.

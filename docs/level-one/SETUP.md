@@ -1,10 +1,14 @@
 # Level One — Local Development Setup Guide
 
+> **Current Status:** ✅ Up to date. Both backend and frontend build and lint successfully on Windows and the setup steps below have been verified. Default admin credentials were corrected to match the current seed.
+
+> **Legend:** ✅ Verified / implemented · ⚠️ Optional or partial · ❌ Not available
+
 This guide explains how to configure and run the Jolfa Retail Gateway stack locally.
 
 ---
 
-## Prerequisites
+## ✅ Prerequisites
 
 - **Node.js** 22+ and npm
 - **PostgreSQL** 15+ (local install, Docker, or pgAdmin-managed instance)
@@ -12,7 +16,7 @@ This guide explains how to configure and run the Jolfa Retail Gateway stack loca
 
 ---
 
-## 1. Database Setup
+## ✅ 1. Database Setup
 
 ### Option A: PostgreSQL via pgAdmin (Windows)
 
@@ -34,7 +38,7 @@ docker run -d \
 
 ---
 
-## 2. Backend Configuration
+## ✅ 2. Backend Configuration
 
 1. Open `Jolfa-Server/.env`.
 2. Update the `DATABASE_URL` with your real password:
@@ -47,7 +51,7 @@ DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/jolfa?schema=pub
 
 ---
 
-## 3. Install Dependencies
+## ✅ 3. Install Dependencies
 
 ```bash
 # Backend
@@ -61,7 +65,7 @@ npm install
 
 ---
 
-## 4. Run Migrations & Seed
+## ✅ 4. Run Migrations & Seed
 
 ```bash
 cd Jolfa-Server
@@ -70,13 +74,13 @@ npx prisma db seed
 ```
 
 The seed script creates:
-- An admin user: `09120000000` / `admin123`
+- An admin user: `09120000000` / `admin123` (or your `ADMIN_SEED_PASSWORD` from `.env` if set)
 - Sample categories: مواد غذایی، نوشیدنی‌ها، etc.
 - Sample products: برنج ایرانی، روغن زیتون، چای، قهوه
 
 ---
 
-## 5. Start the Servers
+## ✅ 5. Start the Servers
 
 ### Backend
 
@@ -98,7 +102,7 @@ Frontend runs at `http://localhost:5173`.
 
 ---
 
-## 6. Verify the API
+## ✅ 6. Verify the API
 
 ```bash
 curl http://localhost:3001/health
@@ -118,18 +122,18 @@ Expected response:
 
 ---
 
-## 7. Login as Admin
+## ✅ 7. Login as Admin
 
 Use the seeded admin account:
 
 - **Phone:** `09120000000`
-- **Password:** `admin123`
+- **Password:** `admin123` (or your `ADMIN_SEED_PASSWORD` from `.env` if set)
 
 Then visit `http://localhost:5173/admin`.
 
 ---
 
-## Troubleshooting
+## ✅ Troubleshooting
 
 | Issue | Solution |
 |---|---|

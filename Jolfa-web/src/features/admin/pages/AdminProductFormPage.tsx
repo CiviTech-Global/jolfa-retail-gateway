@@ -303,7 +303,11 @@ function ProductEditor({ isEdit, initialProduct, categories, slug }: ProductEdit
             <div className="flex flex-wrap gap-4">
               {form.images.map((image, index) => (
                 <div key={index} className="relative w-24 rounded-xl border border-border bg-surface p-1">
-                  <img src={image.url} alt={image.altText ?? ''} className="aspect-square w-full rounded-lg object-cover" />
+                  <img
+                    src={image.url}
+                    alt={image.altText || `تصویر شماره ${index + 1} محصول`}
+                    className="aspect-square w-full rounded-lg object-cover"
+                  />
                   {image.isPrimary && <Badge variant="warning" className="absolute top-1 start-1 text-[10px]">اصلی</Badge>}
                   <div className="absolute bottom-1 start-1 flex gap-1">
                     <button type="button" onClick={() => setPrimary(index)} className="rounded bg-primary p-1 text-white">

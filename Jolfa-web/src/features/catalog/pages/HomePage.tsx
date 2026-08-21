@@ -1,47 +1,14 @@
-import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { getPublicHomepageSections, getPublicSettings } from '@/features/cms/api'
-import { HeroSection } from '@/features/cms/components/HeroSection'
-import { CategoryGridSection } from '@/features/cms/components/CategoryGridSection'
-import { ProductSection } from '@/features/cms/components/ProductSection'
-import { TrustBadgesSection } from '@/features/cms/components/TrustBadgesSection'
-import { NewsletterSection } from '@/features/cms/components/NewsletterSection'
-
-function parseBoolean(value: string | undefined): boolean {
-  if (!value) return false
-  return ['true', '1', 'yes', 'on'].includes(value.toLowerCase())
-}
-
-const sectionFlagMap: Record<string, string> = {
-  hero: 'show_hero',
-  categories: 'show_categories',
-  featured_products: 'show_featured_products',
-  new_products: 'show_new_products',
-  promo_banner: 'show_discounted_products',
-  trust_badges: 'show_trust_badges',
-  newsletter: 'show_newsletter',
-}
+import { getPublicHomepageSections } from '@/features/cms/api'
+import { renderSection } from '@/features/cms/section-registry'
 
 export function HomePage() {
-  const { data: settingsData, isLoading: settingsLoading } = useQuery({
-    queryKey: ['settings', 'public'],
-    queryFn: getPublicSettings,
-  })
-
-  const { data: sections, isLoading: sectionsLoading } = useQuery({
+  const { data: sections, isLoading } = useQuery({
     queryKey: ['homepage-sections', 'public'],
     queryFn: getPublicHomepageSections,
   })
 
-  const flags = useMemo(() => {
-    const map: Record<string, boolean> = {}
-    settingsData?.settings.forEach((setting) => {
-      map[setting.key.toLowerCase()] = parseBoolean(setting.value)
-    })
-    return map
-  }, [settingsData])
-
-  if (settingsLoading || sectionsLoading) {
+  if (isLoading) {
     return (
       <div className="flex flex-1 items-center justify-center py-20">
         <p className="text-muted-foreground">در حال بارگذاری ...</p>
@@ -49,11 +16,7 @@ export function HomePage() {
     )
   }
 
-  const visibleSections = (sections ?? []).filter((section) => {
-    const flagKey = sectionFlagMap[section.key]
-    if (!flagKey) return true
-    return flags[flagKey] ?? false
-  })
+  const visibleSections = sections ?? []
 
   if (visibleSections.length === 0) {
     return (
@@ -66,36 +29,5 @@ export function HomePage() {
     )
   }
 
-  return (
-    <div className="flex-1">
-      {visibleSections.map((section) => {
-        switch (section.type) {
-          case 'hero':
-            return <HeroSection key={section.id} config={section.config} />
-          case 'categories':
-            return <CategoryGridSection key={section.id} config={section.config} />
-          case 'featured_products':
-          case 'new_products':
-          case 'discounted':
-          case 'promo_banner':
-            return (
-              <ProductSection
-                key={section.id}
-                title={section.title}
-                config={{
-                  ...section.config,
-                  filter: section.type === 'promo_banner' ? 'discounted' : section.type,
-                }}
-              />
-            )
-          case 'trust_badges':
-            return <TrustBadgesSection key={section.id} config={section.config} />
-          case 'newsletter':
-            return <NewsletterSection key={section.id} config={section.config} />
-          default:
-            return null
-        }
-      })}
-    </div>
-  )
+  return <div className="flex-1">{visibleSections.map(renderSection)}</div>
 }

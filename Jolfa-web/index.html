@@ -5,18 +5,7 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>جلفا ریتیل گیت‌وی | Jolfa Retail Gateway</title>
-    <script>
-      (function () {
-        try {
-          const stored = localStorage.getItem('jolfa-theme')
-          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-          const dark = stored ? stored === 'dark' : prefersDark
-          if (dark) document.documentElement.classList.add('dark')
-        } catch (e) {
-          // ignore
-        }
-      })()
-    </script>
+    <!-- Dark theme temporarily disabled — no pre-hydration dark-class script for now. -->
   </head>
   <body>
     <div id="root"></div>

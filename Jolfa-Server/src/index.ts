@@ -18,19 +18,33 @@ import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 import bannerRoutes from "./modules/banners/banner.routes.js";
 import uploadRoutes from "./modules/uploads/upload.routes.js";
 import { getUploadDir } from "./modules/uploads/upload.service.js";
+import path from "node:path";
 import auditRoutes from "./modules/audit/audit.routes.js";
 import userRoutes from "./modules/users/user.routes.js";
 import { seedDefaults } from "./shared/seed.js";
 import paymentAdminRoutes from "./modules/payments/payment.admin.routes.js";
 import orderAdminRoutes from "./modules/orders/order.admin.routes.js";
+import { registerRequestLogging } from "./shared/logging.js";
 
 const app = Fastify({
   logger: {
     level: env.NODE_ENV === "production" ? "info" : "debug",
+    redact: {
+      paths: [
+        "req.headers.authorization",
+        "req.headers.cookie",
+        "body.password",
+        "body.token",
+        "body.confirmPassword",
+      ],
+      censor: "[REDACTED]",
+    },
   },
 });
 
 async function bootstrap(): Promise<void> {
+  registerRequestLogging(app);
+
   await app.register(cors, {
     origin: env.CORS_ORIGIN === "*" ? true : env.CORS_ORIGIN.split(","),
     credentials: true,
@@ -49,6 +63,12 @@ async function bootstrap(): Promise<void> {
   await app.register(fastifyStatic, {
     root: getUploadDir(),
     prefix: env.PUBLIC_UPLOAD_PATH,
+  });
+
+  await app.register(fastifyStatic, {
+    root: path.resolve("assets/demo-images"),
+    prefix: "/demo-assets/",
+    decorateReply: false,
   });
 
   app.get("/health", async (_request, reply) => {
@@ -77,13 +97,28 @@ async function bootstrap(): Promise<void> {
 
   await seedDefaults();
 
-  app.setErrorHandler((error, _request, reply) => {
+  app.setErrorHandler((error, request, reply) => {
     const err = error instanceof Error ? error : new Error(String(error));
     const statusCode =
       "statusCode" in err && typeof err.statusCode === "number" ? err.statusCode : 500;
     const code = "code" in err && typeof err.code === "string" ? err.code : "INTERNAL_ERROR";
     const details =
       "details" in err && err.details !== undefined ? err.details : undefined;
+
+    const logPayload = {
+      reqId: request.id,
+      method: request.method,
+      url: request.url,
+      statusCode,
+      code,
+      ...(env.NODE_ENV === "production" ? {} : { stack: err.stack }),
+    };
+    if (statusCode >= 500) {
+      request.log.error(logPayload, err.message);
+    } else {
+      request.log.warn(logPayload, err.message);
+    }
+
     return reply.status(statusCode).send({
       success: false,
       error: {

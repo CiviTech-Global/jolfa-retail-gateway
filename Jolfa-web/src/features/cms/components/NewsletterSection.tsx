@@ -27,7 +27,7 @@ export function NewsletterSection({ config }: NewsletterSectionProps) {
   }
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-14">
+    <section className="mx-auto max-w-7xl px-4 py-10 md:py-14">
       <ScrollReveal direction="up">
         <div className="relative overflow-hidden rounded-2xl bg-primary p-8 text-center text-primary-foreground md:p-12">
           <div className="relative mx-auto max-w-2xl">

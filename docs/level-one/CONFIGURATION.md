@@ -1,5 +1,9 @@
 # Level One — Configuration Reference
 
+> **Current Status:** ✅ Environment variables and upload config are implemented. ⚠️ Payment gateway verification is currently mocked; real Zarinpal/Zibal credentials are required for production. ⚠️ SMS provider variables are read but no SMS sending logic is wired yet.
+
+> **Legend:** ✅ Implemented · ⚠️ Stub / partial · ❌ Not implemented
+
 Reference for configuring external services and environment variables.
 
 ---
@@ -8,41 +12,41 @@ Reference for configuring external services and environment variables.
 
 ### Server
 
-| Variable | Default | Description |
-|---|---|---|
-| `NODE_ENV` | `development` | `development`, `test`, or `production` |
-| `PORT` | `3001` | Backend port |
-| `HOST` | `0.0.0.0` | Bind host |
-| `API_PREFIX` | `/api/v1` | API base path |
+| Variable | Default | Description | Status |
+|---|---|---|---|
+| `NODE_ENV` | `development` | `development`, `test`, or `production` | ✅ |
+| `PORT` | `3001` | Backend port | ✅ |
+| `HOST` | `0.0.0.0` | Bind host | ✅ |
+| `API_PREFIX` | `/api/v1` | API base path | ✅ |
 
 ### Database
 
-| Variable | Example | Description |
-|---|---|---|
-| `DATABASE_URL` | `postgresql://postgres:pass@localhost:5432/jolfa?schema=public` | Prisma connection string |
+| Variable | Example | Description | Status |
+|---|---|---|---|
+| `DATABASE_URL` | `postgresql://postgres:pass@localhost:5432/jolfa?schema=public` | Prisma connection string | ✅ |
 
 ### JWT
 
-| Variable | Default | Description |
-|---|---|---|
-| `JWT_SECRET` | — | Min 16 characters, use strong random in production |
-| `JWT_ACCESS_EXPIRES_IN` | `24h` | Access token lifetime |
-| `JWT_REFRESH_EXPIRES_IN` | `7d` | Refresh token lifetime |
+| Variable | Default | Description | Status |
+|---|---|---|---|
+| `JWT_SECRET` | — | Min 16 characters, use strong random in production | ✅ |
+| `JWT_ACCESS_EXPIRES_IN` | `24h` | Access token lifetime | ✅ |
+| `JWT_REFRESH_EXPIRES_IN` | `7d` | Refresh token lifetime | ✅ |
 
 ### CORS / Uploads
 
-| Variable | Default | Description |
-|---|---|---|
-| `CORS_ORIGIN` | `http://localhost:5173` | Comma-separated allowed origins |
-| `UPLOAD_DIR` | `uploads` | Local upload folder |
-| `PUBLIC_UPLOAD_PATH` | `/uploads` | Public URL path for uploads |
-| `MAX_FILE_SIZE` | `5242880` | Max upload size in bytes (5 MB) |
+| Variable | Default | Description | Status |
+|---|---|---|---|
+| `CORS_ORIGIN` | `http://localhost:5173` | Comma-separated allowed origins | ✅ |
+| `UPLOAD_DIR` | `uploads` | Local upload folder | ✅ |
+| `PUBLIC_UPLOAD_PATH` | `/uploads` | Public URL path for uploads | ✅ |
+| `MAX_FILE_SIZE` | `5242880` | Max upload size in bytes (5 MB) | ✅ |
 
 ---
 
 ## Payment Gateways
 
-### Zarinpal
+### ⚠️ Zarinpal
 
 1. Register at [zarinpal.com](https://zarinpal.com).
 2. Get your **Merchant ID**.
@@ -54,7 +58,7 @@ ZARINPAL_SANDBOX=false
 ZARINPAL_CALLBACK_URL=https://your-domain.ir/api/v1/payments/verify
 ```
 
-### Zibal
+### ⚠️ Zibal
 
 1. Register at [zibal.ir](https://zibal.ir).
 2. Get your **Merchant ID**.
@@ -65,9 +69,9 @@ ZIBAL_MERCHANT_ID=your-merchant-id
 ZIBAL_CALLBACK_URL=https://your-domain.ir/api/v1/payments/verify
 ```
 
-> The backend uses Zibal if `ZIBAL_MERCHANT_ID` is set; otherwise falls back to Zarinpal.
+> The backend uses Zibal if `ZIBAL_MERCHANT_ID` is set; otherwise falls back to Zarinpal. Currently the verify step is mocked and does not call the real gateway API.
 
-### Sandbox Testing
+### ✅ Sandbox Testing
 
 For local development, set:
 
@@ -80,33 +84,33 @@ The sandbox allows fake payments without real merchant credentials.
 
 ---
 
-## SMS Providers
+## ⚠️ SMS Providers
 
-### Kavenegar
+### ⚠️ Kavenegar
 
 ```env
 KAVENEGAR_API_KEY=your-api-key
 SMS_SENDER_NUMBER=your-sender-number
 ```
 
-### SMS.ir
+### ⚠️ SMS.ir
 
 ```env
 SMS_IR_API_KEY=your-api-key
 SMS_SENDER_NUMBER=your-sender-number
 ```
 
-> SMS sending is currently logged but not blocking. Implement provider-specific adapters in `Jolfa-Server/src/integrations/sms/`.
+> SMS sending is currently logged but not blocking. Provider-specific adapters should be added in `Jolfa-Server/src/integrations/sms/`.
 
 ---
 
-## Changing Currency Display
+## ✅ Changing Currency Display
 
 Prices are stored as integers in the smallest unit (Toman). To change display, edit `Jolfa-web/src/lib/utils.ts`.
 
 ---
 
-## Admin Seeding
+## ✅ Admin Seeding
 
 To change the default admin password, set before seeding:
 

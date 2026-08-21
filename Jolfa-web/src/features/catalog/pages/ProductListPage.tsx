@@ -1,15 +1,19 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router'
+import { SlidersHorizontal } from 'lucide-react'
 import { ProductFilters } from '../components/ProductFilters'
 import { ProductGrid } from '../components/ProductGrid'
 import { getProducts } from '../api'
+import { Button } from '@/components/ui/Button'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/Sheet'
 import type { ProductFilters as ProductFiltersType } from '../types'
 
 const DEFAULT_LIMIT = 24
 
 export function ProductListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
   const [filters, setFilters] = useState<ProductFiltersType>(() => ({
     page: Number(searchParams.get('page')) || 1,
@@ -42,12 +46,38 @@ export function ProductListPage() {
   const meta = data?.meta
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
-      <h1 className="text-2xl font-bold text-foreground">محصولات</h1>
+    <div className="mx-auto max-w-7xl px-4 py-6 md:py-8">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold text-foreground md:text-2xl">محصولات</h1>
+        <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <SheetTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2 lg:hidden">
+              <SlidersHorizontal className="h-4 w-4" />
+              فیلترها
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="right" className="overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>فیلترها</SheetTitle>
+            </SheetHeader>
+            <div className="p-6 pt-2">
+              <ProductFilters
+                filters={filters}
+                onChange={(next) => {
+                  handleFiltersChange(next)
+                  setFiltersOpen(false)
+                }}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
+      </div>
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-4">
-        <aside className="lg:col-span-1">
-          <ProductFilters filters={filters} onChange={handleFiltersChange} />
+        <aside className="hidden lg:col-span-1 lg:block">
+          <div className="sticky top-20">
+            <ProductFilters filters={filters} onChange={handleFiltersChange} />
+          </div>
         </aside>
 
         <div className="lg:col-span-3">

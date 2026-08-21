@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, Pencil, Power } from 'lucide-react'
+import { Plus, Trash2, Pencil, Power, ArrowUp, ArrowDown } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
+import { SECTION_TYPE_OPTIONS } from '../section-registry'
 import {
   createHomepageSection,
   deleteHomepageSection,
@@ -13,6 +15,10 @@ import {
   updateHomepageSection,
 } from '../api'
 import type { HomepageSectionDto } from '../types'
+
+function typeLabel(type: string): string {
+  return SECTION_TYPE_OPTIONS.find((option) => option.value === type)?.label ?? type
+}
 
 function formatJson(value: Record<string, unknown>): string {
   return JSON.stringify(value, null, 2)
@@ -27,13 +33,25 @@ function parseJson(value: string): Record<string, unknown> | undefined {
   }
 }
 
-function SectionRow({ section }: { section: HomepageSectionDto }) {
+interface SectionRowProps {
+  section: HomepageSectionDto
+  isFirst: boolean
+  isLast: boolean
+  onMoveUp: () => void
+  onMoveDown: () => void
+  isReordering: boolean
+}
+
+function SectionRow({ section, isFirst, isLast, onMoveUp, onMoveDown, isReordering }: SectionRowProps) {
   const queryClient = useQueryClient()
   const [isEditing, setIsEditing] = useState(false)
   const [title, setTitle] = useState(section.title)
   const [type, setType] = useState(section.type)
   const [configText, setConfigText] = useState(formatJson(section.config))
-  const [displayOrder, setDisplayOrder] = useState(String(section.displayOrder))
+
+  const typeOptions = SECTION_TYPE_OPTIONS.some((option) => option.value === section.type)
+    ? SECTION_TYPE_OPTIONS
+    : [{ value: section.type, label: `${section.type} (نوع قدیمی)` }, ...SECTION_TYPE_OPTIONS]
 
   const updateMutation = useMutation({
     mutationFn: (body: Parameters<typeof updateHomepageSection>[1]) => updateHomepageSection(section.id, body),
@@ -63,12 +81,7 @@ function SectionRow({ section }: { section: HomepageSectionDto }) {
       alert('JSON وارد شده معتبر نیست')
       return
     }
-    updateMutation.mutate({
-      title,
-      type,
-      config,
-      displayOrder: Number(displayOrder),
-    })
+    updateMutation.mutate({ title, type, config })
   }
 
   return (
@@ -83,17 +96,44 @@ function SectionRow({ section }: { section: HomepageSectionDto }) {
       </td>
       <td className="px-4 py-3">
         {isEditing ? (
-          <Input value={type} onChange={(event) => setType(event.target.value)} />
+          <Select value={type} onValueChange={setType}>
+            <SelectTrigger>
+              <SelectValue placeholder="نوع بخش" />
+            </SelectTrigger>
+            <SelectContent>
+              {typeOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         ) : (
-          <Badge variant="secondary">{section.type}</Badge>
+          <Badge variant="secondary">{typeLabel(section.type)}</Badge>
         )}
       </td>
       <td className="px-4 py-3">
-        {isEditing ? (
-          <Input value={displayOrder} onChange={(event) => setDisplayOrder(event.target.value)} />
-        ) : (
-          section.displayOrder
-        )}
+        <div className="flex items-center gap-1">
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={isFirst || isReordering}
+            onClick={onMoveUp}
+            aria-label="جابجایی به بالا"
+          >
+            <ArrowUp className="h-4 w-4" />
+          </Button>
+          <span className="w-4 text-center text-muted-foreground">{section.displayOrder}</span>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={isLast || isReordering}
+            onClick={onMoveDown}
+            aria-label="جابجایی به پایین"
+          >
+            <ArrowDown className="h-4 w-4" />
+          </Button>
+        </div>
       </td>
       <td className="px-4 py-3">
         {isEditing ? (
@@ -164,10 +204,12 @@ export function AdminHomepageSectionsPage() {
     queryFn: getAdminHomepageSections,
   })
 
+  const sortedSections = [...(data ?? [])].sort((a, b) => a.displayOrder - b.displayOrder)
+
   const [isCreating, setIsCreating] = useState(false)
   const [newKey, setNewKey] = useState('')
   const [newTitle, setNewTitle] = useState('')
-  const [newType, setNewType] = useState('')
+  const [newType, setNewType] = useState(SECTION_TYPE_OPTIONS[0].value)
 
   const createMutation = useMutation({
     mutationFn: createHomepageSection,
@@ -176,9 +218,28 @@ export function AdminHomepageSectionsPage() {
       setIsCreating(false)
       setNewKey('')
       setNewTitle('')
-      setNewType('')
+      setNewType(SECTION_TYPE_OPTIONS[0].value)
     },
   })
+
+  const reorderMutation = useMutation({
+    mutationFn: async ({ a, b }: { a: HomepageSectionDto; b: HomepageSectionDto }) => {
+      await Promise.all([
+        updateHomepageSection(a.id, { displayOrder: b.displayOrder }),
+        updateHomepageSection(b.id, { displayOrder: a.displayOrder }),
+      ])
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'homepage-sections'] })
+    },
+  })
+
+  const moveSection = (index: number, direction: -1 | 1) => {
+    const target = sortedSections[index + direction]
+    const current = sortedSections[index]
+    if (!target || !current) return
+    reorderMutation.mutate({ a: current, b: target })
+  }
 
   return (
     <ScrollReveal className="space-y-6">
@@ -202,7 +263,18 @@ export function AdminHomepageSectionsPage() {
             <div className="grid gap-4 sm:grid-cols-3">
               <Input placeholder="کلید (key)" value={newKey} onChange={(event) => setNewKey(event.target.value)} />
               <Input placeholder="عنوان" value={newTitle} onChange={(event) => setNewTitle(event.target.value)} />
-              <Input placeholder="نوع" value={newType} onChange={(event) => setNewType(event.target.value)} />
+              <Select value={newType} onValueChange={setNewType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="نوع بخش" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SECTION_TYPE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="mt-4 flex gap-2">
               <Button
@@ -251,14 +323,24 @@ export function AdminHomepageSectionsPage() {
                       در حال بارگذاری ...
                     </td>
                   </tr>
-                ) : data?.length === 0 ? (
+                ) : sortedSections.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                       بخشی یافت نشد.
                     </td>
                   </tr>
                 ) : (
-                  data?.map((section) => <SectionRow key={section.id} section={section} />)
+                  sortedSections.map((section, index) => (
+                    <SectionRow
+                      key={section.id}
+                      section={section}
+                      isFirst={index === 0}
+                      isLast={index === sortedSections.length - 1}
+                      onMoveUp={() => moveSection(index, -1)}
+                      onMoveDown={() => moveSection(index, 1)}
+                      isReordering={reorderMutation.isPending}
+                    />
+                  ))
                 )}
               </tbody>
             </table>

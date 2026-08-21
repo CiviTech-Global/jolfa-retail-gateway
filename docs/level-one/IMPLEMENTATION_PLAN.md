@@ -4,6 +4,8 @@
 
 **Constraint:** No hardcoded frontend data for homepage sections or demo content. All data lives in PostgreSQL and is served via API.
 
+**Current Status:** ~80–85% complete. Core backend/frontend flows are implemented and both projects build/lint successfully. See [PROGRESS.md](PROGRESS.md) for the latest detailed status.
+
 ---
 
 ## 1. Agent Roster Evaluation Summary
@@ -12,15 +14,15 @@
 |---|---|---|
 | Technical Lead | B+ | Stack solid; needs deployment hardening, tests, file uploads |
 | Product Manager | B | MVP core present; missing profile, wishlist, reports, CMS settings |
-| UX/UI Designer | C+ | Basic RTL; missing hero slider, trust badges, mega-menu, mobile menu, sample-inspired landing |
-| React Developer | B | Routing/state work; needs reusable section components and admin forms |
-| Senior Frontend | B | Architecture OK; needs design-system polish and code-splitting |
-| Node.js Developer | B+ | CRUD APIs present; needs settings/CMS, demo endpoints, upload service |
-| Senior Backend | B | Auth/order/payment OK; needs feature flags, dashboard stats, bulk ops |
-| API Architect | B | Contracts exist; needs settings and demo endpoints documented |
-| Database Architect | B+ | Schema covers MVP; needs settings and homepage-sections tables |
+| UX/UI Designer | B+ | Warm Retail Rebrand applied; hero, trust badges, mobile sheet menu, theme toggle, animations done; mega-menu still out of scope |
+| React Developer | B+ | Reusable section components and admin forms implemented; product form validation could be improved |
+| Senior Frontend | B+ | Design-system polish done; code-splitting still pending |
+| Node.js Developer | A- | Settings/CMS, demo endpoints, and upload service all implemented |
+| Senior Backend | A- | Dashboard stats, feature flags via settings, and audit logs implemented |
+| API Architect | A- | Settings, banners, homepage sections, demo, and upload endpoints implemented |
+| Database Architect | A- | Settings, homepage sections, banners, audit logs, transactions, demo snapshots all in schema |
 | DevOps Engineer | C | CI exists; needs Docker, deployment scripts, monitoring |
-| QA Engineer | C | No automated tests yet |
+| QA Engineer | C | No automated tests yet; build/lint pass |
 | Security Engineer | C | Basic auth; needs formal review |
 
 ---
@@ -171,11 +173,13 @@ Frontend fetches active sections only; admin can reorder and toggle.
 
 ## 6. Acceptance Criteria
 
-- [ ] Admin can enable/disable every homepage section from `/admin/settings`.
-- [ ] Admin can reorder sections.
-- [ ] Admin can generate demo data and see the site populated with real products/categories/orders.
-- [ ] Admin can clear demo data without affecting real users/orders.
-- [ ] Homepage renders only active sections from the database.
-- [ ] No hardcoded product/category/banner data in frontend code.
-- [ ] All new endpoints are documented and follow existing API contract patterns.
-- [ ] `npm run build` and `npm run lint` pass for both frontend and backend.
+- [x] Admin can enable/disable every homepage section from `/admin/settings`.
+- [x] Admin can reorder sections via `displayOrder` (frontend/admin grid).
+- [x] Admin can generate demo data and see the site populated with real products/categories/orders.
+- [x] Admin can clear demo data without affecting real users/orders.
+- [x] Homepage renders only active sections from the database.
+- [x] No hardcoded product/category/banner data in frontend code.
+- [x] All new endpoints follow existing API contract patterns.
+- [x] `npm run build` and `npm run lint` pass for both frontend and backend.
+- [ ] Full automated test suite is still pending.
+- [ ] Real payment gateway verification is still pending.
