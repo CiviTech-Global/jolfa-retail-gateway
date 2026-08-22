@@ -78,12 +78,21 @@ export async function createOrder(userId: string, data: OrderCreateBody) {
 
     for (const item of data.items) {
       const product = productMap.get(item.productId)!;
-      await tx.product.update({
-        where: { id: item.productId },
+
+      // Atomic compare-and-decrement. The stock guard MUST live in the WHERE
+      // clause: the earlier pre-transaction check reads a value that another
+      // checkout can invalidate before this runs, and the previous re-check
+      // here compared that same stale snapshot, so it never fired. Under
+      // READ COMMITTED, Postgres re-evaluates this WHERE after taking the row
+      // lock, so concurrent checkouts serialise and only as many succeed as
+      // there is stock for.
+      const { count } = await tx.product.updateMany({
+        where: { id: item.productId, stockQuantity: { gte: item.quantity } },
         data: { stockQuantity: { decrement: item.quantity } },
       });
-      if (product.stockQuantity < item.quantity) {
-        throw new ConflictError(`موجودی ${product.title} در طول تراکنش به پایان رسید`);
+
+      if (count === 0) {
+        throw new ConflictError(`موجودی ${product.title} کافی نیست`);
       }
     }
 

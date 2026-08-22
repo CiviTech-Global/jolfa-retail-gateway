@@ -1,3 +1,7 @@
 node_modules
 .env
+.env.test
 dist
+coverage
+uploads
+uploads-test

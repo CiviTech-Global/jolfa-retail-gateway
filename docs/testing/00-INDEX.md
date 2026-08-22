@@ -1,6 +1,6 @@
 # Manual Testing Guide — Jolfa Retail Gateway
 
-This is a complete, walk-through-able set of manual test checklists covering **every feature every type of user has access to** in the app, plus a companion automated-test-writing plan (`TEST_PLAN.md`). Go file by file, ticking boxes as you verify each behavior in your own browser/environment.
+This is a complete, walk-through-able set of manual test checklists covering **every feature every type of user has access to** in the app, plus a companion automated-test-writing plan (`TEST_PLAN.md`) and a granular, per-checklist-item **automated test case breakdown** in [`test-cases/`](./test-cases/00-INDEX.md). Go file by file, ticking boxes as you verify each behavior in your own browser/environment — or, for the automated path, work through `test-cases/` to write the ~320 named tests that make this manual pass unnecessary to repeat by hand.
 
 ## How the app's users break down
 
@@ -35,6 +35,7 @@ The app has three effective roles:
 | 9 | [09-admin-dashboard-demo-audit.md](./09-admin-dashboard-demo-audit.md) | Admin | Dashboard KPIs/charts, demo data seed/clear, audit log |
 | 10 | [10-known-gaps.md](./10-known-gaps.md) | — | Documented gaps/dead code/security findings referenced throughout the above — read this alongside the others, not after |
 | — | [TEST_PLAN.md](./TEST_PLAN.md) | — | The full plan for writing automated tests (unit/integration/e2e/security) so this manual pass doesn't have to be repeated by hand forever |
+| — | [test-cases/](./test-cases/00-INDEX.md) | — | Every checkbox above, turned into a named automated test: ID, layer (unit/integration/component/e2e), planned test file, and expected assertions — the concrete work list for implementing `TEST_PLAN.md` |
 
 ## How to work through it
 

@@ -1,0 +1,14 @@
+{
+  // The main tsconfig deliberately excludes tests from the build output, which
+  // also means `npm run build` never type-checks them. This config type-checks
+  // the test sources (and their helpers) without emitting anything, so a type
+  // error in a test is caught in CI rather than at the next refactor.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".",
+    "types": ["vitest/globals", "node"]
+  },
+  "include": ["src/**/*", "test/**/*", "vitest.config.ts"],
+  "exclude": ["node_modules", "dist"]
+}

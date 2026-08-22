@@ -230,8 +230,13 @@ export async function deleteCategory(slug: string, actorId?: string): Promise<{ 
   const category = await prisma.category.findUnique({
     where: { slug },
     include: {
-      products: { where: { isActive: true }, select: { id: true }, take: 1 },
-      children: { where: { isActive: true }, select: { id: true }, take: 1 },
+      // Deliberately NOT filtered by `isActive`: the Product->Category FK is
+      // `onDelete: Restrict` and the Category self-relation is `onDelete:
+      // NoAction`, so an *inactive* product or child blocks the delete at the
+      // database level too. Guarding only on active rows let those cases
+      // through to Postgres and surfaced as an unhandled 500 instead of a 409.
+      products: { select: { id: true }, take: 1 },
+      children: { select: { id: true }, take: 1 },
     },
   });
 
@@ -240,11 +245,11 @@ export async function deleteCategory(slug: string, actorId?: string): Promise<{ 
   }
 
   if (category.products.length > 0) {
-    throw new ConflictError("این دسته‌بندی دارای محصولات فعال است و نمی‌تواند حذف شود");
+    throw new ConflictError("این دسته‌بندی دارای محصولات است و نمی‌تواند حذف شود");
   }
 
   if (category.children.length > 0) {
-    throw new ConflictError("این دسته‌بندی دارای زیردسته‌های فعال است و نمی‌تواند حذف شود");
+    throw new ConflictError("این دسته‌بندی دارای زیردسته است و نمی‌تواند حذف شود");
   }
 
   await prisma.category.delete({ where: { slug } });

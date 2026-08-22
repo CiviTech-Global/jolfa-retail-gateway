@@ -1,7 +1,7 @@
 import { prisma } from "../../shared/prisma.js";
 import { BadRequestError, ConflictError, NotFoundError } from "../../shared/app-error.js";
 import { env } from "../../config/env.js";
-import type { PaymentGateway, PaymentStatus } from "@prisma/client";
+import type { PaymentGateway, PaymentStatus, UserRole } from "@prisma/client";
 import type { PaymentRequestBody, PaymentVerifyBody } from "./payment.types.js";
 import { createTransaction } from "./transaction.service.js";
 
@@ -12,7 +12,9 @@ interface GatewayConfig {
   callbackUrl: string;
 }
 
-function getGatewayConfig(): GatewayConfig {
+// Exported for unit testing: gateway selection is env-driven and server-global
+// (see docs/testing/10-known-gaps.md §12), so both branches need direct coverage.
+export function getGatewayConfig(): GatewayConfig {
   const gateway: PaymentGateway = env.ZIBAL_MERCHANT_ID ? "ZIBAL" : "ZARINPAL";
 
   if (gateway === "ZIBAL") {
@@ -160,13 +162,33 @@ export async function verifyPayment(data: PaymentVerifyBody) {
   return { success: true, orderId: payment.orderId, refId };
 }
 
-export async function getPaymentByAuthority(authority: string) {
+/**
+ * Looks up a payment by its gateway `authority`, scoped to the requester.
+ *
+ * The ownership check closes the IDOR documented in
+ * `docs/testing/10-known-gaps.md` §1: previously any authenticated user could
+ * read any other user's payment/order status given an `authority` string.
+ * Non-owners get a 404 rather than a 403 so the response can't be used as an
+ * oracle to confirm that an authority exists.
+ */
+export async function getPaymentByAuthority(
+  authority: string,
+  requester: { id: string; role: UserRole },
+) {
   const payment = await prisma.payment.findFirst({
     where: { authority },
-    include: { order: { select: { id: true, orderNumber: true, status: true, paymentStatus: true } } },
+    include: {
+      order: {
+        select: { id: true, orderNumber: true, status: true, paymentStatus: true, userId: true },
+      },
+    },
   });
 
   if (!payment) {
+    throw new NotFoundError("Payment");
+  }
+
+  if (requester.role !== "ADMIN" && payment.order?.userId !== requester.id) {
     throw new NotFoundError("Payment");
   }
 

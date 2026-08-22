@@ -357,6 +357,16 @@ const demoSettings = [
 ];
 
 async function snapshotEntity(entityType: string, entityId: string) {
+  // Re-seeding must not append a duplicate snapshot row for an entity that is
+  // already tracked; `clearDemoData()` tolerates duplicates, but the table
+  // would otherwise grow on every seed run. There is no unique constraint on
+  // (entityType, entityId), so this is guarded in code.
+  const existing = await prisma.demoSnapshot.findFirst({
+    where: { entityType, entityId },
+    select: { id: true },
+  });
+  if (existing) return;
+
   await prisma.demoSnapshot.create({
     data: { entityType, entityId },
   });
@@ -407,8 +417,20 @@ async function seedDemoProducts() {
 
 async function seedDemoBanners() {
   for (const banner of demoBanners) {
-    const created = await prisma.banner.create({ data: banner });
-    await snapshotEntity("BANNER", created.id);
+    // `Banner` has no unique business key, so a real `upsert` isn't available.
+    // Matching on title+position keeps re-seeding idempotent: a plain
+    // `create()` here duplicated every demo banner on each seed run, unlike
+    // every other seeder in this file.
+    const existing = await prisma.banner.findFirst({
+      where: { title: banner.title, position: banner.position },
+      select: { id: true },
+    });
+
+    const upserted = existing
+      ? await prisma.banner.update({ where: { id: existing.id }, data: banner })
+      : await prisma.banner.create({ data: banner });
+
+    await snapshotEntity("BANNER", upserted.id);
   }
 }
 
@@ -440,6 +462,16 @@ function generateOrderNumber(index: number) {
 }
 
 async function seedDemoOrders() {
+  // Orders carry a generated, time-based `orderNumber`, so there is no natural
+  // key to upsert on — re-running the seed would append another 6 orders (and
+  // their transactions) every time. If demo orders are already tracked, the
+  // demo set is present and there is nothing to do.
+  const alreadySeeded = await prisma.demoSnapshot.findFirst({
+    where: { entityType: "ORDER" },
+    select: { id: true },
+  });
+  if (alreadySeeded) return;
+
   const admin = await prisma.user.findFirst({
     where: { role: "ADMIN" },
     orderBy: { createdAt: "asc" },

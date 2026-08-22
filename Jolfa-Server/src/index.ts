@@ -1,9 +1,10 @@
 import "dotenv/config";
-import Fastify from "fastify";
+import Fastify, { type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
 import multipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
+import { ZodError } from "zod";
 import { env } from "./config/env.js";
 import categoryRoutes from "./modules/categories/category.routes.js";
 import productRoutes from "./modules/products/product.routes.js";
@@ -19,6 +20,7 @@ import bannerRoutes from "./modules/banners/banner.routes.js";
 import uploadRoutes from "./modules/uploads/upload.routes.js";
 import { getUploadDir } from "./modules/uploads/upload.service.js";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import auditRoutes from "./modules/audit/audit.routes.js";
 import userRoutes from "./modules/users/user.routes.js";
 import { seedDefaults } from "./shared/seed.js";
@@ -26,23 +28,33 @@ import paymentAdminRoutes from "./modules/payments/payment.admin.routes.js";
 import orderAdminRoutes from "./modules/orders/order.admin.routes.js";
 import { registerRequestLogging } from "./shared/logging.js";
 
-const app = Fastify({
-  logger: {
-    level: env.NODE_ENV === "production" ? "info" : "debug",
-    redact: {
-      paths: [
-        "req.headers.authorization",
-        "req.headers.cookie",
-        "body.password",
-        "body.token",
-        "body.confirmPassword",
-      ],
-      censor: "[REDACTED]",
+export function createFastifyInstance(): FastifyInstance {
+  return Fastify({
+    // Tests build dozens of app instances and assert on injected responses,
+    // not on logs; leaving the logger on buries the reporter output in pino
+    // JSON (including the expected 4xx warnings each auth test provokes).
+    logger: env.NODE_ENV === "test" ? false : {
+      level: env.NODE_ENV === "production" ? "info" : "debug",
+      redact: {
+        paths: [
+          "req.headers.authorization",
+          "req.headers.cookie",
+          "body.password",
+          "body.token",
+          "body.confirmPassword",
+        ],
+        censor: "[REDACTED]",
+      },
     },
-  },
-});
+  });
+}
 
-async function bootstrap(): Promise<void> {
+/**
+ * Registers every plugin/route/error-handler on the given app instance without
+ * binding a port. Kept separate from `bootstrap()` so tests can build a fully
+ * wired app and drive it with `app.inject()` instead of a real network listener.
+ */
+export async function buildApp(app: FastifyInstance): Promise<FastifyInstance> {
   registerRequestLogging(app);
 
   await app.register(cors, {
@@ -78,27 +90,31 @@ async function bootstrap(): Promise<void> {
     });
   });
 
-  await app.register(categoryRoutes, { prefix: `${env.API_PREFIX}/categories` });
-  await app.register(productRoutes, { prefix: `${env.API_PREFIX}/products` });
-  await app.register(authRoutes, { prefix: `${env.API_PREFIX}/auth` });
-  await app.register(orderRoutes, { prefix: `${env.API_PREFIX}/orders` });
-  await app.register(paymentRoutes, { prefix: `${env.API_PREFIX}/payments` });
-  await app.register(adminRoutes, { prefix: `${env.API_PREFIX}/admin` });
-  await app.register(auditRoutes, { prefix: `${env.API_PREFIX}/admin` });
-  await app.register(userRoutes, { prefix: `${env.API_PREFIX}/admin` });
-  await app.register(paymentAdminRoutes, { prefix: `${env.API_PREFIX}/admin` });
-  await app.register(orderAdminRoutes, { prefix: `${env.API_PREFIX}/admin` });
-  await app.register(settingsRoutes, { prefix: `${env.API_PREFIX}/settings` });
-  await app.register(homepageSectionRoutes, { prefix: `${env.API_PREFIX}/homepage-sections` });
-  await app.register(demoRoutes, { prefix: `${env.API_PREFIX}/demo` });
-  await app.register(dashboardRoutes, { prefix: `${env.API_PREFIX}/dashboard` });
-  await app.register(bannerRoutes, { prefix: `${env.API_PREFIX}/banners` });
-  await app.register(uploadRoutes, { prefix: `${env.API_PREFIX}/uploads` });
-
-  await seedDefaults();
-
+  // Must be registered before any routes: Fastify's route Context snapshots
+  // the current error handler at registration time, so routes registered
+  // beforehand would silently keep the default handler.
   app.setErrorHandler((error, request, reply) => {
     const err = error instanceof Error ? error : new Error(String(error));
+
+    if (err instanceof ZodError) {
+      const logPayload = {
+        reqId: request.id,
+        method: request.method,
+        url: request.url,
+        statusCode: 400,
+        code: "VALIDATION_ERROR",
+      };
+      request.log.warn(logPayload, err.message);
+      return reply.status(400).send({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: err.issues[0]?.message ?? "ورودی نامعتبر است",
+          details: { issues: err.issues },
+        },
+      });
+    }
+
     const statusCode =
       "statusCode" in err && typeof err.statusCode === "number" ? err.statusCode : 500;
     const code = "code" in err && typeof err.code === "string" ? err.code : "INTERNAL_ERROR";
@@ -129,12 +145,37 @@ async function bootstrap(): Promise<void> {
     });
   });
 
+  await app.register(categoryRoutes, { prefix: `${env.API_PREFIX}/categories` });
+  await app.register(productRoutes, { prefix: `${env.API_PREFIX}/products` });
+  await app.register(authRoutes, { prefix: `${env.API_PREFIX}/auth` });
+  await app.register(orderRoutes, { prefix: `${env.API_PREFIX}/orders` });
+  await app.register(paymentRoutes, { prefix: `${env.API_PREFIX}/payments` });
+  await app.register(adminRoutes, { prefix: `${env.API_PREFIX}/admin` });
+  await app.register(auditRoutes, { prefix: `${env.API_PREFIX}/admin` });
+  await app.register(userRoutes, { prefix: `${env.API_PREFIX}/admin` });
+  await app.register(paymentAdminRoutes, { prefix: `${env.API_PREFIX}/admin` });
+  await app.register(orderAdminRoutes, { prefix: `${env.API_PREFIX}/admin` });
+  await app.register(settingsRoutes, { prefix: `${env.API_PREFIX}/settings` });
+  await app.register(homepageSectionRoutes, { prefix: `${env.API_PREFIX}/homepage-sections` });
+  await app.register(demoRoutes, { prefix: `${env.API_PREFIX}/demo` });
+  await app.register(dashboardRoutes, { prefix: `${env.API_PREFIX}/dashboard` });
+  await app.register(bannerRoutes, { prefix: `${env.API_PREFIX}/banners` });
+  await app.register(uploadRoutes, { prefix: `${env.API_PREFIX}/uploads` });
+
+  return app;
+}
+
+async function bootstrap(): Promise<void> {
+  const app = createFastifyInstance();
+  await buildApp(app);
+  await seedDefaults();
   await app.listen({ port: env.PORT, host: env.HOST });
 }
 
-bootstrap().catch((error: unknown) => {
-  console.error(error);
-  process.exit(1);
-});
-
-export { app };
+const isMainModule = Boolean(process.argv[1]) && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isMainModule) {
+  bootstrap().catch((error: unknown) => {
+    console.error(error);
+    process.exit(1);
+  });
+}

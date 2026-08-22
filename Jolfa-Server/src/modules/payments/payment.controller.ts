@@ -30,7 +30,10 @@ export const getPaymentByAuthority = asyncHandler(
     request: FastifyRequest<{ Params: PaymentParams }>,
     reply: FastifyReply
   ): Promise<void> => {
-    const result = await paymentService.getPaymentByAuthority(request.params.authority);
+    const result = await paymentService.getPaymentByAuthority(request.params.authority, {
+      id: request.user.id,
+      role: request.user.role,
+    });
     sendSuccess(reply, result);
   }
 );
