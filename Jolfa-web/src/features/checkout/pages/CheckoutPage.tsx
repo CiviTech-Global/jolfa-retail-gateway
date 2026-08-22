@@ -104,39 +104,39 @@ export function CheckoutPage() {
             <h2 className="text-lg font-bold text-foreground">اطلاعات گیرنده</h2>
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-sm font-medium">نام و نام خانوادگی گیرنده</label>
-                <Input {...register('recipientName')} />
+                <label htmlFor="checkout-recipientName" className="mb-1 block text-sm font-medium">نام و نام خانوادگی گیرنده</label>
+                <Input id="checkout-recipientName" {...register('recipientName')} />
                 {errors.recipientName && (
                   <p className="mt-1 text-sm text-danger">{errors.recipientName.message}</p>
                 )}
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">شماره موبایل</label>
-                <Input {...register('phone')} dir="ltr" />
+                <label htmlFor="checkout-phone" className="mb-1 block text-sm font-medium">شماره موبایل</label>
+                <Input id="checkout-phone" {...register('phone')} dir="ltr" />
                 {errors.phone && <p className="mt-1 text-sm text-danger">{errors.phone.message}</p>}
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">استان</label>
-                <Input {...register('province')} />
+                <label htmlFor="checkout-province" className="mb-1 block text-sm font-medium">استان</label>
+                <Input id="checkout-province" {...register('province')} />
                 {errors.province && (
                   <p className="mt-1 text-sm text-danger">{errors.province.message}</p>
                 )}
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">شهر</label>
-                <Input {...register('city')} />
+                <label htmlFor="checkout-city" className="mb-1 block text-sm font-medium">شهر</label>
+                <Input id="checkout-city" {...register('city')} />
                 {errors.city && <p className="mt-1 text-sm text-danger">{errors.city.message}</p>}
               </div>
               <div className="sm:col-span-2">
-                <label className="mb-1 block text-sm font-medium">آدرس</label>
-                <Input {...register('addressLine')} />
+                <label htmlFor="checkout-addressLine" className="mb-1 block text-sm font-medium">آدرس</label>
+                <Input id="checkout-addressLine" {...register('addressLine')} />
                 {errors.addressLine && (
                   <p className="mt-1 text-sm text-danger">{errors.addressLine.message}</p>
                 )}
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">کد پستی</label>
-                <Input {...register('postalCode')} dir="ltr" />
+                <label htmlFor="checkout-postalCode" className="mb-1 block text-sm font-medium">کد پستی</label>
+                <Input id="checkout-postalCode" {...register('postalCode')} dir="ltr" />
               </div>
             </div>
           </div>
@@ -172,9 +172,12 @@ export function CheckoutPage() {
           </div>
 
           <div className="rounded-2xl border border-border bg-surface p-6">
-            <h2 className="text-lg font-bold text-foreground">توضیحات سفارش</h2>
+            <h2 id="checkout-note-label" className="text-lg font-bold text-foreground">
+              توضیحات سفارش
+            </h2>
             <textarea
               {...register('customerNote')}
+              aria-labelledby="checkout-note-label"
               rows={3}
               className="mt-3 w-full rounded-lg border border-border bg-background p-3 text-sm text-foreground focus:border-primary focus:outline-none"
             />

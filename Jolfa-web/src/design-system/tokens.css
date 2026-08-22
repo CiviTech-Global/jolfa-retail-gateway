@@ -88,7 +88,11 @@
   --warning-foreground: hsl(36 20% 10%);
   --warning-soft: hsl(38 80% 94%);
 
-  --danger: hsl(0 65% 55%);
+  /* Darkened from hsl(0 65% 55%): as red-on-surface text (validation errors,
+     the cart's remove action) the lighter value measured ~3.5:1 and failed
+     WCAG AA's 4.5:1 for body text. This value keeps the same hue and reads as
+     the same red while clearing AA. */
+  --danger: hsl(0 72% 42%);
   --danger-foreground: hsl(0 0% 100%);
   --danger-soft: hsl(0 60% 95%);
 

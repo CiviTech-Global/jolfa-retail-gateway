@@ -53,3 +53,21 @@ These were not in the manual audit — they surfaced only once the tests in `TES
 - **Demo seed not idempotent (`demo.service.ts`).** `seedDemoBanners()` used a bare `create()`, and orders, transactions, and snapshot rows were appended on every run, so re-seeding duplicated all four. Test: `demo.test.ts`.
 - **All server error messages discarded (`Jolfa-web/src/api/errors.ts`).** `ApiError.fromResponse()` read `message`/`code` at the top level, but the server returns `{ success: false, error: { code, message } }`. Every failed request therefore surfaced the generic "Unexpected error occurred." instead of the real Persian message, and validation `details` never reached the forms. Test: `client.test.ts`.
 - **CMS section config crash (see §11 above).** Test: `section-registry.test.tsx`.
+
+---
+
+## Findings from the end-to-end suite (2026-08-22)
+
+Surfaced only once real pages were driven in a real browser.
+
+### Accessibility defects found by `@axe-core/playwright` — all fixed
+
+- **The cart link had no accessible name** (SERIOUS `link-name`, on every storefront page). `Header.tsx` put `aria-label` on `<Button asChild>`, so it never reached the rendered `<a>`; the link is icon-only, which left screen-reader users with an unlabelled link in the global header. Moved onto the `<Link>` itself.
+- **Checkout form fields had no labels** (CRITICAL `label`). All six inputs used bare `<label>` elements with no `htmlFor`, and the order-notes `<textarea>` had no label at all — so none of the seven fields were announced. Added `htmlFor`/`id` pairs, and `aria-labelledby` on the textarea.
+- **Two contrast failures** (SERIOUS `color-contrast`). `--danger` was `hsl(0 65% 55%)`, roughly 3.5:1 as text on a surface, under the 4.5:1 WCAG AA needs for body text — which covers validation errors and the cart's remove action. Darkened to `hsl(0 72% 42%)`, same hue. Separately, `RegisterForm` used a hardcoded `text-gray-400` for its "(optional)" hint instead of a design token; switched to `text-muted-foreground`.
+
+The a11y specs gate on `critical` and `serious` violations across 13 pages, so these cannot silently regress.
+
+### Still open
+
+- **A soft-deleted product is invisible to admins too.** Deleting a product sets `isActive: false` and keeps the row, but `AdminProductsPage` lists products through the PUBLIC `getProducts()` endpoint, which filters `isActive: true`. The product therefore vanishes from the admin UI as well: it cannot be viewed or restored from the app, while the row lingers in the database indefinitely. Closing this needs an admin-scoped product listing that includes inactive rows, plus a restore action. Current behaviour is pinned by `e2e/specs/admin-catalog.spec.ts` → "a deleted product disappears from BOTH the storefront and the admin list".

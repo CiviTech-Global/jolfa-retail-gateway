@@ -183,8 +183,11 @@ export function Header() {
           )}
 
           {showCartSetting && (
-            <Button variant="ghost" size="icon" aria-label="سبد خرید" asChild>
-              <Link to="/cart" className="relative">
+            <Button variant="ghost" size="icon" asChild>
+              {/* aria-label belongs on the anchor itself: with `asChild` the
+                  Button renders as this Link, and the icon-only contents give
+                  the link no discernible text for assistive tech. */}
+              <Link to="/cart" aria-label="سبد خرید" className="relative">
                 <ShoppingCart className="h-5 w-5" />
                 {itemCount > 0 && (
                   <span className="absolute -start-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-bold text-primary-foreground">

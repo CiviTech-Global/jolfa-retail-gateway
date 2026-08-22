@@ -57,7 +57,9 @@ export function RegisterForm({ onSubmit, isLoading, error }: RegisterFormProps) 
 
       <div>
         <label htmlFor="email" className="mb-1 block text-sm font-medium text-foreground">
-          ایمیل <span className="text-gray-400">(اختیاری)</span>
+          {/* `text-gray-400` failed WCAG AA contrast and bypassed the design
+              system; `text-muted-foreground` is the token used elsewhere. */}
+          ایمیل <span className="text-muted-foreground">(اختیاری)</span>
         </label>
         <Input
           id="email"

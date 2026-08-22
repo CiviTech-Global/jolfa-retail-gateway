@@ -2,18 +2,22 @@
 
 ## 0a. Status (updated 2026-08-22)
 
-**Phases 0, 1 and 2 are complete. Phase 4 CI gating is wired. Phase 3 (E2E) is not started.**
+**All five phases are complete: 0 (setup), 1-2 (backend + frontend units), 3 (E2E golden paths), and 4 (E2E admin, a11y, full CI gating).**
 
 | Package | Files | Tests | Runtime | Command |
 |---|---|---|---|---|
 | `Jolfa-Server` | 17 | 279 | ~115s | `npm run test:run` |
 | `Jolfa-web` | 9 | 276 | ~3s | `npm run test:run` |
+| `e2e` | 9 | 97 | ~4min | `npm test` |
+
+**652 tests in total.**
 
 What exists now:
 
 - **Backend** — a real disposable Postgres (`.env.test`, truncated between tests), `app.inject()` integration tests, and `test/helpers/factories.ts`. Every module in `src/modules` has a test file; every role-gated endpoint has an explicit 401/403/200 matrix.
 - **Frontend** — `vitest.config.ts` + `src/test/setup.ts` (jsdom, jest-dom, an in-memory `localStorage` polyfill, and `matchMedia`/`IntersectionObserver`/`ResizeObserver` stubs), fixtures in `src/test/fixtures.ts`, and tests for utils, the API client, both contexts, both route guards, `ProductCard`, `LoginForm`, and the whole CMS section registry.
-- **CI** — `.github/workflows/ci.yml` runs both suites and fails the build on any failure; the backend job spins up a `postgres:16` service container and writes `.env.test` from job env.
+- **E2E** — `e2e/` is a standalone package (its own `node_modules`, so nothing was added to either app package). Playwright boots BOTH real servers via `webServer` on dedicated ports (API 3101, web 5174, deliberately not the dev defaults) against a disposable `jolfa_e2e` database. `e2e/fixtures.ts` provides an `ApiHelper` for API-driven setup plus pre-authenticated `adminPage`/`customerPage` fixtures.
+- **CI** — `.github/workflows/ci.yml` runs all three suites and fails the build on any failure. The backend job spins up a `postgres:16` service container and writes `.env.test` from job env; the `e2e` job runs after both unit jobs and uploads the Playwright HTML report as an artifact on failure.
 
 Deviations from the tooling table in §2, and why:
 
@@ -22,6 +26,21 @@ Deviations from the tooling table in §2, and why:
 - **Vitest versions not unified.** Backend stays on `^3.x` and frontend on `^4.x`. Both work; bumping mid-pass risked breaking a green suite for no functional gain.
 - **Coverage needs one install.** `test:coverage` is wired in both packages but requires `npm i -D @vitest/coverage-v8` (matching each package's vitest major) before it will run.
 - **No Testcontainers.** The backend points at a local/CI Postgres via `.env.test` rather than managing container lifecycle, so the suite runs without Docker.
+- **Playwright drives the system Chrome locally.** `cdn.playwright.dev` is geo-blocked from some networks (it returns `AccessDenied — this service is not available in your location`), so the bundled-browser download fails there. The config falls back to Chrome via `channel` for local runs and uses the bundled Chromium in CI; override with `PLAYWRIGHT_CHANNEL=msedge`.
+- **The e2e specs run serially** (`workers: 1`). They share one API server and one database, and several assert on global state (stock levels, the homepage section set, catalogue totals) that parallel workers would race on. Counts are compared as deltas rather than absolutes for the same reason.
+- **The gateway redirect is intercepted, not followed.** Checkout ends by sending the browser to ZarinPal's domain, which is outside the system under test and unreachable in CI. The specs stub that navigation, read the authority off the URL, and then drive `/payment/callback` exactly as the real gateway would.
+
+### Running the e2e suite locally
+
+```bash
+cd e2e
+npm install
+npm test            # boots both servers and the jolfa_e2e database automatically
+npm run test:ui     # interactive
+npm run report      # last HTML report
+```
+
+It reuses the Postgres credentials from `Jolfa-Server/.env.test` (swapping the database name to `jolfa_e2e`), so that file must exist — see `.env.test.example`. Set `E2E_DATABASE_URL` to override.
 
 ---
 
