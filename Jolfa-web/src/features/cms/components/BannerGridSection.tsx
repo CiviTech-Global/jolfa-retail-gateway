@@ -1,5 +1,6 @@
 import { Link } from 'react-router'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
+import { configArray } from '../config-utils'
 
 interface GridBanner {
   id?: string
@@ -14,7 +15,7 @@ interface BannerGridSectionProps {
 }
 
 export function BannerGridSection({ config }: BannerGridSectionProps) {
-  const banners = (config.banners as GridBanner[] | undefined) ?? []
+  const banners = configArray<GridBanner>(config.banners)
   if (banners.length === 0) return null
 
   const colsClass = banners.length >= 4 ? 'sm:grid-cols-2 lg:grid-cols-4' : banners.length === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'

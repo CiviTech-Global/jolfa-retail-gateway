@@ -1,5 +1,6 @@
 import { Headphones, RefreshCcw, ShieldCheck, Truck, type LucideIcon } from 'lucide-react'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
+import { configArray } from '../config-utils'
 
 interface Badge {
   icon?: string
@@ -24,7 +25,7 @@ function getIcon(name?: string): LucideIcon {
 }
 
 export function TrustBadgesSection({ config }: TrustBadgesSectionProps) {
-  const badges = (config.badges as Badge[] | undefined) ?? []
+  const badges = configArray<Badge>(config.badges)
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-10 md:py-14">

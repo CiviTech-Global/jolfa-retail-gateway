@@ -1,5 +1,6 @@
 import { Link } from 'react-router'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
+import { configArray } from '../config-utils'
 
 interface Brand {
   id?: string
@@ -13,7 +14,7 @@ interface BrandStripSectionProps {
 }
 
 export function BrandStripSection({ config }: BrandStripSectionProps) {
-  const brands = (config.brands as Brand[] | undefined) ?? []
+  const brands = configArray<Brand>(config.brands)
   if (brands.length === 0) return null
 
   return (

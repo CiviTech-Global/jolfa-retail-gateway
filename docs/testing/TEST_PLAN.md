@@ -1,6 +1,31 @@
 # Automated Test Plan — Jolfa Retail Gateway
 
-## 0. Current state (baseline, audited 2026-08-21)
+## 0a. Status (updated 2026-08-22)
+
+**Phases 0, 1 and 2 are complete. Phase 4 CI gating is wired. Phase 3 (E2E) is not started.**
+
+| Package | Files | Tests | Runtime | Command |
+|---|---|---|---|---|
+| `Jolfa-Server` | 17 | 279 | ~115s | `npm run test:run` |
+| `Jolfa-web` | 9 | 276 | ~3s | `npm run test:run` |
+
+What exists now:
+
+- **Backend** — a real disposable Postgres (`.env.test`, truncated between tests), `app.inject()` integration tests, and `test/helpers/factories.ts`. Every module in `src/modules` has a test file; every role-gated endpoint has an explicit 401/403/200 matrix.
+- **Frontend** — `vitest.config.ts` + `src/test/setup.ts` (jsdom, jest-dom, an in-memory `localStorage` polyfill, and `matchMedia`/`IntersectionObserver`/`ResizeObserver` stubs), fixtures in `src/test/fixtures.ts`, and tests for utils, the API client, both contexts, both route guards, `ProductCard`, `LoginForm`, and the whole CMS section registry.
+- **CI** — `.github/workflows/ci.yml` runs both suites and fails the build on any failure; the backend job spins up a `postgres:16` service container and writes `.env.test` from job env.
+
+Deviations from the tooling table in §2, and why:
+
+- **No MSW.** Not installed, and adding it was out of scope for this pass. Frontend tests mock the feature-level `api.ts` modules with `vi.mock` instead. Every network call already funnels through those modules, so the seam is equivalent for component tests; MSW would still be worth adding if request/response-level assertions are wanted later.
+- **No `@testing-library/user-event`.** Not installed; form interaction tests use `fireEvent`, which ships with `@testing-library/react`.
+- **Vitest versions not unified.** Backend stays on `^3.x` and frontend on `^4.x`. Both work; bumping mid-pass risked breaking a green suite for no functional gain.
+- **Coverage needs one install.** `test:coverage` is wired in both packages but requires `npm i -D @vitest/coverage-v8` (matching each package's vitest major) before it will run.
+- **No Testcontainers.** The backend points at a local/CI Postgres via `.env.test` rather than managing container lifecycle, so the suite runs without Docker.
+
+---
+
+## 0. Original baseline (audited 2026-08-21 — superseded by §0a above, kept for context)
 
 - **Zero test files exist** anywhere in first-party code (`Jolfa-Server/src`, `Jolfa-web/src`).
 - Backend has `vitest ^3.0.0` installed and `test`/`test:run` npm scripts defined, but no `vitest.config.ts` and nothing to run.

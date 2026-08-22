@@ -1,5 +1,6 @@
 import { Link } from 'react-router'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
+import { configArray } from '../config-utils'
 
 interface Post {
   id?: string
@@ -14,7 +15,7 @@ interface BlogTeaserSectionProps {
 }
 
 export function BlogTeaserSection({ config }: BlogTeaserSectionProps) {
-  const posts = (config.posts as Post[] | undefined) ?? []
+  const posts = configArray<Post>(config.posts)
   if (posts.length === 0) return null
 
   return (

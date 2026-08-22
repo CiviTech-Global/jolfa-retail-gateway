@@ -4,6 +4,7 @@ import useEmblaCarousel from 'embla-carousel-react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/Button'
+import { configArray } from '../config-utils'
 
 interface Banner {
   id?: string
@@ -28,7 +29,7 @@ const defaultSlides: Banner[] = [
 ]
 
 export function HeroCarouselSection({ config }: HeroCarouselSectionProps) {
-  const banners = (config.banners as Banner[] | undefined) ?? []
+  const banners = configArray<Banner>(config.banners)
   const autoplayMs = (config.autoplayMs as number | undefined) ?? 6000
   const slides = banners.length > 0 ? banners : defaultSlides
 
