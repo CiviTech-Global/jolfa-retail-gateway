@@ -9,8 +9,9 @@ interface AuthContextValue {
   user: User | null
   isLoading: boolean
   isAuthenticated: boolean
-  login: (data: LoginRequest) => Promise<void>
-  register: (data: RegisterRequest) => Promise<void>
+  /** Resolves with the authenticated user so callers can route by role. */
+  login: (data: LoginRequest) => Promise<User>
+  register: (data: RegisterRequest) => Promise<User>
   logout: () => void
   /** Re-reads the current user, e.g. after a profile edit. */
   refreshUser: () => Promise<void>
@@ -52,12 +53,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const response = await loginApi(data)
     localStorage.setItem(TOKEN_KEY, response.tokens.accessToken)
     setUser(response.user)
+    return response.user
   }, [])
 
   const register = useCallback(async (data: RegisterRequest) => {
     const response = await registerApi(data)
     localStorage.setItem(TOKEN_KEY, response.tokens.accessToken)
     setUser(response.user)
+    return response.user
   }, [])
 
   const refreshUser = useCallback(async () => {

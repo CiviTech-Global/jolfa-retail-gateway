@@ -27,6 +27,7 @@ import { Tooltip } from '@/components/ui/Tooltip'
 import { AdminBreadcrumbs } from '@/components/layout/Breadcrumbs'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/features/auth/context'
+import { SiteLogo } from './SiteLogo'
 
 const COLLAPSE_STORAGE_KEY = 'admin.sidebar.collapsed'
 
@@ -174,8 +175,9 @@ export function AdminLayout() {
           )}
         >
           {!collapsed && (
-            <Link to="/admin" className="truncate text-lg font-bold text-foreground">
-              پنل مدیریت
+            <Link to="/admin" aria-label="پنل مدیریت" className="min-w-0">
+              <SiteLogo className="h-8" nameClassName="text-lg" />
+              <span className="block truncate text-xs text-muted-foreground">پنل مدیریت</span>
             </Link>
           )}
           <Tooltip content={collapsed ? 'باز کردن منو' : 'جمع کردن منو'} side="left">

@@ -3,7 +3,9 @@ import { Link } from 'react-router'
 import { Camera, MessageCircle, Phone, ShieldCheck, RefreshCcw, Truck, Headphones } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { usePublicSettingBoolean, usePublicSettingValue } from '@/features/cms/hooks'
+import { usePublicSettingBoolean } from '@/features/cms/hooks'
+import { useBranding } from '@/features/cms/branding'
+import { SiteLogo } from './SiteLogo'
 import { toast } from 'sonner'
 
 const quickLinks = [
@@ -27,7 +29,7 @@ const trustBadges = [
 ]
 
 export function Footer() {
-  const siteName = usePublicSettingValue('site_name') ?? 'بازارچه جلفا'
+  const { name: siteName, description: siteDescription } = useBranding()
   const showFooterLinks = usePublicSettingBoolean('show_footer_links')
   const showTrustBadges = usePublicSettingBoolean('show_trust_badges')
   const showNewsletterFooter = usePublicSettingBoolean('show_newsletter_footer')
@@ -75,9 +77,11 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-4 py-12 md:py-14">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
           <div className="lg:col-span-2">
-            <h3 className="mb-3 text-lg font-bold text-foreground">{siteName}</h3>
+            <div className="mb-3">
+              <SiteLogo className="h-10" nameClassName="text-lg" />
+            </div>
             <p className="max-w-xs text-sm leading-7 text-muted-foreground">
-              پلتفرم فروشگاهی محصولات محلی و سنتی بازارچه جلفا.
+              {siteDescription || 'پلتفرم فروشگاهی محصولات محلی و سنتی بازارچه جلفا.'}
             </p>
             <div className="mt-4 flex items-center gap-3">
               <a

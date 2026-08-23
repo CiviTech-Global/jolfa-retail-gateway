@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 import { prisma } from "./prisma.js";
 import { env } from "../config/env.js";
+import { ensureDefaultSettings } from "../modules/settings/settings.service.js";
 
 interface SeedUser {
   email?: string;
@@ -44,6 +45,13 @@ async function upsertSeedUser(input: SeedUser): Promise<{ created: boolean }> {
 }
 
 export async function seedDefaults(): Promise<void> {
+  // Branding and storefront toggles must exist before an admin can edit them.
+  try {
+    await ensureDefaultSettings();
+  } catch (error) {
+    console.error("[seed] Failed to seed default settings:", error);
+  }
+
   const seeds: SeedUser[] = [];
 
   if (env.ADMIN_SEED_PHONE && env.ADMIN_SEED_PASSWORD) {

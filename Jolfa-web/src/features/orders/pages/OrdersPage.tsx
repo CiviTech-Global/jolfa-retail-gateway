@@ -18,7 +18,7 @@ export function OrdersPage() {
   })
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
+    <div>
       <h1 className="text-2xl font-bold text-foreground">سفارش‌های من</h1>
 
       <div className="mt-6 space-y-4">

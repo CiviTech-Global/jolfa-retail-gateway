@@ -62,7 +62,7 @@ export function ProfileEditPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8">
+    <div className="max-w-2xl">
       <Seo title="ویرایش پروفایل" />
       <ScrollReveal>
         <PageHeader

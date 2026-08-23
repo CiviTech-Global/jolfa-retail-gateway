@@ -1,6 +1,7 @@
 import { prisma } from "../../shared/prisma.js";
 import { AppError } from "../../shared/app-error.js";
 import { env } from "../../config/env.js";
+import { ensureDefaultSettings } from "../settings/settings.service.js";
 
 const DEMO_CATEGORY_PREFIX = "demo-";
 const DEMO_PRODUCT_PREFIX = "demo-";
@@ -342,19 +343,6 @@ const demoHomepageSections = [
   },
 ];
 
-const demoSettings = [
-  { key: "site_name", value: "بازارچه جلفا", group: "general", isPublic: true, description: "Site name shown in header and footer" },
-  { key: "site_description", value: "فروشگاه محصولات محلی و سنتی بازارچه جلفا", group: "general", isPublic: true, description: "Meta description and hero subtitle" },
-  { key: "currency", value: "تومان", group: "general", isPublic: true, description: "Currency label" },
-  { key: "show_search", value: "true", group: "header", isPublic: true, description: "Show search input in header" },
-  { key: "show_cart", value: "true", group: "header", isPublic: true, description: "Show cart icon in header" },
-  { key: "show_user_menu", value: "true", group: "header", isPublic: true, description: "Show user account menu in header" },
-  { key: "show_footer_links", value: "true", group: "footer", isPublic: true, description: "Show footer quick links" },
-  { key: "show_newsletter_footer", value: "true", group: "footer", isPublic: true, description: "Show newsletter signup block in footer" },
-  { key: "show_about", value: "true", group: "static_pages", isPublic: true, description: "Show About page link" },
-  { key: "show_contact", value: "true", group: "static_pages", isPublic: true, description: "Show Contact page link" },
-  { key: "show_rules", value: "true", group: "static_pages", isPublic: true, description: "Show Rules page link" },
-];
 
 async function snapshotEntity(entityType: string, entityId: string) {
   await prisma.demoSnapshot.create({
@@ -547,15 +535,14 @@ async function seedDemoHomepageSections() {
   }
 }
 
+/**
+ * Settings are core configuration, not demo content: they now hold the site
+ * name, title and logo. So demo seeding only fills in keys that are missing
+ * and never snapshots them — clearing demo data must not wipe an admin's
+ * branding along with the sample products.
+ */
 async function seedDemoSettings() {
-  for (const setting of demoSettings) {
-    const upserted = await prisma.setting.upsert({
-      where: { key: setting.key },
-      update: { value: setting.value },
-      create: setting,
-    });
-    await snapshotEntity("SETTING", upserted.id);
-  }
+  await ensureDefaultSettings();
 }
 
 export async function seedDemoData() {
@@ -582,7 +569,6 @@ export async function clearDemoData() {
     const homepageSectionIds = snapshots
       .filter((s) => s.entityType === "HOMEPAGE_SECTION")
       .map((s) => s.entityId);
-    const settingIds = snapshots.filter((s) => s.entityType === "SETTING").map((s) => s.entityId);
     const transactionIds = snapshots
       .filter((s) => s.entityType === "TRANSACTION")
       .map((s) => s.entityId);
@@ -632,11 +618,8 @@ export async function clearDemoData() {
         where: { id: { in: homepageSectionIds } },
       });
 
-      // Remove exactly the settings demo-seeding created; public setting hooks
-      // default to "on" when a key is absent, so the site keeps working sanely.
-      await tx.setting.deleteMany({
-        where: { id: { in: settingIds } },
-      });
+      // Settings are intentionally left alone: they carry the site name, title
+      // and logo, which are not demo content.
 
       await tx.demoSnapshot.deleteMany();
     });

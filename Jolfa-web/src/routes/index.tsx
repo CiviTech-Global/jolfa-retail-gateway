@@ -1,8 +1,10 @@
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router'
 import { RootLayout } from '@/components/layout/RootLayout'
 import { AdminLayout } from '@/components/layout/AdminLayout'
+import { AccountLayout } from '@/components/layout/AccountLayout'
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
 import { AdminRoute } from '@/components/layout/AdminRoute'
+import { GuestRoute } from '@/components/layout/GuestRoute'
 import { StaticPageGuard } from '@/components/layout/StaticPageGuard'
 import { HomePage } from '@/features/catalog/pages/HomePage'
 import { CategoriesPage } from '@/features/catalog/pages/CategoriesPage'
@@ -54,14 +56,26 @@ export const routes: RouteObject[] = [
       { path: 'cart', element: <CartPage /> },
       { path: 'checkout', element: <ProtectedRoute><CheckoutPage /></ProtectedRoute> },
       { path: 'payment/callback', element: <PaymentCallbackPage /> },
-      { path: 'login', element: <LoginPage /> },
-      { path: 'register', element: <RegisterPage /> },
-      { path: 'forgot-password', element: <ForgotPasswordPage /> },
-      { path: 'profile', element: <ProtectedRoute><UserDashboardPage /></ProtectedRoute> },
-      { path: 'profile/orders', element: <ProtectedRoute><OrdersPage /></ProtectedRoute> },
-      { path: 'profile/addresses', element: <ProtectedRoute><UserPlaceholderPage title="آدرس‌های من" /></ProtectedRoute> },
-      { path: 'profile/edit', element: <ProtectedRoute><ProfileEditPage /></ProtectedRoute> },
-      { path: 'profile/security', element: <ProtectedRoute><AccountSecurityPage /></ProtectedRoute> },
+      { path: 'login', element: <GuestRoute><LoginPage /></GuestRoute> },
+      { path: 'register', element: <GuestRoute><RegisterPage /></GuestRoute> },
+      { path: 'forgot-password', element: <GuestRoute><ForgotPasswordPage /></GuestRoute> },
+      {
+        // Customer panel: same shell for every account screen, mirroring /admin.
+        path: 'profile',
+        element: (
+          <ProtectedRoute>
+            <AccountLayout />
+          </ProtectedRoute>
+        ),
+        children: [
+          { index: true, element: <UserDashboardPage /> },
+          { path: 'orders', element: <OrdersPage /> },
+          { path: 'addresses', element: <UserPlaceholderPage title="آدرس‌های من" /> },
+          { path: 'edit', element: <ProfileEditPage /> },
+          { path: 'security', element: <AccountSecurityPage /> },
+          { path: '*', element: <Navigate to="/profile" replace /> },
+        ],
+      },
       { path: 'about', element: <StaticPageGuard settingKey="show_about"><AboutPage /></StaticPageGuard> },
       { path: 'contact', element: <StaticPageGuard settingKey="show_contact"><ContactPage /></StaticPageGuard> },
       { path: 'rules', element: <StaticPageGuard settingKey="show_rules"><RulesPage /></StaticPageGuard> },

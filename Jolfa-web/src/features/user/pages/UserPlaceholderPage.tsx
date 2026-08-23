@@ -7,7 +7,7 @@ interface UserPlaceholderPageProps {
 
 export function UserPlaceholderPage({ title }: UserPlaceholderPageProps) {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-12">
+    <div className="max-w-3xl">
       <Seo title={title} />
       <Card className="py-16 text-center">
         <CardContent>

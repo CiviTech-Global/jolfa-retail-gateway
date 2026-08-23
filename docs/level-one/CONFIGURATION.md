@@ -44,6 +44,29 @@ Reference for configuring external services and environment variables.
 
 ---
 
+## Application Branding
+
+Branding lives in the `settings` table, not in environment variables — an admin
+edits it at **/admin/settings → هویت فروشگاه** without a redeploy. The rows are
+seeded on server boot (`ensureDefaultSettings`), so they exist on a fresh
+install even before demo data is loaded, and clearing demo data leaves them
+alone.
+
+| Key | Group | Description | Status |
+|---|---|---|---|
+| `site_name` | `branding` | Store name in header, footer and admin panel | ✅ |
+| `site_title` | `branding` | Browser tab / SEO title; falls back to `site_name` | ✅ |
+| `site_logo_url` | `branding` | Uploaded logo shown beside the name; empty means name-only | ✅ |
+| `site_favicon_url` | `branding` | Uploaded favicon; overrides the icon in `index.html` | ✅ |
+| `site_description` | `branding` | Meta description and footer blurb | ✅ |
+
+Logo and favicon are uploaded through the normal `/uploads` endpoint and stored
+as absolute URLs. To add another branding key, append it to
+`Jolfa-Server/src/modules/settings/settings.defaults.ts` and give it a label in
+`Jolfa-web/src/features/cms/settings-catalog.ts`.
+
+---
+
 ## Payment Gateways
 
 ### ⚠️ Zarinpal

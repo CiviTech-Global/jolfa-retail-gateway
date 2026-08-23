@@ -75,7 +75,7 @@ export function AccountSecurityPage() {
   const isAdmin = user?.role === 'ADMIN'
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8">
+    <div className="max-w-2xl">
       <Seo title="امنیت حساب" />
       <ScrollReveal>
         <PageHeader

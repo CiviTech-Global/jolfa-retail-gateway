@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { Link } from 'react-router'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { ImageUploader } from '@/components/ui/ImageUploader'
 import { Switch } from '@/components/ui/Switch'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { PageHeader } from '@/components/layout/Breadcrumbs'
@@ -19,32 +20,48 @@ import {
 } from '../settings-catalog'
 import type { SettingDto } from '../types'
 
-function isBooleanSetting(setting: SettingDto): boolean {
-  return (
-    SETTING_META[setting.key]?.kind === 'boolean' ||
-    ['true', 'false'].includes(setting.value.toLowerCase())
-  )
+/** The catalog wins when it declares a kind; otherwise infer from the value. */
+function settingKind(setting: SettingDto): 'text' | 'boolean' | 'image' {
+  const declared = SETTING_META[setting.key]?.kind
+  if (declared) return declared
+  return ['true', 'false'].includes(setting.value.toLowerCase()) ? 'boolean' : 'text'
+}
+
+/** Shared save/invalidate wiring for every control on this page. */
+function useSettingMutation(
+  key: string,
+  handlers: { onSuccess?: () => void; onError?: () => void } = {},
+) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (nextValue: string) => updateAdminSetting(key, { value: nextValue }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'settings'] })
+      void queryClient.invalidateQueries({ queryKey: ['settings', 'public'] })
+      // The Seo component caches public settings under its own key.
+      void queryClient.invalidateQueries({ queryKey: ['public-settings'] })
+      handlers.onSuccess?.()
+    },
+    onError: (error: unknown) => {
+      handlers.onError?.()
+      toast.error(error instanceof Error ? error.message : 'ذخیره تنظیم ناموفق بود')
+    },
+  })
 }
 
 /** A labelled on/off row — the common case for "show this section". */
 function ToggleSetting({ setting }: { setting: SettingDto }) {
-  const queryClient = useQueryClient()
   const meta = describeSetting(setting.key, setting.description)
   const [optimistic, setOptimistic] = useState<boolean | null>(null)
 
-  const mutation = useMutation({
-    mutationFn: (nextValue: string) => updateAdminSetting(setting.key, { value: nextValue }),
+  const mutation = useSettingMutation(setting.key, {
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['admin', 'settings'] })
-      void queryClient.invalidateQueries({ queryKey: ['settings', 'public'] })
       setOptimistic(null)
       toast.success(`${meta.label} به‌روزرسانی شد`)
     },
-    onError: (error: unknown) => {
-      // Snap back: the switch must not claim a state the server rejected.
-      setOptimistic(null)
-      toast.error(error instanceof Error ? error.message : 'ذخیره تنظیم ناموفق بود')
-    },
+    // Snap back: the switch must not claim a state the server rejected.
+    onError: () => setOptimistic(null),
   })
 
   const checked = optimistic ?? setting.value === 'true'
@@ -75,20 +92,11 @@ function ToggleSetting({ setting }: { setting: SettingDto }) {
 
 /** A text setting with explicit save/revert, so typing never auto-commits. */
 function TextSetting({ setting }: { setting: SettingDto }) {
-  const queryClient = useQueryClient()
   const meta = describeSetting(setting.key, setting.description)
   const [value, setValue] = useState(setting.value)
 
-  const mutation = useMutation({
-    mutationFn: (nextValue: string) => updateAdminSetting(setting.key, { value: nextValue }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['admin', 'settings'] })
-      void queryClient.invalidateQueries({ queryKey: ['settings', 'public'] })
-      toast.success(`${meta.label} ذخیره شد`)
-    },
-    onError: (error: unknown) => {
-      toast.error(error instanceof Error ? error.message : 'ذخیره تنظیم ناموفق بود')
-    },
+  const mutation = useSettingMutation(setting.key, {
+    onSuccess: () => toast.success(`${meta.label} ذخیره شد`),
   })
 
   const hasChanged = value !== setting.value
@@ -129,6 +137,57 @@ function TextSetting({ setting }: { setting: SettingDto }) {
           )}
         </div>
       </label>
+    </div>
+  )
+}
+
+/**
+ * An image setting (logo, favicon). Uploading commits immediately — an image
+ * that is on the server but not referenced by the setting is just an orphan
+ * file, so there is nothing useful for an admin to "save" afterwards.
+ */
+function ImageSetting({ setting }: { setting: SettingDto }) {
+  const meta = describeSetting(setting.key, setting.description)
+
+  const mutation = useSettingMutation(setting.key, {
+    onSuccess: () => toast.success(`${meta.label} ذخیره شد`),
+  })
+
+  const url = setting.value.trim()
+
+  return (
+    <div className="py-4">
+      <p className="font-medium text-foreground">{meta.label}</p>
+      <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">{meta.help}</p>
+
+      <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-start">
+        <div className="max-w-sm flex-1">
+          <ImageUploader
+            value={url ? [{ url, isPrimary: true }] : []}
+            onChange={(images) => mutation.mutate(images[0]?.url ?? '')}
+            maxFiles={1}
+            disabled={mutation.isPending}
+            altTextFallback={meta.label}
+          />
+        </div>
+
+        {url && (
+          // A live preview on the real surface: a logo that looks fine in the
+          // uploader tile can still be unreadable in the header.
+          <div className="w-full max-w-xs shrink-0 rounded-xl border border-border bg-background p-4">
+            <p className="mb-2 text-xs text-muted-foreground">پیش‌نمایش</p>
+            <img
+              src={url}
+              alt={meta.label}
+              className={
+                setting.key === 'site_favicon_url'
+                  ? 'h-8 w-8 rounded object-contain'
+                  : 'h-10 max-w-full object-contain'
+              }
+            />
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -200,13 +259,16 @@ export function AdminSettingsPage() {
                   <p className="mt-1 text-sm text-muted-foreground">{meta.description}</p>
                 </CardHeader>
                 <CardContent className="divide-y divide-border pt-0">
-                  {groupSettings.map((setting) =>
-                    isBooleanSetting(setting) ? (
-                      <ToggleSetting key={setting.id} setting={setting} />
-                    ) : (
-                      <TextSetting key={setting.id} setting={setting} />
-                    ),
-                  )}
+                  {groupSettings.map((setting) => {
+                    switch (settingKind(setting)) {
+                      case 'boolean':
+                        return <ToggleSetting key={setting.id} setting={setting} />
+                      case 'image':
+                        return <ImageSetting key={setting.id} setting={setting} />
+                      default:
+                        return <TextSetting key={setting.id} setting={setting} />
+                    }
+                  })}
                 </CardContent>
               </Card>
             )

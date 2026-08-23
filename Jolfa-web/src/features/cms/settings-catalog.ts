@@ -4,6 +4,7 @@ import {
   PanelBottom,
   FileText,
   Settings2,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -17,14 +18,29 @@ export interface SettingMeta {
   label: string
   help: string
   /** Rendered as a single-line text box unless stated otherwise. */
-  kind?: 'text' | 'boolean'
+  kind?: 'text' | 'boolean' | 'image'
 }
 
 export const SETTING_META: Record<string, SettingMeta> = {
   site_name: {
     label: 'نام فروشگاه',
-    help: 'در سربرگ، پاورقی و عنوان مرورگر نمایش داده می‌شود.',
+    help: 'در سربرگ، پاورقی و پنل مدیریت نمایش داده می‌شود.',
     kind: 'text',
+  },
+  site_title: {
+    label: 'عنوان مرورگر',
+    help: 'عنوانی که در تب مرورگر و نتایج جستجو دیده می‌شود. اگر خالی باشد، نام فروشگاه استفاده می‌شود.',
+    kind: 'text',
+  },
+  site_logo_url: {
+    label: 'لوگوی فروشگاه',
+    help: 'در سربرگ، پاورقی و پنل مدیریت کنار نام فروشگاه نمایش داده می‌شود. تصویر افقی با پس‌زمینه شفاف (PNG یا WebP) بهترین نتیجه را می‌دهد.',
+    kind: 'image',
+  },
+  site_favicon_url: {
+    label: 'نماد (Favicon) سایت',
+    help: 'آیکن کوچکی که در تب مرورگر نمایش داده می‌شود. تصویر مربعی حداقل ۶۴×۶۴ پیکسل توصیه می‌شود.',
+    kind: 'image',
   },
   site_description: {
     label: 'معرفی کوتاه فروشگاه',
@@ -85,9 +101,14 @@ export interface GroupMeta {
 }
 
 export const GROUP_META: Record<string, GroupMeta> = {
+  branding: {
+    label: 'هویت فروشگاه',
+    description: 'نام، عنوان و لوگوی فروشگاه که در سراسر سایت و پنل مدیریت دیده می‌شود.',
+    icon: Sparkles,
+  },
   general: {
     label: 'اطلاعات فروشگاه',
-    description: 'نام، معرفی و واحد پول که در سراسر سایت استفاده می‌شود.',
+    description: 'تنظیمات عمومی مانند واحد پول که در سراسر سایت استفاده می‌شود.',
     icon: Store,
   },
   header: {
@@ -114,7 +135,7 @@ export const FALLBACK_GROUP: GroupMeta = {
 }
 
 /** Order groups deliberately rather than alphabetically by raw key. */
-export const GROUP_ORDER = ['general', 'header', 'footer', 'static_pages']
+export const GROUP_ORDER = ['branding', 'general', 'header', 'footer', 'static_pages']
 
 export function describeSetting(key: string, fallbackDescription?: string | null): SettingMeta {
   return (
