@@ -7,6 +7,37 @@ import type {
   OrderStatusUpdateBody,
 } from "./order.types.js";
 
+/**
+ * Resolves the shipping details for a new order, from either a saved book
+ * entry or a one-off address typed at checkout. Returns plain fields rather
+ * than an id: the order always gets its own immutable snapshot row, so later
+ * edits to the book never rewrite the address of a past order.
+ */
+async function resolveShippingDetails(userId: string, data: OrderCreateBody) {
+  if (data.shippingAddress) {
+    return data.shippingAddress;
+  }
+
+  const saved = await prisma.address.findFirst({
+    where: { id: data.shippingAddressId, userId, isSaved: true },
+  });
+
+  if (!saved) {
+    throw new BadRequestError("آدرس انتخاب‌شده یافت نشد");
+  }
+
+  return {
+    title: saved.title ?? undefined,
+    recipientName: saved.recipientName,
+    phone: saved.phone,
+    province: saved.province,
+    city: saved.city,
+    district: saved.district ?? undefined,
+    postalCode: saved.postalCode ?? undefined,
+    addressLine: saved.addressLine,
+  };
+}
+
 export async function createOrder(userId: string, data: OrderCreateBody) {
   const productIds = data.items.map((item) => item.productId);
 
@@ -37,15 +68,32 @@ export async function createOrder(userId: string, data: OrderCreateBody) {
   const finalAmount = totalAmount + shippingCost;
 
   const orderNumber = generateOrderNumber();
+  const shippingDetails = await resolveShippingDetails(userId, data);
 
   const order = await prisma.$transaction(async (tx) => {
     const address = await tx.address.create({
       data: {
         userId,
-        ...data.shippingAddress,
+        ...shippingDetails,
         isDefault: false,
+        // The order's own copy, never listed in the address book.
+        isSaved: false,
       },
     });
+
+    // "Save this address for next time" — a separate book entry, so editing it
+    // later leaves this order's snapshot untouched.
+    if (data.shippingAddress && data.saveAddress) {
+      const bookCount = await tx.address.count({ where: { userId, isSaved: true } });
+      await tx.address.create({
+        data: {
+          userId,
+          ...data.shippingAddress,
+          isSaved: true,
+          isDefault: bookCount === 0,
+        },
+      });
+    }
 
     const created = await tx.order.create({
       data: {

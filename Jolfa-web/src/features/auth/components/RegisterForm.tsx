@@ -1,7 +1,7 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Input } from '@/components/ui/Input'
+import { Input, PasswordInput } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { FormError, FormField } from '@/components/ui/FormField'
 import { iranMobileSchema, optionalEmailSchema, optionalText, passwordSchema } from '@/lib/validation'
@@ -102,9 +102,8 @@ export function RegisterForm({ onSubmit, isLoading, error }: RegisterFormProps) 
         hint="حداقل ۶ کاراکتر"
       >
         {(field) => (
-          <Input
+          <PasswordInput
             {...field}
-            type="password"
             dir="ltr"
             placeholder="••••••"
             autoComplete="new-password"
@@ -115,9 +114,8 @@ export function RegisterForm({ onSubmit, isLoading, error }: RegisterFormProps) 
 
       <FormField label="تکرار رمز عبور" required error={errors.confirmPassword?.message}>
         {(field) => (
-          <Input
+          <PasswordInput
             {...field}
-            type="password"
             dir="ltr"
             placeholder="••••••"
             autoComplete="new-password"

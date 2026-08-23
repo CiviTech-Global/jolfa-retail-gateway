@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { KeyRound, ShieldCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
+import { PasswordInput } from '@/components/ui/Input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { FormError, FormField } from '@/components/ui/FormField'
 import { PageHeader } from '@/components/layout/Breadcrumbs'
@@ -99,9 +99,8 @@ export function AccountSecurityPage() {
             <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
               <FormField label="رمز عبور فعلی" required error={errors.currentPassword?.message}>
                 {(field) => (
-                  <Input
+                  <PasswordInput
                     {...field}
-                    type="password"
                     dir="ltr"
                     autoComplete="current-password"
                     {...register('currentPassword')}
@@ -116,9 +115,8 @@ export function AccountSecurityPage() {
                 hint="حداقل ۶ کاراکتر"
               >
                 {(field) => (
-                  <Input
+                  <PasswordInput
                     {...field}
-                    type="password"
                     dir="ltr"
                     autoComplete="new-password"
                     {...register('newPassword')}
@@ -128,9 +126,8 @@ export function AccountSecurityPage() {
 
               <FormField label="تکرار رمز عبور جدید" required error={errors.confirmPassword?.message}>
                 {(field) => (
-                  <Input
+                  <PasswordInput
                     {...field}
-                    type="password"
                     dir="ltr"
                     autoComplete="new-password"
                     {...register('confirmPassword')}

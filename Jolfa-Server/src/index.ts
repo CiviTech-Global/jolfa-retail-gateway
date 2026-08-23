@@ -17,6 +17,7 @@ import homepageSectionRoutes from "./modules/homepage-sections/homepage-section.
 import demoRoutes from "./modules/demo/demo.routes.js";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 import bannerRoutes from "./modules/banners/banner.routes.js";
+import addressRoutes from "./modules/addresses/address.routes.js";
 import uploadRoutes from "./modules/uploads/upload.routes.js";
 import { getUploadDir } from "./modules/uploads/upload.service.js";
 import path from "node:path";
@@ -163,6 +164,7 @@ export async function buildApp(app: FastifyInstance): Promise<FastifyInstance> {
   await app.register(demoRoutes, { prefix: `${env.API_PREFIX}/demo` });
   await app.register(dashboardRoutes, { prefix: `${env.API_PREFIX}/dashboard` });
   await app.register(bannerRoutes, { prefix: `${env.API_PREFIX}/banners` });
+  await app.register(addressRoutes, { prefix: `${env.API_PREFIX}/addresses` });
   await app.register(uploadRoutes, { prefix: `${env.API_PREFIX}/uploads` });
 
   return app;

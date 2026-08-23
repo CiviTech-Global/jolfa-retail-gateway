@@ -150,6 +150,12 @@ model Address {
   postalCode    String?  @map("postal_code") @db.VarChar(20)
   addressLine   String   @map("address_line") @db.Text
   isDefault     Boolean  @default(false) @map("is_default")
+  /**
+   * True for entries in the user's address book, false for the per-order
+   * snapshot written at checkout. An order must keep the address as it was
+   * when placed, so editing a book entry never rewrites past orders.
+   */
+  isSaved       Boolean  @default(false) @map("is_saved")
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -159,6 +165,7 @@ model Address {
   @@index([userId])
   @@index([isDefault])
   @@index([userId, isDefault])
+  @@index([userId, isSaved])
   @@map("addresses")
 }
 

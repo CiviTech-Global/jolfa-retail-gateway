@@ -1,7 +1,7 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Input } from '@/components/ui/Input'
+import { Input, PasswordInput } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { FormError, FormField } from '@/components/ui/FormField'
 import { currentPasswordSchema, iranMobileSchema } from '@/lib/validation'
@@ -52,9 +52,8 @@ export function LoginForm({ onSubmit, isLoading, error }: LoginFormProps) {
 
       <FormField label="رمز عبور" required error={errors.password?.message}>
         {(field) => (
-          <Input
+          <PasswordInput
             {...field}
-            type="password"
             dir="ltr"
             placeholder="••••••"
             autoComplete="current-password"

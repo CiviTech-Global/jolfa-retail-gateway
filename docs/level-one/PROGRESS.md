@@ -68,7 +68,7 @@ The Level One MVP is **functionally complete** for core e-commerce flows. Both b
 - [ ] **Cart API:** `carts`/`cart_items` tables exist but no endpoints. Cart is frontend-only right now.
 - [ ] **Real payment gateway:** Zarinpal/Zibal verification is mocked; no actual gateway API call.
 - [ ] **SMS service:** `sms_notifications` table exists but no sending logic.
-- [ ] **User profile/address book:** No update profile, change password, password reset, or address CRUD.
+- [x] **User profile/address book:** Profile update, change password, password reset, and address-book CRUD (`/api/v1/addresses`) are implemented.
 - [ ] **Email/phone verification:** Columns exist but no flow.
 - [ ] **Coupons/discounts:** `discountAmount` exists on orders but no coupon system.
 - [ ] **Shipping rules:** Hardcoded costs only.
@@ -81,8 +81,7 @@ The Level One MVP is **functionally complete** for core e-commerce flows. Both b
 
 ### Frontend
 
-- [ ] **Profile placeholders:** `/profile/addresses` and `/profile/edit` are placeholders.
-- [ ] **Customer order detail:** Orders list only; no per-order detail for customers.
+- [x] **Customer panel:** `/profile` is a full sidebar panel — dashboard, orders list (filter + pagination), per-order detail with status timeline, address book, profile edit, password change.
 - [ ] **Forgot/reset password** not implemented.
 - [ ] **Coupon input** at checkout not implemented.
 - [ ] **Real-time notifications:** Admin bell icon is decorative.
@@ -99,8 +98,8 @@ The Level One MVP is **functionally complete** for core e-commerce flows. Both b
 
 1. **Automated tests** — add backend unit/integration tests and frontend component/E2E smoke tests.
 2. **Real payment gateway integration** — replace mocked verify with real Zarinpal/Zibal sandbox call.
-3. **User profile & address book** — complete `/profile/edit` and `/profile/addresses`.
-4. **Cart API** — persist cart server-side for authenticated users.
+3. **Cart API** — persist cart server-side for authenticated users.
+4. **Coupons/discounts** — a coupon system behind the existing `discountAmount` field.
 5. **Image upload wiring** — allow uploading images directly in admin category/banner/product forms.
 6. **SMS notifications** — wire Kavenegar/SMS.ir for order status updates.
 7. **Bundle splitting** — lazy-load admin routes and heavy chart libraries.

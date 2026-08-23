@@ -16,6 +16,7 @@ import { CartPage } from '@/features/cart/pages/CartPage'
 import { CheckoutPage } from '@/features/checkout/pages/CheckoutPage'
 import { PaymentCallbackPage } from '@/features/orders/pages/PaymentCallbackPage'
 import { OrdersPage } from '@/features/orders/pages/OrdersPage'
+import { OrderDetailPage } from '@/features/orders/pages/OrderDetailPage'
 import { LoginPage } from '@/features/auth/pages/LoginPage'
 import { RegisterPage } from '@/features/auth/pages/RegisterPage'
 import { ForgotPasswordPage } from '@/features/auth/pages/ForgotPasswordPage'
@@ -40,7 +41,7 @@ import { AdminSettingsPage } from '@/features/cms/pages/AdminSettingsPage'
 import { AdminHomepageSectionsPage } from '@/features/cms/pages/AdminHomepageSectionsPage'
 import { AdminDemoDataPage } from '@/features/cms/pages/AdminDemoDataPage'
 import { UserDashboardPage } from '@/features/user/pages/UserDashboardPage'
-import { UserPlaceholderPage } from '@/features/user/pages/UserPlaceholderPage'
+import { AddressesPage } from '@/features/addresses/pages/AddressesPage'
 
 export const routes: RouteObject[] = [
   {
@@ -70,7 +71,8 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: <UserDashboardPage /> },
           { path: 'orders', element: <OrdersPage /> },
-          { path: 'addresses', element: <UserPlaceholderPage title="آدرس‌های من" /> },
+          { path: 'orders/:id', element: <OrderDetailPage /> },
+          { path: 'addresses', element: <AddressesPage /> },
           { path: 'edit', element: <ProfileEditPage /> },
           { path: 'security', element: <AccountSecurityPage /> },
           { path: '*', element: <Navigate to="/profile" replace /> },

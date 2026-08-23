@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { ArrowRight, Info } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
+import { Input, PasswordInput } from '@/components/ui/Input'
 import { FormError, FormField } from '@/components/ui/FormField'
 import { Seo } from '@/components/seo/Seo'
 import { iranMobileSchema, passwordSchema, toEnglishDigits } from '@/lib/validation'
@@ -197,15 +197,14 @@ function CodeStep({
 
       <FormField label="رمز عبور جدید" required error={errors.newPassword?.message} hint="حداقل ۶ کاراکتر">
         {(field) => (
-          <Input {...field} type="password" dir="ltr" autoComplete="new-password" {...register('newPassword')} />
+          <PasswordInput {...field} dir="ltr" autoComplete="new-password" {...register('newPassword')} />
         )}
       </FormField>
 
       <FormField label="تکرار رمز عبور جدید" required error={errors.confirmPassword?.message}>
         {(field) => (
-          <Input
+          <PasswordInput
             {...field}
-            type="password"
             dir="ltr"
             autoComplete="new-password"
             {...register('confirmPassword')}
