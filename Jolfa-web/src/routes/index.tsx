@@ -16,6 +16,9 @@ import { PaymentCallbackPage } from '@/features/orders/pages/PaymentCallbackPage
 import { OrdersPage } from '@/features/orders/pages/OrdersPage'
 import { LoginPage } from '@/features/auth/pages/LoginPage'
 import { RegisterPage } from '@/features/auth/pages/RegisterPage'
+import { ForgotPasswordPage } from '@/features/auth/pages/ForgotPasswordPage'
+import { AccountSecurityPage } from '@/features/auth/pages/AccountSecurityPage'
+import { ProfileEditPage } from '@/features/auth/pages/ProfileEditPage'
 import { AboutPage } from '@/features/static/pages/AboutPage'
 import { ContactPage } from '@/features/static/pages/ContactPage'
 import { RulesPage } from '@/features/static/pages/RulesPage'
@@ -53,10 +56,12 @@ export const routes: RouteObject[] = [
       { path: 'payment/callback', element: <PaymentCallbackPage /> },
       { path: 'login', element: <LoginPage /> },
       { path: 'register', element: <RegisterPage /> },
+      { path: 'forgot-password', element: <ForgotPasswordPage /> },
       { path: 'profile', element: <ProtectedRoute><UserDashboardPage /></ProtectedRoute> },
       { path: 'profile/orders', element: <ProtectedRoute><OrdersPage /></ProtectedRoute> },
       { path: 'profile/addresses', element: <ProtectedRoute><UserPlaceholderPage title="آدرس‌های من" /></ProtectedRoute> },
-      { path: 'profile/edit', element: <ProtectedRoute><UserPlaceholderPage title="ویرایش پروفایل" /></ProtectedRoute> },
+      { path: 'profile/edit', element: <ProtectedRoute><ProfileEditPage /></ProtectedRoute> },
+      { path: 'profile/security', element: <ProtectedRoute><AccountSecurityPage /></ProtectedRoute> },
       { path: 'about', element: <StaticPageGuard settingKey="show_about"><AboutPage /></StaticPageGuard> },
       { path: 'contact', element: <StaticPageGuard settingKey="show_contact"><ContactPage /></StaticPageGuard> },
       { path: 'rules', element: <StaticPageGuard settingKey="show_rules"><RulesPage /></StaticPageGuard> },

@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Search, UserCog, Power } from 'lucide-react'
+import { Search, UserCog, Power, KeyRound } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
+import { PageHeader } from '@/components/layout/Breadcrumbs'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
-import { getAdminUsers, updateUserRole, updateUserStatus } from '@/features/admin/api'
+import { ResetPasswordDialog } from '../components/ResetPasswordDialog'
+import { getAdminUsers, resetUserPassword, updateUserRole, updateUserStatus } from '@/features/admin/api'
 import type { AdminUserDto } from '@/features/admin/types'
 
 export function AdminUsersPage() {
@@ -16,6 +18,7 @@ export function AdminUsersPage() {
   const { confirm, Dialog } = useConfirmDialog()
   const [page, setPage] = useState(1)
   const [q, setQ] = useState('')
+  const [resetTarget, setResetTarget] = useState<AdminUserDto | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'users', page, q],
@@ -66,10 +69,10 @@ export function AdminUsersPage() {
 
   return (
     <ScrollReveal className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground md:text-3xl">مدیریت کاربران</h1>
-        <p className="mt-2 text-muted-foreground">نقش و وضعیت کاربران را مدیریت کنید.</p>
-      </div>
+      <PageHeader
+        title="مدیریت کاربران"
+        description="نقش، وضعیت و رمز عبور کاربران را مدیریت کنید."
+      />
 
       <div className="relative">
         <Search className="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -139,6 +142,14 @@ export function AdminUsersPage() {
                             <Power className="h-4 w-4" />
                             {user.isActive ? 'غیرفعال کردن' : 'فعال کردن'}
                           </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setResetTarget(user)}
+                          >
+                            <KeyRound className="h-4 w-4" />
+                            رمز عبور
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -159,6 +170,12 @@ export function AdminUsersPage() {
       </Card>
 
       <Dialog />
+
+      <ResetPasswordDialog
+        user={resetTarget}
+        onClose={() => setResetTarget(null)}
+        onSubmit={(id, password) => resetUserPassword(id, password)}
+      />
     </ScrollReveal>
   )
 }

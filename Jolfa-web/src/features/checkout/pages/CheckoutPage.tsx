@@ -4,24 +4,39 @@ import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
+import { Input, Textarea } from '@/components/ui/Input'
+import { FormError, FormField } from '@/components/ui/FormField'
 import { formatPrice } from '@/lib/utils'
+import {
+  iranMobileSchema,
+  optionalPostalCodeSchema,
+  optionalText,
+  requiredText,
+} from '@/lib/validation'
 import { useCart } from '@/features/cart/context'
 import { createOrder, requestPayment } from '@/features/orders/api'
 import { toast } from 'sonner'
 
 const checkoutSchema = z.object({
-  recipientName: z.string().min(1, 'نام گیرنده الزامی است'),
-  phone: z.string().min(10, 'شماره موبایل معتبر نیست'),
-  province: z.string().min(1, 'استان الزامی است'),
-  city: z.string().min(1, 'شهر الزامی است'),
-  postalCode: z.string().optional(),
-  addressLine: z.string().min(1, 'آدرس الزامی است'),
-  shippingMethod: z.enum(['POST', 'COURIER']),
-  customerNote: z.string().optional(),
+  recipientName: requiredText('نام گیرنده', 200),
+  phone: iranMobileSchema,
+  province: requiredText('استان', 100),
+  city: requiredText('شهر', 100),
+  // Optional, but must be a real 10-digit code when provided — a malformed one
+  // silently breaks delivery.
+  postalCode: optionalPostalCodeSchema,
+  addressLine: requiredText('آدرس', 500).refine(
+    (value) => value.trim().length >= 10,
+    'آدرس را کامل‌تر وارد کنید (حداقل ۱۰ کاراکتر)',
+  ),
+  shippingMethod: z.enum(['POST', 'COURIER'], {
+    errorMap: () => ({ message: 'روش ارسال را انتخاب کنید' }),
+  }),
+  customerNote: optionalText('توضیحات سفارش', 1000),
 })
 
-type CheckoutFormData = z.infer<typeof checkoutSchema>
+type CheckoutFormValues = z.input<typeof checkoutSchema>
+type CheckoutFormData = z.output<typeof checkoutSchema>
 
 export function CheckoutPage() {
   const { items, total, clearCart } = useCart()
@@ -33,16 +48,20 @@ export function CheckoutPage() {
     control,
     handleSubmit,
     formState: { errors },
-  } = useForm<CheckoutFormData>({
+  } = useForm<CheckoutFormValues, unknown, CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
     defaultValues: {
       recipientName: '',
       phone: '',
       province: '',
       city: '',
+      postalCode: '',
       addressLine: '',
       shippingMethod: 'POST',
+      customerNote: '',
     },
+    mode: 'onBlur',
+    reValidateMode: 'onChange',
   })
 
   const shippingMethod = useWatch({ control, name: 'shippingMethod' })
@@ -99,45 +118,64 @@ export function CheckoutPage() {
       <h1 className="text-2xl font-bold text-foreground">تسویه حساب</h1>
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 lg:col-span-2">
+        <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4 lg:col-span-2">
           <div className="rounded-2xl border border-border bg-surface p-6">
             <h2 className="text-lg font-bold text-foreground">اطلاعات گیرنده</h2>
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-sm font-medium">نام و نام خانوادگی گیرنده</label>
-                <Input {...register('recipientName')} />
-                {errors.recipientName && (
-                  <p className="mt-1 text-sm text-danger">{errors.recipientName.message}</p>
+              <FormField label="نام و نام خانوادگی گیرنده" required error={errors.recipientName?.message}>
+                {(field) => <Input {...field} autoComplete="name" {...register('recipientName')} />}
+              </FormField>
+
+              <FormField label="شماره موبایل" required error={errors.phone?.message}>
+                {(field) => (
+                  <Input
+                    {...field}
+                    dir="ltr"
+                    type="tel"
+                    inputMode="tel"
+                    placeholder="09123456789"
+                    autoComplete="tel"
+                    {...register('phone')}
+                  />
                 )}
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">شماره موبایل</label>
-                <Input {...register('phone')} dir="ltr" />
-                {errors.phone && <p className="mt-1 text-sm text-danger">{errors.phone.message}</p>}
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">استان</label>
-                <Input {...register('province')} />
-                {errors.province && (
-                  <p className="mt-1 text-sm text-danger">{errors.province.message}</p>
+              </FormField>
+
+              <FormField label="استان" required error={errors.province?.message}>
+                {(field) => <Input {...field} autoComplete="address-level1" {...register('province')} />}
+              </FormField>
+
+              <FormField label="شهر" required error={errors.city?.message}>
+                {(field) => <Input {...field} autoComplete="address-level2" {...register('city')} />}
+              </FormField>
+
+              <FormField
+                label="آدرس"
+                required
+                error={errors.addressLine?.message}
+                className="sm:col-span-2"
+              >
+                {(field) => (
+                  <Textarea
+                    {...field}
+                    rows={2}
+                    autoComplete="street-address"
+                    placeholder="خیابان، کوچه، پلاک، واحد"
+                    {...register('addressLine')}
+                  />
                 )}
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">شهر</label>
-                <Input {...register('city')} />
-                {errors.city && <p className="mt-1 text-sm text-danger">{errors.city.message}</p>}
-              </div>
-              <div className="sm:col-span-2">
-                <label className="mb-1 block text-sm font-medium">آدرس</label>
-                <Input {...register('addressLine')} />
-                {errors.addressLine && (
-                  <p className="mt-1 text-sm text-danger">{errors.addressLine.message}</p>
+              </FormField>
+
+              <FormField label="کد پستی" error={errors.postalCode?.message} hint="۱۰ رقم">
+                {(field) => (
+                  <Input
+                    {...field}
+                    dir="ltr"
+                    inputMode="numeric"
+                    autoComplete="postal-code"
+                    {...register('postalCode')}
+                  />
                 )}
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">کد پستی</label>
-                <Input {...register('postalCode')} dir="ltr" />
-              </div>
+              </FormField>
             </div>
           </div>
 
@@ -173,14 +211,22 @@ export function CheckoutPage() {
 
           <div className="rounded-2xl border border-border bg-surface p-6">
             <h2 className="text-lg font-bold text-foreground">توضیحات سفارش</h2>
-            <textarea
-              {...register('customerNote')}
-              rows={3}
-              className="mt-3 w-full rounded-lg border border-border bg-background p-3 text-sm text-foreground focus:border-primary focus:outline-none"
-            />
+            <div className="mt-3">
+              <Textarea
+                {...register('customerNote')}
+                rows={3}
+                aria-invalid={Boolean(errors.customerNote)}
+                placeholder="اختیاری — مثلاً بهترین زمان تحویل"
+              />
+              {errors.customerNote && (
+                <p role="alert" className="mt-1 text-sm text-danger">
+                  {errors.customerNote.message}
+                </p>
+              )}
+            </div>
           </div>
 
-          {error && <p className="rounded-md bg-danger-soft p-3 text-sm text-danger">{error}</p>}
+          <FormError message={error} />
 
           <Button type="submit" loading={isSubmitting} className="w-full">
             پرداخت {formatPrice(finalTotal)}

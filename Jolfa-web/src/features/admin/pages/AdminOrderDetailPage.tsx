@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
+import { PageHeader } from '@/components/layout/Breadcrumbs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import { cancelOrder, getAdminOrder, updateOrderStatus, updateOrderTracking } from '@/features/admin/api'
@@ -87,15 +88,21 @@ export function AdminOrderDetailPage() {
 
   return (
     <ScrollReveal className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground md:text-3xl">سفارش {order.orderNumber}</h1>
-          <p className="mt-2 text-muted-foreground">جزئیات، وضعیت و تاریخچه سفارش.</p>
-        </div>
-        <Badge variant={statusVariants[order.status] ?? 'default'} className="w-fit">
-          {statusLabels[order.status] ?? order.status}
-        </Badge>
-      </div>
+      <PageHeader
+        title={`سفارش ${order.orderNumber}`}
+        description="جزئیات، وضعیت و تاریخچه سفارش."
+        backTo="/admin/orders"
+        breadcrumbs={[
+          { label: 'داشبورد', to: '/admin' },
+          { label: 'سفارش‌ها', to: '/admin/orders' },
+          { label: order.orderNumber },
+        ]}
+        actions={
+          <Badge variant={statusVariants[order.status] ?? 'default'} className="w-fit">
+            {statusLabels[order.status] ?? order.status}
+          </Badge>
+        }
+      />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>

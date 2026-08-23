@@ -68,9 +68,9 @@ export interface BannerDto {
 
 export interface BannerCreateBody {
   title: string
-  subtitle?: string
+  subtitle?: string | null
   imageUrl: string
-  link?: string
+  link?: string | null
   position?: string
   displayOrder?: number
   isActive?: boolean
@@ -78,9 +78,9 @@ export interface BannerCreateBody {
 
 export interface BannerUpdateBody {
   title?: string
-  subtitle?: string
+  subtitle?: string | null
   imageUrl?: string
-  link?: string
+  link?: string | null
   position?: string
   displayOrder?: number
   isActive?: boolean

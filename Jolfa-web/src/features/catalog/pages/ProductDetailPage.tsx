@@ -7,6 +7,7 @@ import { ProductGrid } from '../components/ProductGrid'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
+import { BackButton, Breadcrumbs } from '@/components/layout/Breadcrumbs'
 import { formatPrice, FALLBACK_IMAGE_URL } from '@/lib/utils'
 import { useCart } from '@/features/cart/context'
 import { toast } from 'sonner'
@@ -66,6 +67,17 @@ export function ProductDetailPage() {
 
   return (
     <div className="mx-auto max-w-7xl flex-1 px-4 py-8">
+      <Breadcrumbs
+        className="mb-3"
+        items={[
+          { label: 'خانه', to: '/' },
+          { label: 'محصولات', to: '/products' },
+          { label: product.category.name, to: `/categories/${product.category.slug}` },
+          { label: product.title },
+        ]}
+      />
+      <BackButton to="/products" label="بازگشت به محصولات" className="-ms-2 mb-4" />
+
       <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
         {/* Image gallery */}
         <ScrollReveal direction="up" className="space-y-4">

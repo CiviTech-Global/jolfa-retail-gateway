@@ -1,5 +1,5 @@
 import { Button } from './Button'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './Dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './Dialog'
 import { type ReactNode } from 'react'
 
 interface ConfirmDialogProps {
@@ -29,12 +29,12 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent size="sm">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
-        <div className="mt-4 flex justify-end gap-2">
+        <DialogFooter>
           <Button
             variant="outline"
             onClick={() => {
@@ -54,7 +54,7 @@ export function ConfirmDialog({
           >
             {confirmText}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

@@ -20,6 +20,7 @@ import bannerRoutes from "./modules/banners/banner.routes.js";
 import uploadRoutes from "./modules/uploads/upload.routes.js";
 import { getUploadDir } from "./modules/uploads/upload.service.js";
 import path from "node:path";
+import { mkdir } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import auditRoutes from "./modules/audit/audit.routes.js";
 import userRoutes from "./modules/users/user.routes.js";
@@ -68,6 +69,11 @@ export async function buildApp(app: FastifyInstance): Promise<FastifyInstance> {
       fileSize: env.MAX_FILE_SIZE,
     },
   });
+
+  // @fastify/static resolves its root at registration time and warns (then
+  // serves nothing) when the directory is missing, which is the normal state
+  // on a fresh deploy before the first upload lands.
+  await mkdir(getUploadDir(), { recursive: true });
 
   await app.register(fastifyStatic, {
     root: getUploadDir(),

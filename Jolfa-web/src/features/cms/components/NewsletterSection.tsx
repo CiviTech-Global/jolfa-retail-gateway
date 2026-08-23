@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
 import { toast } from 'sonner'
+import { requiredEmailSchema } from '@/lib/validation'
 
 interface NewsletterSectionProps {
   config: Record<string, unknown>
@@ -16,11 +17,17 @@ export function NewsletterSection({ config }: NewsletterSectionProps) {
   const buttonText = (config.buttonText as string | undefined) ?? 'عضویت'
 
   const [email, setEmail] = useState('')
+  const [error, setError] = useState<string>()
   const [submitted, setSubmitted] = useState(false)
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault()
-    if (!email) return
+    const result = requiredEmailSchema.safeParse(email)
+    if (!result.success) {
+      setError(result.error.issues[0]?.message ?? 'ایمیل معتبر نیست')
+      return
+    }
+    setError(undefined)
     setSubmitted(true)
     setEmail('')
     toast.success('با تشکر! شما در خبرنامه عضو شدید.')
@@ -36,25 +43,34 @@ export function NewsletterSection({ config }: NewsletterSectionProps) {
             {submitted ? (
               <p className="mt-6 font-medium">با تشکر! شما در خبرنامه عضو شدید.</p>
             ) : (
-              <form
-                onSubmit={handleSubmit}
-                className="mx-auto mt-6 flex max-w-md flex-col gap-3 sm:flex-row"
-              >
-                <Input
-                  type="email"
-                  placeholder="your@email.com"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  className="flex-1 border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground placeholder:text-primary-foreground/60 focus-visible:ring-primary-foreground/30"
-                  required
-                />
-                <Button
-                  type="submit"
-                  variant="secondary"
-                  className="bg-primary-foreground text-primary hover:bg-primary-foreground/90"
-                >
-                  {buttonText}
-                </Button>
+              <form onSubmit={handleSubmit} noValidate className="mx-auto mt-6 max-w-md">
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <Input
+                    type="email"
+                    dir="ltr"
+                    placeholder="your@email.com"
+                    value={email}
+                    aria-label="ایمیل"
+                    aria-invalid={Boolean(error)}
+                    onChange={(event) => {
+                      setEmail(event.target.value)
+                      if (error) setError(undefined)
+                    }}
+                    className="flex-1 border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground placeholder:text-primary-foreground/60 focus-visible:ring-primary-foreground/30"
+                  />
+                  <Button
+                    type="submit"
+                    variant="secondary"
+                    className="bg-primary-foreground text-primary hover:bg-primary-foreground/90"
+                  >
+                    {buttonText}
+                  </Button>
+                </div>
+                {error && (
+                  <p role="alert" className="mt-2 text-start text-sm text-primary-foreground">
+                    {error}
+                  </p>
+                )}
               </form>
             )}
           </div>

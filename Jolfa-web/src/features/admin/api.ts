@@ -68,6 +68,14 @@ export function updateUserStatus(id: string, isActive: boolean) {
   })
 }
 
+/** Admin-set password for a user who cannot recover it themselves. */
+export function resetUserPassword(id: string, newPassword: string) {
+  return apiRequest<{ message: string }>(`/admin/users/${id}/password`, {
+    method: 'PATCH',
+    body: { newPassword },
+  })
+}
+
 export function getAdminPayments(page = 1, limit = 20, status?: string, gateway?: string): Promise<PaymentListResponse> {
   const params = new URLSearchParams()
   params.set('page', String(page))

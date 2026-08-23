@@ -34,7 +34,13 @@ export function LoginPage() {
           <LoginForm onSubmit={handleSubmit} isLoading={isLoading} error={error} />
         </div>
 
-        <p className="mt-6 text-center text-sm text-foreground">
+        <p className="mt-4 text-center text-sm">
+          <Link to="/forgot-password" className="font-medium text-primary hover:underline">
+            رمز عبور خود را فراموش کرده‌اید؟
+          </Link>
+        </p>
+
+        <p className="mt-4 text-center text-sm text-foreground">
           حساب کاربری ندارید؟{' '}
           <Link to="/register" className="font-medium text-primary hover:underline">
             ثبت‌نام کنید

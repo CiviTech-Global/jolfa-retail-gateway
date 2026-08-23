@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
-import { ShoppingBag, MapPin, User, Package, ChevronLeft } from 'lucide-react'
+import { ShoppingBag, MapPin, User, Package, ChevronLeft, KeyRound } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -97,6 +97,12 @@ export function UserDashboardPage() {
                 <Link to="/profile/edit">
                   <User className="h-4 w-4" />
                   ویرایش پروفایل
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="w-full justify-start gap-2">
+                <Link to="/profile/security">
+                  <KeyRound className="h-4 w-4" />
+                  تغییر رمز عبور
                 </Link>
               </Button>
             </CardContent>

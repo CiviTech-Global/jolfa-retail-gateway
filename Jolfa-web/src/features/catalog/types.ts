@@ -77,8 +77,8 @@ export interface CategoryListResponse {
 export interface CategoryCreateBody {
   name: string
   slug?: string
-  description?: string
-  imageUrl?: string
+  description?: string | null
+  imageUrl?: string | null
   parentId?: string | null
   displayOrder?: number
   isActive?: boolean
@@ -87,8 +87,8 @@ export interface CategoryCreateBody {
 export interface CategoryUpdateBody {
   name?: string
   slug?: string
-  description?: string
-  imageUrl?: string
+  description?: string | null
+  imageUrl?: string | null
   parentId?: string | null
   displayOrder?: number
   isActive?: boolean
@@ -97,8 +97,8 @@ export interface CategoryUpdateBody {
 export interface ProductCreateBody {
   title: string
   slug?: string
-  description?: string
-  shortDescription?: string
+  description?: string | null
+  shortDescription?: string | null
   price: number
   compareAtPrice?: number | null
   stockQuantity?: number
@@ -115,8 +115,8 @@ export interface ProductCreateBody {
 export interface ProductUpdateBody {
   title?: string
   slug?: string
-  description?: string
-  shortDescription?: string
+  description?: string | null
+  shortDescription?: string | null
   price?: number
   compareAtPrice?: number | null
   stockQuantity?: number

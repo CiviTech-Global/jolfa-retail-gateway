@@ -3,3 +3,9 @@ node_modules
 .env.test
 dist
 coverage
+# Compiled output from an earlier tsconfig; these shadow the .ts sources
+# under vitest and silently run stale test helpers.
+test/**/*.js
+test/**/*.js.map
+test/**/*.d.ts
+test/**/*.d.ts.map
