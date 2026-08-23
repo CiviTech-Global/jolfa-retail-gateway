@@ -4,11 +4,7 @@ import { CategoryGridSection } from './components/CategoryGridSection'
 import { ProductCarouselSection } from './components/ProductCarouselSection'
 import { FlashDealsSection } from './components/FlashDealsSection'
 import { BannerGridSection } from './components/BannerGridSection'
-import { BrandStripSection } from './components/BrandStripSection'
 import { TrustBadgesSection } from './components/TrustBadgesSection'
-import { BlogTeaserSection } from './components/BlogTeaserSection'
-import { AppDownloadSection } from './components/AppDownloadSection'
-import { NewsletterSection } from './components/NewsletterSection'
 import type { HomepageSectionDto } from './types'
 
 type SectionRenderer = (section: HomepageSectionDto) => ReactElement | null
@@ -43,11 +39,7 @@ export const sectionRegistry: Record<string, SectionRenderer> = {
 
   flash_deals: (s) => <FlashDealsSection key={s.id} config={s.config} />,
   banner_grid: (s) => <BannerGridSection key={s.id} config={s.config} />,
-  brand_strip: (s) => <BrandStripSection key={s.id} config={s.config} />,
   trust_badges: (s) => <TrustBadgesSection key={s.id} config={s.config} />,
-  blog_teaser: (s) => <BlogTeaserSection key={s.id} config={s.config} />,
-  app_download: (s) => <AppDownloadSection key={s.id} config={s.config} />,
-  newsletter: (s) => <NewsletterSection key={s.id} config={s.config} />,
 }
 
 export function renderSection(section: HomepageSectionDto): ReactElement | null {
@@ -62,9 +54,5 @@ export const SECTION_TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: 'product_carousel', label: 'کاروسل محصولات' },
   { value: 'flash_deals', label: 'پیشنهادهای لحظه‌ای' },
   { value: 'banner_grid', label: 'شبکه بنرهای تبلیغاتی' },
-  { value: 'brand_strip', label: 'نوار برندها' },
   { value: 'trust_badges', label: 'نمادهای اعتماد' },
-  { value: 'blog_teaser', label: 'مجله' },
-  { value: 'app_download', label: 'دانلود اپلیکیشن' },
-  { value: 'newsletter', label: 'خبرنامه' },
 ]

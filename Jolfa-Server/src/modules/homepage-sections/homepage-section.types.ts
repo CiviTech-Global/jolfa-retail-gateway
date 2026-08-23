@@ -18,12 +18,21 @@ export const KNOWN_SECTION_TYPES = [
   "product_carousel",
   "flash_deals",
   "banner_grid",
-  "brand_strip",
   "trust_badges",
+] as const;
+
+/**
+ * Section types that were removed. Rows of these types can still exist in a
+ * database seeded before the removal; the storefront no longer renders them and
+ * the admin editor no longer offers them, so they are pruned on boot rather
+ * than left as un-editable orphans in the sections list.
+ */
+export const RETIRED_SECTION_TYPES = [
+  "brand_strip",
   "blog_teaser",
   "app_download",
   "newsletter",
-] as const;
+];
 
 const sectionTypeSchema = z
   .string()

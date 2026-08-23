@@ -10,15 +10,16 @@ import {
 
 /**
  * Human-facing presentation for settings. The API returns raw keys like
- * `show_newsletter_footer`; an admin should never have to read those, so each
- * known key gets a Persian label and a plain explanation of what toggling it
+ * `show_footer_links`; an admin should never have to read those, so each known
+ * key gets a Persian label and a plain explanation of what toggling it
  * actually does on the storefront.
  */
 export interface SettingMeta {
   label: string
   help: string
   /** Rendered as a single-line text box unless stated otherwise. */
-  kind?: 'text' | 'boolean' | 'image'
+  kind?: 'text' | 'textarea' | 'boolean' | 'image' | 'link-columns'
+  placeholder?: string
 }
 
 export const SETTING_META: Record<string, SettingMeta> = {
@@ -67,15 +68,75 @@ export const SETTING_META: Record<string, SettingMeta> = {
     help: 'دکمه ورود و منوی حساب کاربری در بالای سایت نمایش داده شود.',
     kind: 'boolean',
   },
-  show_footer_links: {
-    label: 'لینک‌های سریع در پاورقی',
-    help: 'ستون لینک‌های کمکی در پایین سایت نمایش داده شود.',
+  show_trust_badges: {
+    label: 'نوار نمادهای اعتماد',
+    help: 'نوار «ضمانت اصالت، ارسال سریع…» بالای پاورقی نمایش داده شود.',
     kind: 'boolean',
   },
-  show_newsletter_footer: {
-    label: 'عضویت در خبرنامه',
-    help: 'فرم عضویت در خبرنامه در پایین سایت نمایش داده شود.',
+  show_footer_links: {
+    label: 'ستون‌های لینک در پاورقی',
+    help: 'ستون‌های لینک تعریف‌شده در پایین سایت نمایش داده شود.',
     kind: 'boolean',
+  },
+  show_footer_contact: {
+    label: 'اطلاعات تماس در پاورقی',
+    help: 'تلفن، ایمیل و آدرس در پاورقی نمایش داده شود. اگر هر سه خالی باشند، چیزی نمایش داده نمی‌شود.',
+    kind: 'boolean',
+  },
+  show_footer_social: {
+    label: 'شبکه‌های اجتماعی در پاورقی',
+    help: 'آیکن شبکه‌های اجتماعی که نشانی آن‌ها را وارد کرده‌اید نمایش داده شود.',
+    kind: 'boolean',
+  },
+  footer_about: {
+    label: 'متن معرفی در پاورقی',
+    help: 'متن کوتاهی که زیر لوگو در پاورقی دیده می‌شود.',
+    kind: 'textarea',
+  },
+  footer_link_columns: {
+    label: 'ستون‌های لینک پاورقی',
+    help: 'هر ستون یک عنوان و چند لینک دارد. نشانی داخلی با «/» شروع می‌شود، مثلاً /products.',
+    kind: 'link-columns',
+  },
+  footer_phone: {
+    label: 'تلفن تماس',
+    help: 'در بخش تماس پاورقی نمایش داده می‌شود. خالی بگذارید تا حذف شود.',
+    kind: 'text',
+    placeholder: '021-12345678',
+  },
+  footer_email: {
+    label: 'ایمیل پشتیبانی',
+    help: 'در بخش تماس پاورقی نمایش داده می‌شود. خالی بگذارید تا حذف شود.',
+    kind: 'text',
+    placeholder: 'support@example.com',
+  },
+  footer_address: {
+    label: 'آدرس',
+    help: 'نشانی فروشگاه در بخش تماس پاورقی. خالی بگذارید تا حذف شود.',
+    kind: 'textarea',
+  },
+  footer_instagram: {
+    label: 'نشانی اینستاگرام',
+    help: 'نشانی کامل صفحه. خالی بگذارید تا آیکن نمایش داده نشود.',
+    kind: 'text',
+    placeholder: 'https://instagram.com/...',
+  },
+  footer_telegram: {
+    label: 'نشانی تلگرام',
+    help: 'نشانی کامل کانال. خالی بگذارید تا آیکن نمایش داده نشود.',
+    kind: 'text',
+    placeholder: 'https://t.me/...',
+  },
+  footer_whatsapp: {
+    label: 'نشانی واتس‌اپ',
+    help: 'نشانی کامل تماس. خالی بگذارید تا آیکن نمایش داده نشود.',
+    kind: 'text',
+    placeholder: 'https://wa.me/...',
+  },
+  footer_copyright: {
+    label: 'متن کپی‌رایت',
+    help: 'خط پایانی پاورقی. اگر خالی باشد، سال جاری و نام فروشگاه نمایش داده می‌شود.',
+    kind: 'text',
   },
   show_about: {
     label: 'صفحه «درباره ما»',

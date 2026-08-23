@@ -1,5 +1,6 @@
-import { createBrowserRouter, Navigate, type RouteObject } from 'react-router'
+import { createBrowserRouter, Navigate, Outlet, type RouteObject } from 'react-router'
 import { RootLayout } from '@/components/layout/RootLayout'
+import { ScrollToTop } from '@/components/layout/ScrollToTop'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { AccountLayout } from '@/components/layout/AccountLayout'
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
@@ -43,7 +44,11 @@ import { AdminDemoDataPage } from '@/features/cms/pages/AdminDemoDataPage'
 import { UserDashboardPage } from '@/features/user/pages/UserDashboardPage'
 import { AddressesPage } from '@/features/addresses/pages/AddressesPage'
 
-export const routes: RouteObject[] = [
+/**
+ * Wraps both route trees so behaviour that belongs to *every* navigation —
+ * currently resetting scroll — is declared once rather than per layout.
+ */
+const rootChildren: RouteObject[] = [
   {
     path: '/',
     element: <RootLayout />,
@@ -105,6 +110,18 @@ export const routes: RouteObject[] = [
       { path: 'demo', element: <AdminDemoDataPage /> },
       { path: '*', element: <Navigate to="/admin" replace /> },
     ],
+  },
+]
+
+export const routes: RouteObject[] = [
+  {
+    element: (
+      <>
+        <ScrollToTop />
+        <Outlet />
+      </>
+    ),
+    children: rootChildren,
   },
 ]
 

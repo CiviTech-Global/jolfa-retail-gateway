@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../shared/prisma.js";
 import { ConflictError, NotFoundError } from "../../shared/app-error.js";
 import { logAudit, buildChangeMetadata } from "../../shared/audit/audit.service.js";
+import { RETIRED_SECTION_TYPES } from "./homepage-section.types.js";
 import type {
   HomepageSectionCreateBody,
   HomepageSectionUpdateBody,
@@ -10,6 +11,17 @@ import type {
 function normalizeConfig(config?: Record<string, unknown>) {
   if (config === undefined) return Prisma.JsonNull;
   return config as Prisma.InputJsonValue;
+}
+
+/**
+ * Removes homepage sections whose type no longer exists. Safe to run on every
+ * boot: it only ever matches types the app has deliberately dropped.
+ */
+export async function pruneRetiredSections(): Promise<number> {
+  const { count } = await prisma.homepageSection.deleteMany({
+    where: { type: { in: RETIRED_SECTION_TYPES } },
+  });
+  return count;
 }
 
 export async function listActiveSections() {

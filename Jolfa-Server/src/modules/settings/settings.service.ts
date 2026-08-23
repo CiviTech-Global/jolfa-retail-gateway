@@ -1,7 +1,11 @@
 import { prisma } from "../../shared/prisma.js";
 import { NotFoundError } from "../../shared/app-error.js";
 import { logAudit, buildChangeMetadata } from "../../shared/audit/audit.service.js";
-import { DEFAULT_SETTINGS, findSettingDefault } from "./settings.defaults.js";
+import {
+  DEFAULT_SETTINGS,
+  RETIRED_SETTING_KEYS,
+  findSettingDefault,
+} from "./settings.defaults.js";
 import type { SettingUpdateBody } from "./settings.types.js";
 
 /**
@@ -21,6 +25,10 @@ export async function ensureDefaultSettings(): Promise<void> {
       create: setting,
     });
   }
+
+  // Drop keys that no longer back anything, so an existing database does not
+  // keep serving a setting the storefront stopped reading.
+  await prisma.setting.deleteMany({ where: { key: { in: RETIRED_SETTING_KEYS } } });
 }
 
 export async function listPublicSettings() {

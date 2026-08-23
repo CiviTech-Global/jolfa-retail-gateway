@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, ExternalLink, RotateCcw, Save } from 'lucide-react'
+import { Check, ExternalLink, Plus, RotateCcw, Save, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Link } from 'react-router'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
+import { Input, Textarea } from '@/components/ui/Input'
 import { ImageUploader } from '@/components/ui/ImageUploader'
 import { Switch } from '@/components/ui/Switch'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -17,11 +17,14 @@ import {
   GROUP_META,
   GROUP_ORDER,
   SETTING_META,
+  type SettingMeta,
 } from '../settings-catalog'
 import type { SettingDto } from '../types'
 
+type SettingKind = NonNullable<SettingMeta['kind']>
+
 /** The catalog wins when it declares a kind; otherwise infer from the value. */
-function settingKind(setting: SettingDto): 'text' | 'boolean' | 'image' {
+function settingKind(setting: SettingDto): SettingKind {
   const declared = SETTING_META[setting.key]?.kind
   if (declared) return declared
   return ['true', 'false'].includes(setting.value.toLowerCase()) ? 'boolean' : 'text'
@@ -137,6 +140,233 @@ function TextSetting({ setting }: { setting: SettingDto }) {
           )}
         </div>
       </label>
+    </div>
+  )
+}
+
+/** Multi-line text: an address or a paragraph of footer copy. */
+function TextareaSetting({ setting }: { setting: SettingDto }) {
+  const meta = describeSetting(setting.key, setting.description)
+  const [value, setValue] = useState(setting.value)
+
+  const mutation = useSettingMutation(setting.key, {
+    onSuccess: () => toast.success(`${meta.label} ذخیره شد`),
+  })
+
+  const hasChanged = value !== setting.value
+
+  return (
+    <div className="py-4">
+      <label className="block">
+        <span className="font-medium text-foreground">{meta.label}</span>
+        <span className="mt-0.5 block text-sm leading-relaxed text-muted-foreground">
+          {meta.help}
+        </span>
+        <Textarea
+          value={value}
+          rows={3}
+          onChange={(event) => setValue(event.target.value)}
+          className="mt-2 max-w-xl"
+        />
+      </label>
+      <SaveRow
+        hasChanged={hasChanged}
+        isPending={mutation.isPending}
+        onSave={() => mutation.mutate(value)}
+        onRevert={() => setValue(setting.value)}
+      />
+    </div>
+  )
+}
+
+/** Shared save / revert / "saved" affordance for the editable controls. */
+function SaveRow({
+  hasChanged,
+  isPending,
+  onSave,
+  onRevert,
+}: {
+  hasChanged: boolean
+  isPending: boolean
+  onSave: () => void
+  onRevert: () => void
+}) {
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      {hasChanged ? (
+        <>
+          <Button size="sm" loading={isPending} onClick={onSave}>
+            <Save className="h-4 w-4" />
+            <span className="ms-1">ذخیره</span>
+          </Button>
+          <Button size="sm" variant="ghost" onClick={onRevert} disabled={isPending}>
+            <RotateCcw className="h-4 w-4" />
+            <span className="ms-1">بازگرداندن</span>
+          </Button>
+        </>
+      ) : (
+        !isPending && (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Check className="h-3.5 w-3.5" />
+            ذخیره شده
+          </span>
+        )
+      )}
+    </div>
+  )
+}
+
+interface FooterLink {
+  label: string
+  url: string
+}
+
+interface FooterColumn {
+  title: string
+  links: FooterLink[]
+}
+
+function parseColumns(raw: string): FooterColumn[] {
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.map((column) => {
+      const candidate = column as Partial<FooterColumn>
+      return {
+        title: typeof candidate.title === 'string' ? candidate.title : '',
+        links: Array.isArray(candidate.links)
+          ? candidate.links.map((link) => ({
+              label: typeof link?.label === 'string' ? link.label : '',
+              url: typeof link?.url === 'string' ? link.url : '',
+            }))
+          : [],
+      }
+    })
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Structured editor for the footer's link columns. The value is stored as JSON,
+ * but an admin should never have to type JSON to rename a link.
+ */
+function LinkColumnsSetting({ setting }: { setting: SettingDto }) {
+  const meta = describeSetting(setting.key, setting.description)
+  const [columns, setColumns] = useState(() => parseColumns(setting.value))
+
+  const mutation = useSettingMutation(setting.key, {
+    onSuccess: () => toast.success(`${meta.label} ذخیره شد`),
+  })
+
+  const serialised = JSON.stringify(columns)
+  const hasChanged = serialised !== JSON.stringify(parseColumns(setting.value))
+
+  const update = (next: FooterColumn[]) => setColumns(next)
+  const patchColumn = (index: number, patch: Partial<FooterColumn>) =>
+    update(columns.map((column, i) => (i === index ? { ...column, ...patch } : column)))
+
+  return (
+    <div className="py-4">
+      <p className="font-medium text-foreground">{meta.label}</p>
+      <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">{meta.help}</p>
+
+      <div className="mt-3 space-y-4">
+        {columns.map((column, columnIndex) => (
+          <div key={columnIndex} className="rounded-xl border border-border p-4">
+            <div className="flex items-center gap-2">
+              <Input
+                value={column.title}
+                placeholder="عنوان ستون"
+                onChange={(event) => patchColumn(columnIndex, { title: event.target.value })}
+                className="max-w-xs"
+                aria-label={`عنوان ستون ${columnIndex + 1}`}
+              />
+              <Button
+                size="icon"
+                variant="ghost"
+                aria-label={`حذف ستون ${column.title || columnIndex + 1}`}
+                onClick={() => update(columns.filter((_, i) => i !== columnIndex))}
+              >
+                <Trash2 className="h-4 w-4 text-danger" />
+              </Button>
+            </div>
+
+            <div className="mt-3 space-y-2">
+              {column.links.map((link, linkIndex) => (
+                <div key={linkIndex} className="flex flex-wrap items-center gap-2">
+                  <Input
+                    value={link.label}
+                    placeholder="عنوان لینک"
+                    aria-label="عنوان لینک"
+                    onChange={(event) =>
+                      patchColumn(columnIndex, {
+                        links: column.links.map((item, i) =>
+                          i === linkIndex ? { ...item, label: event.target.value } : item,
+                        ),
+                      })
+                    }
+                    className="w-40"
+                  />
+                  <Input
+                    value={link.url}
+                    dir="ltr"
+                    placeholder="/products"
+                    aria-label="نشانی لینک"
+                    onChange={(event) =>
+                      patchColumn(columnIndex, {
+                        links: column.links.map((item, i) =>
+                          i === linkIndex ? { ...item, url: event.target.value } : item,
+                        ),
+                      })
+                    }
+                    className="w-56"
+                  />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label={`حذف لینک ${link.label || linkIndex + 1}`}
+                    onClick={() =>
+                      patchColumn(columnIndex, {
+                        links: column.links.filter((_, i) => i !== linkIndex),
+                      })
+                    }
+                  >
+                    <Trash2 className="h-4 w-4 text-danger" />
+                  </Button>
+                </div>
+              ))}
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  patchColumn(columnIndex, { links: [...column.links, { label: '', url: '' }] })
+                }
+              >
+                <Plus className="h-4 w-4" />
+                <span className="ms-1">لینک جدید</span>
+              </Button>
+            </div>
+          </div>
+        ))}
+
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => update([...columns, { title: '', links: [] }])}
+        >
+          <Plus className="h-4 w-4" />
+          <span className="ms-1">ستون جدید</span>
+        </Button>
+      </div>
+
+      <SaveRow
+        hasChanged={hasChanged}
+        isPending={mutation.isPending}
+        onSave={() => mutation.mutate(serialised)}
+        onRevert={() => setColumns(parseColumns(setting.value))}
+      />
     </div>
   )
 }
@@ -265,6 +495,10 @@ export function AdminSettingsPage() {
                         return <ToggleSetting key={setting.id} setting={setting} />
                       case 'image':
                         return <ImageSetting key={setting.id} setting={setting} />
+                      case 'textarea':
+                        return <TextareaSetting key={setting.id} setting={setting} />
+                      case 'link-columns':
+                        return <LinkColumnsSetting key={setting.id} setting={setting} />
                       default:
                         return <TextSetting key={setting.id} setting={setting} />
                     }

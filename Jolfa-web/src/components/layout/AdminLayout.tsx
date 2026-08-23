@@ -284,7 +284,7 @@ export function AdminLayout() {
         </header>
 
         {/* The only scroll container for page content. */}
-        <main className="min-h-0 flex-1 overflow-y-auto p-4 md:p-8">
+        <main data-scroll-container className="min-h-0 flex-1 overflow-y-auto p-4 md:p-8">
           <AdminBreadcrumbs />
           <Outlet />
         </main>

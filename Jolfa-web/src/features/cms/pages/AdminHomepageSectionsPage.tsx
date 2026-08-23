@@ -50,6 +50,24 @@ function parseJson(value: string): Record<string, unknown> | undefined {
   }
 }
 
+/**
+ * `<input type="datetime-local">` speaks local wall-clock time with no zone;
+ * config stores UTC ISO so the same instant is read identically everywhere.
+ */
+function toDateTimeLocal(value: unknown): string {
+  if (typeof value !== 'string' || value.trim() === '') return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const offset = date.getTimezoneOffset() * 60_000
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16)
+}
+
+function fromDateTimeLocal(value: string): string | null {
+  if (!value) return null
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date.toISOString()
+}
+
 /** Slug-ish key derived from the title, so admins never have to invent one. */
 function slugify(value: string): string {
   return value
@@ -323,6 +341,14 @@ function SectionEditorForm({
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
+  const config = parseJson(configText) ?? {}
+  const isFlashDeals = type === 'flash_deals'
+
+  /** Writes one key into the raw config JSON the form already tracks. */
+  const patchConfig = (patch: Record<string, unknown>) => {
+    setConfigText(formatJson({ ...config, ...patch }))
+  }
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       const config = parseJson(configText)
@@ -367,6 +393,15 @@ function SectionEditorForm({
     if (parseJson(configText) === undefined) {
       nextErrors.config = 'تنظیمات پیشرفته باید یک JSON معتبر باشد'
       setShowAdvanced(true)
+    }
+
+    if (isFlashDeals) {
+      const startsAt = toDateTimeLocal(config.startsAt)
+      const endsAt = toDateTimeLocal(config.endsAt)
+      // A window that ends before it starts would hide the section forever.
+      if (startsAt && endsAt && new Date(endsAt) <= new Date(startsAt)) {
+        nextErrors.endsAt = 'زمان پایان باید بعد از زمان شروع باشد'
+      }
     }
 
     setErrors(nextErrors)
@@ -435,6 +470,49 @@ function SectionEditorForm({
                 </Select>
               )}
             </FormField>
+
+            {isFlashDeals && (
+              <div className="space-y-3 rounded-xl border border-border p-4">
+                <div>
+                  <p className="font-medium text-foreground">بازه زمانی پیشنهاد</p>
+                  <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">
+                    شروع و پایان دقیق پیشنهاد را تعیین کنید. پیش از زمان شروع و پس از زمان پایان،
+                    این بخش به مشتریان نمایش داده نمی‌شود. اگر هر دو را خالی بگذارید، بخش همیشه
+                    نمایش داده می‌شود و شمارش معکوس ندارد.
+                  </p>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <FormField label="شروع" error={errors.startsAt}>
+                    {(field) => (
+                      <Input
+                        {...field}
+                        type="datetime-local"
+                        dir="ltr"
+                        value={toDateTimeLocal(config.startsAt)}
+                        onChange={(event) =>
+                          patchConfig({ startsAt: fromDateTimeLocal(event.target.value) })
+                        }
+                      />
+                    )}
+                  </FormField>
+
+                  <FormField label="پایان" error={errors.endsAt}>
+                    {(field) => (
+                      <Input
+                        {...field}
+                        type="datetime-local"
+                        dir="ltr"
+                        value={toDateTimeLocal(config.endsAt)}
+                        onChange={(event) =>
+                          patchConfig({ endsAt: fromDateTimeLocal(event.target.value) })
+                        }
+                      />
+                    )}
+                  </FormField>
+                </div>
+              </div>
+            )}
 
             {/* Raw JSON is a power-user escape hatch, not the default view. */}
             <div className="rounded-xl border border-border">

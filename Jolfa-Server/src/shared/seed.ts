@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import { prisma } from "./prisma.js";
 import { env } from "../config/env.js";
 import { ensureDefaultSettings } from "../modules/settings/settings.service.js";
+import { pruneRetiredSections } from "../modules/homepage-sections/homepage-section.service.js";
 
 interface SeedUser {
   email?: string;
@@ -50,6 +51,16 @@ export async function seedDefaults(): Promise<void> {
     await ensureDefaultSettings();
   } catch (error) {
     console.error("[seed] Failed to seed default settings:", error);
+  }
+
+  // Clears homepage sections whose type the app no longer renders.
+  try {
+    const removed = await pruneRetiredSections();
+    if (removed > 0) {
+      console.log(`[seed] Removed ${removed} homepage section(s) of retired types.`);
+    }
+  } catch (error) {
+    console.error("[seed] Failed to prune retired homepage sections:", error);
   }
 
   const seeds: SeedUser[] = [];

@@ -137,7 +137,7 @@ export function AccountLayout() {
         </aside>
 
         {/* The only scroll container in the panel. */}
-        <div className="min-w-0 flex-1 overflow-y-auto py-8">
+        <div data-scroll-container className="min-w-0 flex-1 overflow-y-auto py-8">
           <div className="mb-4 md:hidden">
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
               <SheetTrigger asChild>

@@ -185,7 +185,9 @@ const demoHomepageSections = [
     key: "flash_deals",
     title: "پیشنهادهای لحظه‌ای",
     type: "flash_deals",
-    config: { filter: "discounted", limit: 8, endsAt: null },
+    // No window configured: the section shows with no countdown until an admin
+    // sets an explicit start/end in the homepage-sections editor.
+    config: { filter: "discounted", limit: 8, startsAt: null, endsAt: null },
     displayOrder: 1,
     isActive: true,
   },
@@ -249,22 +251,6 @@ const demoHomepageSections = [
     isActive: true,
   },
   {
-    key: "brand_strip",
-    title: "برندهای منتخب",
-    type: "brand_strip",
-    config: {
-      brands: [
-        { name: "بازارچه جلفا", logo: demoAsset("brand-01.png") },
-        { name: "طبیعت آذربایجان", logo: demoAsset("brand-02.png") },
-        { name: "کوهستان طلایی", logo: demoAsset("brand-03.png") },
-        { name: "دهکده ارگانیک", logo: demoAsset("brand-04.png") },
-        { name: "سرزمین زعفران", logo: demoAsset("brand-05.png") },
-      ],
-    },
-    displayOrder: 6,
-    isActive: true,
-  },
-  {
     key: "promo_banner",
     title: "تخفیف‌دارها",
     type: "product_carousel",
@@ -287,62 +273,7 @@ const demoHomepageSections = [
     displayOrder: 8,
     isActive: true,
   },
-  {
-    key: "blog_teaser",
-    title: "مجله جولفا",
-    type: "blog_teaser",
-    config: {
-      posts: [
-        {
-          title: "چگونه زعفران اصل را تشخیص دهیم؟",
-          excerpt: "چند نکته ساده برای شناخت زعفران سرگل خالص از تقلبی.",
-          image: demoAsset("blog-01.jpg"),
-          link: "/products",
-        },
-        {
-          title: "خواص شگفت‌انگیز عسل طبیعی",
-          excerpt: "عسل طبیعی چه فوایدی برای سلامتی روزانه شما دارد؟",
-          image: demoAsset("blog-02.jpg"),
-          link: "/products",
-        },
-        {
-          title: "راهنمای نگهداری چای و دمنوش",
-          excerpt: "برای حفظ عطر و طعم چای، این نکات را رعایت کنید.",
-          image: demoAsset("blog-03.jpg"),
-          link: "/products",
-        },
-      ],
-    },
-    displayOrder: 9,
-    isActive: true,
-  },
-  {
-    key: "app_download",
-    title: "دانلود اپلیکیشن",
-    type: "app_download",
-    config: {
-      title: "اپلیکیشن بازارچه جلفا را نصب کنید",
-      description: "خرید سریع‌تر، پیشنهادهای اختصاصی و پیگیری آسان سفارش‌ها؛ همه در یک اپلیکیشن.",
-      androidLink: "#",
-      iosLink: "#",
-    },
-    displayOrder: 10,
-    isActive: true,
-  },
-  {
-    key: "newsletter",
-    title: "خبرنامه",
-    type: "newsletter",
-    config: {
-      title: "از تخفیف‌ها جا نمانید",
-      description: "ایمیل خود را وارد کنید تا از جدیدترین پیشنهادها مطلع شوید.",
-      buttonText: "عضویت",
-    },
-    displayOrder: 11,
-    isActive: true,
-  },
 ];
-
 
 async function snapshotEntity(entityType: string, entityId: string) {
   await prisma.demoSnapshot.create({

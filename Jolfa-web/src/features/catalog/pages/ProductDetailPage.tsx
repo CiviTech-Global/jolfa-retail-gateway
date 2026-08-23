@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Link, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 import { CheckCircle, ShieldCheck, Truck, Headphones } from 'lucide-react'
 import { getProductBySlug } from '../api'
 import { ProductGrid } from '../components/ProductGrid'
@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/Badge'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
 import { BackButton, Breadcrumbs } from '@/components/layout/Breadcrumbs'
 import { formatPrice, FALLBACK_IMAGE_URL } from '@/lib/utils'
-import { useCart } from '@/features/cart/context'
+import { resolvePurchaseState, usePurchaseAction, usePurchaseViewer } from '@/features/cart/purchase'
 import { toast } from 'sonner'
 
 const trustItems = [
@@ -21,7 +21,9 @@ const trustItems = [
 
 export function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>()
-  const { addItem } = useCart()
+  const runPurchase = usePurchaseAction()
+  const navigate = useNavigate()
+  const viewer = usePurchaseViewer()
   const [quantity, setQuantity] = useState(1)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
 
@@ -51,6 +53,7 @@ export function ProductDetailPage() {
   }
 
   const { product, relatedProducts } = data
+  const purchase = resolvePurchaseState(viewer, product)
   const images = product.images.length > 0 ? product.images : []
   const primaryIndex = images.findIndex((image) => image.isPrimary)
   const defaultIndex = primaryIndex >= 0 ? primaryIndex : 0
@@ -59,10 +62,14 @@ export function ProductDetailPage() {
   const hasDiscount = product.compareAtPrice && product.compareAtPrice > product.price
 
   function handleAddToCart() {
-    addItem({ product, quantity })
-    toast.success(`${product.title} به سبد خرید اضافه شد`, {
-      description: `${quantity} × ${formatPrice(product.price)}`,
-    })
+    // The hook decides what "buy" means for this visitor: add to cart, send a
+    // guest to sign in, or explain why an admin cannot purchase.
+    if (runPurchase(product, quantity, purchase)) {
+      toast.success(`${product.title} به سبد خرید اضافه شد`, {
+        description: `${quantity} × ${formatPrice(product.price)}`,
+        action: { label: 'مشاهده سبد', onClick: () => void navigate('/cart') },
+      })
+    }
   }
 
   return (
@@ -172,10 +179,21 @@ export function ProductDetailPage() {
                 +
               </button>
             </div>
-            <Button onClick={handleAddToCart} className="flex-1">
-              افزودن به سبد خرید
+            <Button
+              onClick={handleAddToCart}
+              disabled={purchase.disabled}
+              title={'reason' in purchase ? purchase.reason : undefined}
+              className="flex-1"
+            >
+              {purchase.kind === 'sign-in' ? 'ورود و خرید' : purchase.label}
             </Button>
           </div>
+
+          {'reason' in purchase && (
+            <p role="status" className="mt-3 text-sm text-muted-foreground">
+              {purchase.reason}
+            </p>
+          )}
 
           <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {trustItems.map((item) => (
