@@ -2,6 +2,7 @@ import { prisma } from "../../shared/prisma.js";
 import { ConflictError, NotFoundError } from "../../shared/app-error.js";
 import { Prisma } from "@prisma/client";
 import { logAudit, buildChangeMetadata } from "../../shared/audit/audit.service.js";
+import { uniqueSlug } from "../../shared/slugify.js";
 import type { ProductCreateBody, ProductUpdateBody } from "./product.types.js";
 
 export interface ProductListFilters {
@@ -145,14 +146,20 @@ export async function getProductBySlug(slug: string) {
   return { product, relatedProducts };
 }
 
-export async function createProduct(data: ProductCreateBody) {
-  const slug = data.slug ?? slugify(data.title);
+const productSlugTaken = async (slug: string): Promise<boolean> => {
+  const found = await prisma.product.findUnique({ where: { slug }, select: { id: true } });
+  return found !== null;
+};
 
-  const existing = await prisma.product.findUnique({
-    where: { slug },
-    select: { id: true },
-  });
-  if (existing) {
+export async function createProduct(data: ProductCreateBody) {
+  // An explicit slug is the admin's choice, so a clash is an error worth
+  // reporting. A derived one is ours to make unique — Persian titles slugify to
+  // nothing, so otherwise every product after the first would collide.
+  const slug =
+    data.slug ??
+    (await uniqueSlug(data.title, { prefix: "product", isTaken: productSlugTaken }));
+
+  if (data.slug && (await productSlugTaken(slug))) {
     throw new ConflictError("این اسلاگ محصول قبلاً استفاده شده است");
   }
 
@@ -331,15 +338,6 @@ export async function deleteProduct(slug: string, actorId?: string): Promise<{ s
   return { success: true };
 }
 
-function slugify(title: string): string {
-  return title
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9-]/g, "")
-    .replace(/-+/g, "-")
-    .substring(0, 220);
-}
 
 function normalizeImages(images: ProductCreateBody["images"]): ProductCreateBody["images"] {
   const hasPrimary = images.some((image) => image.isPrimary);

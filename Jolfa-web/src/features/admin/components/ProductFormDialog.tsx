@@ -1,5 +1,3 @@
-
-import { useNavigate, useParams } from 'react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -8,11 +6,18 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
 import { Input, Textarea } from '@/components/ui/Input'
 import { Switch } from '@/components/ui/Switch'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { FormError, FormField } from '@/components/ui/FormField'
 import { ImageUploader } from '@/components/ui/ImageUploader'
-import { ScrollReveal } from '@/components/motion/ScrollReveal'
-import { PageHeader } from '@/components/layout/Breadcrumbs'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogForm,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/Dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
 import { ApiError } from '@/api/errors'
 import {
@@ -156,52 +161,88 @@ function toBody(data: ProductFormOutput): ProductCreateBody {
   }
 }
 
-export function AdminProductFormPage() {
-  const { slug } = useParams<{ slug?: string }>()
+/** Groups fields without the visual weight of a Card inside a dialog. */
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-4">
+      <h3 className="border-b border-border/60 pb-2 text-sm font-semibold text-foreground">
+        {title}
+      </h3>
+      {children}
+    </section>
+  )
+}
+
+interface ProductFormDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  /** Absent when creating; the product's slug when editing. */
+  slug?: string
+}
+
+export function ProductFormDialog({ open, onOpenChange, slug }: ProductFormDialogProps) {
   const isEdit = Boolean(slug)
 
   const { data: categoriesData } = useQuery({
     queryKey: ['categories'],
     queryFn: () => getCategories(false),
+    enabled: open,
   })
 
   const { data: productData, isLoading } = useQuery({
     queryKey: ['products', slug],
     queryFn: () => getProductBySlug(slug!),
-    enabled: isEdit,
+    enabled: open && isEdit,
   })
 
-  if (isEdit && isLoading) {
-    return <div className="py-12 text-center text-muted-foreground">در حال بارگذاری ...</div>
-  }
+  const categories = (categoriesData?.categories ?? []) as CategoryDto[]
+  const product = productData?.product
 
   return (
-    <ProductEditor
-      key={slug ?? 'new'}
-      isEdit={isEdit}
-      initialProduct={productData?.product}
-      categories={(categoriesData?.categories ?? []) as CategoryDto[]}
-      slug={slug}
-    />
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent size="xl">
+        <DialogHeader>
+          <DialogTitle>{isEdit ? 'ویرایش محصول' : 'محصول جدید'}</DialogTitle>
+          <DialogDescription>
+            فیلدهای ستاره‌دار الزامی هستند؛ بقیه را می‌توانید خالی بگذارید.
+          </DialogDescription>
+        </DialogHeader>
+
+        {isEdit && isLoading ? (
+          <DialogBody>
+            <p className="py-12 text-center text-muted-foreground">در حال بارگذاری ...</p>
+          </DialogBody>
+        ) : (
+          // Remounting per product resets the form to the right defaults; the
+          // dialog itself stays mounted between openings.
+          <ProductEditor
+            key={slug ?? 'new'}
+            slug={slug}
+            initialProduct={product}
+            categories={categories}
+            onDone={() => onOpenChange(false)}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
   )
 }
 
 interface ProductEditorProps {
-  isEdit: boolean
+  slug?: string
   initialProduct?: ProductDto
   categories: CategoryDto[]
-  slug?: string
+  onDone: () => void
 }
 
-function ProductEditor({ isEdit, initialProduct, categories, slug }: ProductEditorProps) {
-  const navigate = useNavigate()
+function ProductEditor({ slug, initialProduct, categories, onDone }: ProductEditorProps) {
   const queryClient = useQueryClient()
+  const isEdit = Boolean(slug)
 
   const {
     register,
     handleSubmit,
     control,
-
     setError,
     formState: { errors, isSubmitting },
   } = useForm<ProductFormValues, unknown, ProductFormOutput>({
@@ -216,9 +257,10 @@ function ProductEditor({ isEdit, initialProduct, categories, slug }: ProductEdit
   const title = useWatch({ control, name: 'title' })
 
   const onSuccess = () => {
+    void queryClient.invalidateQueries({ queryKey: ['admin', 'products'] })
     void queryClient.invalidateQueries({ queryKey: ['products'] })
     toast.success(isEdit ? 'محصول به‌روزرسانی شد' : 'محصول ایجاد شد')
-    navigate('/admin/products')
+    onDone()
   }
 
   /** Maps server-side field errors back onto the matching inputs. */
@@ -259,24 +301,10 @@ function ProductEditor({ isEdit, initialProduct, categories, slug }: ProductEdit
   const isPending = isSubmitting || createMutation.isPending || updateMutation.isPending
 
   return (
-    <ScrollReveal className="space-y-6">
-      <PageHeader
-        title={isEdit ? 'ویرایش محصول' : 'محصول جدید'}
-        description="فیلدهای ستاره‌دار الزامی هستند؛ بقیه را می‌توانید خالی بگذارید."
-        backTo="/admin/products"
-        breadcrumbs={[
-          { label: 'داشبورد', to: '/admin' },
-          { label: 'محصولات', to: '/admin/products' },
-          { label: isEdit ? initialProduct?.title || 'ویرایش' : 'محصول جدید' },
-        ]}
-      />
-
-      <form onSubmit={handleSubmit(submit)} noValidate className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>اطلاعات اصلی</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
+    <DialogForm onSubmit={handleSubmit(submit)}>
+      <DialogBody className="space-y-6">
+        <Section title="اطلاعات اصلی">
+          <div className="grid gap-4 sm:grid-cols-2">
             <FormField label="عنوان" required error={errors.title?.message} className="sm:col-span-2">
               {(field) => <Input {...field} {...register('title')} />}
             </FormField>
@@ -329,7 +357,9 @@ function ProductEditor({ isEdit, initialProduct, categories, slug }: ProductEdit
             </FormField>
 
             <FormField label="وزن (گرم)" error={errors.weightGrams?.message}>
-              {(field) => <Input {...field} inputMode="numeric" dir="ltr" {...register('weightGrams')} />}
+              {(field) => (
+                <Input {...field} inputMode="numeric" dir="ltr" {...register('weightGrams')} />
+              )}
             </FormField>
 
             <FormField label="کد کالا (SKU)" error={errors.sku?.message}>
@@ -358,67 +388,56 @@ function ProductEditor({ isEdit, initialProduct, categories, slug }: ProductEdit
                 )}
               />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </Section>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>توضیحات</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4">
+        <Section title="توضیحات">
+          <div className="grid gap-4">
             <FormField label="توضیحات کوتاه" error={errors.shortDescription?.message}>
               {(field) => <Input {...field} {...register('shortDescription')} />}
             </FormField>
             <FormField label="توضیحات" error={errors.description?.message}>
               {(field) => <Textarea {...field} rows={5} {...register('description')} />}
             </FormField>
-          </CardContent>
-        </Card>
+          </div>
+        </Section>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>تصاویر</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Controller
-              control={control}
-              name="images"
-              render={({ field }) => (
-                <ImageUploader
-                  value={field.value}
-                  onChange={field.onChange}
-                  altTextFallback={title}
-                  error={errors.images?.message}
-                />
-              )}
-            />
-            {errors.images?.message && <FormError message={errors.images.message} />}
-          </CardContent>
-        </Card>
+        <Section title="تصاویر">
+          <Controller
+            control={control}
+            name="images"
+            render={({ field }) => (
+              <ImageUploader
+                value={field.value}
+                onChange={field.onChange}
+                altTextFallback={title}
+                error={errors.images?.message}
+              />
+            )}
+          />
+          {errors.images?.message && <FormError message={errors.images.message} />}
+        </Section>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>SEO</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4">
+        <Section title="SEO">
+          <div className="grid gap-4">
             <FormField label="Meta Title" error={errors.metaTitle?.message}>
               {(field) => <Input {...field} {...register('metaTitle')} />}
             </FormField>
             <FormField label="Meta Description" error={errors.metaDescription?.message}>
               {(field) => <Textarea {...field} rows={3} {...register('metaDescription')} />}
             </FormField>
-          </CardContent>
-        </Card>
+          </div>
+        </Section>
+      </DialogBody>
 
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => navigate('/admin/products')}>
-            انصراف
-          </Button>
-          <Button type="submit" loading={isPending}>
-            ذخیره محصول
-          </Button>
-        </div>
-      </form>
-    </ScrollReveal>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onDone} disabled={isPending}>
+          انصراف
+        </Button>
+        <Button type="submit" loading={isPending}>
+          ذخیره محصول
+        </Button>
+      </DialogFooter>
+    </DialogForm>
   )
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link } from 'react-router'
+import { useLocation, useNavigate, useParams } from 'react-router'
 import { Plus, Package, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatPrice } from '@/lib/utils'
@@ -10,11 +10,27 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import { getProducts, deleteProduct } from '@/features/catalog/api'
+import { ProductFormDialog } from '../components/ProductFormDialog'
 
 export function AdminProductsPage() {
   const [page, setPage] = useState(1)
   const queryClient = useQueryClient()
   const { confirm, Dialog } = useConfirmDialog()
+
+  /*
+   * The editor is a dialog, but it keeps its own URL: /admin/products/new and
+   * /admin/products/:slug/edit still work as deep links and bookmarks, and the
+   * dashboard's "new product" shortcut is unchanged. Routing state also means
+   * the browser Back button closes the dialog, which is what people expect
+   * after arriving at it from a link.
+   */
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { slug: editSlug } = useParams<{ slug?: string }>()
+  const isCreating = location.pathname.endsWith('/products/new')
+  const isEditorOpen = isCreating || Boolean(editSlug)
+
+  const closeEditor = () => navigate('/admin/products', { replace: true })
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'products', page],
@@ -48,11 +64,9 @@ export function AdminProductsPage() {
           <h1 className="text-2xl font-bold text-foreground md:text-3xl">مدیریت محصولات</h1>
           <p className="mt-2 text-muted-foreground">مشاهده، ویرایش و مدیریت موجودی محصولات.</p>
         </div>
-        <Button asChild>
-          <Link to="/admin/products/new" className="inline-flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            محصول جدید
-          </Link>
+        <Button onClick={() => navigate('/admin/products/new')} className="gap-2">
+          <Plus className="h-4 w-4" />
+          محصول جدید
         </Button>
       </div>
 
@@ -103,11 +117,13 @@ export function AdminProductsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-2">
-                          <Button size="sm" variant="outline" asChild>
-                            <Link to={`/admin/products/${product.slug}/edit`}>
-                              <Pencil className="h-4 w-4" />
-                              <span className="sr-only">ویرایش</span>
-                            </Link>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => navigate(`/admin/products/${product.slug}/edit`)}
+                            aria-label={`ویرایش ${product.title}`}
+                          >
+                            <Pencil className="h-4 w-4" />
                           </Button>
                           <Button
                             size="sm"
@@ -152,6 +168,14 @@ export function AdminProductsPage() {
           )}
         </CardContent>
       </Card>
+
+      <ProductFormDialog
+        open={isEditorOpen}
+        onOpenChange={(next) => {
+          if (!next) closeEditor()
+        }}
+        slug={editSlug}
+      />
 
       <Dialog />
     </ScrollReveal>

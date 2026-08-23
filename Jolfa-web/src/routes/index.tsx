@@ -31,7 +31,6 @@ import { AdminDashboardPage } from '@/features/admin/pages/AdminDashboardPage'
 import { AdminOrdersPage } from '@/features/admin/pages/AdminOrdersPage'
 import { AdminOrderDetailPage } from '@/features/admin/pages/AdminOrderDetailPage'
 import { AdminProductsPage } from '@/features/admin/pages/AdminProductsPage'
-import { AdminProductFormPage } from '@/features/admin/pages/AdminProductFormPage'
 import { AdminCategoriesPage } from '@/features/admin/pages/AdminCategoriesPage'
 import { AdminBannersPage } from '@/features/admin/pages/AdminBannersPage'
 import { AdminUsersPage } from '@/features/admin/pages/AdminUsersPage'
@@ -95,8 +94,10 @@ const rootChildren: RouteObject[] = [
     children: [
       { index: true, element: <AdminDashboardPage /> },
       { path: 'products', element: <AdminProductsPage /> },
-      { path: 'products/new', element: <AdminProductFormPage /> },
-      { path: 'products/:slug/edit', element: <AdminProductFormPage /> },
+      // The product editor is a dialog over the list; these keep working as
+      // deep links and render the list with the dialog already open.
+      { path: 'products/new', element: <AdminProductsPage /> },
+      { path: 'products/:slug/edit', element: <AdminProductsPage /> },
       { path: 'categories', element: <AdminCategoriesPage /> },
       { path: 'orders', element: <AdminOrdersPage /> },
       { path: 'orders/:id', element: <AdminOrderDetailPage /> },
