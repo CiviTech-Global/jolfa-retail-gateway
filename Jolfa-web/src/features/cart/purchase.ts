@@ -12,12 +12,10 @@ import { useCart } from './context'
  * nothing.
  */
 export type PurchaseState =
-  /** Signed-in customer, in stock — the normal case. */
+  /** Signed in and in stock — the normal case, for any role. */
   | { kind: 'buy'; label: string; disabled: false }
   /** Not signed in: checkout requires an account, so ask up front. */
   | { kind: 'sign-in'; label: string; disabled: false }
-  /** Admins run the shop; they do not shop in it. */
-  | { kind: 'admin'; label: string; disabled: true; reason: string }
   | { kind: 'out-of-stock'; label: string; disabled: true; reason: string }
   /** Not purchasable from here (e.g. a summary with no stock data). */
   | { kind: 'view'; label: string; disabled: false }
@@ -25,17 +23,21 @@ export type PurchaseState =
 export interface PurchaseViewer {
   isAuthenticated: boolean
   isLoading: boolean
-  isAdmin: boolean
 }
 
 interface PurchasableProduct {
   stockQuantity?: number
 }
 
-/** Who is looking. A hook, so it is called unconditionally at the top. */
+/**
+ * Who is looking. A hook, so it is called unconditionally at the top.
+ *
+ * Role deliberately does not gate buying: an admin browsing the storefront is
+ * still a shopper, and blocking them only breaks the owner's own account.
+ */
 export function usePurchaseViewer(): PurchaseViewer {
-  const { user, isAuthenticated, isLoading } = useAuth()
-  return { isAuthenticated, isLoading, isAdmin: user?.role === 'ADMIN' }
+  const { isAuthenticated, isLoading } = useAuth()
+  return { isAuthenticated, isLoading }
 }
 
 /**
@@ -65,15 +67,6 @@ export function resolvePurchaseState(
 
   if (!viewer.isAuthenticated) {
     return { kind: 'sign-in', label: 'خرید', disabled: false }
-  }
-
-  if (viewer.isAdmin) {
-    return {
-      kind: 'admin',
-      label: 'خرید',
-      disabled: true,
-      reason: 'با حساب مدیر امکان خرید نیست. برای خرید با یک حساب مشتری وارد شوید.',
-    }
   }
 
   return { kind: 'buy', label: 'افزودن به سبد خرید', disabled: false }
@@ -108,7 +101,6 @@ export function usePurchaseAction(): (
           void navigate('/login', { state: { from: location } })
           return false
 
-        case 'admin':
         case 'out-of-stock':
           toast.error(state.reason)
           return false
