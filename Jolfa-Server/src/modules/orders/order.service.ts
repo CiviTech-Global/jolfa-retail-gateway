@@ -1,6 +1,7 @@
 import { prisma } from "../../shared/prisma.js";
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from "../../shared/app-error.js";
 import { logAudit, buildChangeMetadata } from "../../shared/audit/audit.service.js";
+import { shippingAddressSchema } from "./order.types.js";
 import type {
   OrderCreateBody,
   OrderListQuery,
@@ -26,7 +27,11 @@ async function resolveShippingDetails(userId: string, data: OrderCreateBody) {
     throw new BadRequestError("آدرس انتخاب‌شده یافت نشد");
   }
 
-  return {
+  // Re-checked against the same schema a typed address goes through. A stored
+  // row can predate a tightened rule or have been written straight through the
+  // API, and an order must not reach the payment gateway on a half-filled
+  // address just because it came from the book.
+  const revalidated = shippingAddressSchema.safeParse({
     title: saved.title ?? undefined,
     recipientName: saved.recipientName,
     phone: saved.phone,
@@ -35,7 +40,14 @@ async function resolveShippingDetails(userId: string, data: OrderCreateBody) {
     district: saved.district ?? undefined,
     postalCode: saved.postalCode ?? undefined,
     addressLine: saved.addressLine,
-  };
+  });
+
+  if (!revalidated.success) {
+    const reason = revalidated.error.issues[0]?.message ?? "اطلاعات آدرس کامل نیست";
+    throw new BadRequestError(`آدرس انتخاب‌شده کامل نیست: ${reason}`);
+  }
+
+  return revalidated.data;
 }
 
 export async function createOrder(userId: string, data: OrderCreateBody) {

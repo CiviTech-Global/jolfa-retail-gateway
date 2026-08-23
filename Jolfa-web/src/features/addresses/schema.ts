@@ -45,6 +45,18 @@ export const emptyAddressForm: AddressFormValues = {
   isDefault: false,
 }
 
+/**
+ * Re-checks a stored address against the current rules. An entry saved before
+ * a rule tightened — or written straight through the API — can be incomplete,
+ * and checkout must catch that before it reaches the payment gateway rather
+ * than after. Returns the first problem in Persian, or undefined when valid.
+ */
+export function validateSavedAddress(address: unknown): string | undefined {
+  const result = addressFieldsSchema.safeParse(address)
+  if (result.success) return undefined
+  return result.error.issues[0]?.message ?? 'اطلاعات این آدرس کامل نیست'
+}
+
 /** Single-line rendering used in lists and the checkout summary. */
 export function formatAddressLine(address: {
   province: string

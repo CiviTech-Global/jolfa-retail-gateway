@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
 import { Link } from 'react-router'
-import { MapPin, Plus } from 'lucide-react'
+import { MapPin, Plus, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input, Textarea } from '@/components/ui/Input'
 import { Switch } from '@/components/ui/Switch'
@@ -15,7 +15,11 @@ import { optionalText } from '@/lib/validation'
 import { useCart } from '@/features/cart/context'
 import { createOrder, requestPayment } from '@/features/orders/api'
 import { ADDRESSES_QUERY_KEY, getAddresses } from '@/features/addresses/api'
-import { addressFieldsSchema, formatAddressLine } from '@/features/addresses/schema'
+import {
+  addressFieldsSchema,
+  formatAddressLine,
+  validateSavedAddress,
+} from '@/features/addresses/schema'
 import type { AddressDto } from '@/features/addresses/types'
 import { toast } from 'sonner'
 
@@ -59,11 +63,17 @@ function SavedAddressOption({
   selected: boolean
   onSelect: () => void
 }) {
+  const problem = validateSavedAddress(address)
+
   return (
     <label
       className={cn(
         'flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors',
-        selected ? 'border-primary bg-primary-soft/40' : 'border-border hover:border-primary',
+        problem
+          ? 'border-danger/60'
+          : selected
+            ? 'border-primary bg-primary-soft/40'
+            : 'border-border hover:border-primary',
       )}
     >
       <input
@@ -84,6 +94,18 @@ function SavedAddressOption({
         <span className="mt-1 block text-sm text-muted-foreground">
           {address.recipientName} — <span dir="ltr">{address.phone}</span>
         </span>
+        {problem && (
+          <span className="mt-2 flex items-start gap-1.5 text-sm text-danger">
+            <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              {problem} — این آدرس را در{' '}
+              <Link to="/profile/addresses" className="underline">
+                آدرس‌های من
+              </Link>{' '}
+              کامل کنید.
+            </span>
+          </span>
+        )}
       </span>
     </label>
   )
@@ -113,6 +135,13 @@ export function CheckoutPage() {
   const selectedAddressId = chosenAddressId ?? fallbackAddressId
 
   const isTypingNewAddress = selectedAddressId === NEW_ADDRESS
+  const selectedAddress = savedAddresses.find((address) => address.id === selectedAddressId)
+  // A saved address is validated against the same rules as a typed one, so an
+  // entry that predates a rule (or came in through the API) cannot slip through
+  // to the payment gateway half-filled.
+  const selectedAddressProblem = selectedAddress
+    ? validateSavedAddress(selectedAddress)
+    : undefined
 
   const {
     register,
@@ -146,6 +175,17 @@ export function CheckoutPage() {
     if (items.length === 0) {
       setError('سبد خرید خالی است')
       return
+    }
+
+    if (!isTypingNewAddress) {
+      if (!selectedAddress) {
+        setError('آدرس انتخاب‌شده یافت نشد. لطفاً دوباره یک آدرس انتخاب کنید.')
+        return
+      }
+      if (selectedAddressProblem) {
+        setError(`آدرس انتخاب‌شده کامل نیست: ${selectedAddressProblem}`)
+        return
+      }
     }
 
     setError(undefined)
@@ -391,7 +431,12 @@ export function CheckoutPage() {
 
           <FormError message={error} />
 
-          <Button type="submit" loading={isSubmitting} className="w-full">
+          <Button
+            type="submit"
+            loading={isSubmitting}
+            disabled={Boolean(selectedAddressProblem)}
+            className="w-full"
+          >
             پرداخت {formatPrice(finalTotal)}
           </Button>
         </form>

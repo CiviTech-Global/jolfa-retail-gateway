@@ -172,6 +172,64 @@ describe("GET /api/v1/addresses", () => {
   });
 });
 
+describe("ordering from a saved address", () => {
+  it("re-validates the stored address and refuses an incomplete one", async () => {
+    const app = await buildTestApp();
+    const { user } = await createTestUser();
+    const token = getAuthToken(app, user);
+    const product = await createTestProduct({ price: 10_000, stockQuantity: 5 });
+    const address = (await createAddress(app, token)).json().data.address;
+
+    // Written straight to the DB, bypassing the API schema — the shape a row
+    // saved before a rule tightened would have.
+    await prisma.address.update({
+      where: { id: address.id },
+      data: { phone: "123" },
+    });
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/orders",
+      headers: auth(token),
+      payload: {
+        items: [{ productId: product.id, quantity: 1 }],
+        shippingAddressId: address.id,
+      },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.message).toContain("کامل نیست");
+
+    // Stock must not move for an order that was never created.
+    const reloaded = await prisma.product.findUnique({ where: { id: product.id } });
+    expect(reloaded?.stockQuantity).toBe(5);
+    await app.close();
+  });
+
+  it("accepts a complete saved address", async () => {
+    const app = await buildTestApp();
+    const { user } = await createTestUser();
+    const token = getAuthToken(app, user);
+    const product = await createTestProduct({ price: 10_000, stockQuantity: 5 });
+    const address = (await createAddress(app, token)).json().data.address;
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/orders",
+      headers: auth(token),
+      payload: {
+        items: [{ productId: product.id, quantity: 1 }],
+        shippingAddressId: address.id,
+      },
+    });
+
+    expect(res.statusCode).toBe(201);
+    // The order carries its own snapshot, not the book entry itself.
+    expect(res.json().data.order.shippingAddressId).not.toBe(address.id);
+    await app.close();
+  });
+});
+
 describe("PATCH /api/v1/addresses/:id", () => {
   it("updates a field the caller owns", async () => {
     const app = await buildTestApp();

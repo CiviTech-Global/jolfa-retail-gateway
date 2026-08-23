@@ -94,38 +94,50 @@ export function AccountLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
-      <div className="flex gap-8">
-        <aside className="hidden w-64 shrink-0 md:block">
-          <div className="sticky top-24 space-y-4 rounded-2xl border border-border bg-surface p-4">
+    /*
+     * A pinned shell rather than a sticky sidebar. `position: sticky` can only
+     * travel inside its containing block, so a sidebar in the normal page flow
+     * is pushed off-screen as soon as the page scrolls past the panel — which
+     * is why this used to drift away. Here the shell is exactly the viewport
+     * minus the site header, nothing outside it scrolls, and the content pane
+     * is the only scroll container. The rail therefore never moves at all.
+     */
+    <div className="flex min-h-0 flex-1 overflow-hidden">
+      <div className="mx-auto flex w-full max-w-7xl gap-8 px-4">
+        <aside className="hidden w-64 shrink-0 py-8 md:block">
+          <div className="flex h-full flex-col gap-4 overflow-y-auto rounded-2xl border border-border bg-surface p-4">
             <AccountIdentity />
 
             <div className="border-t border-border/60 pt-4">
               <AccountNav />
             </div>
 
-            {/* An admin visiting their own account keeps one click back to the panel. */}
-            {user?.role === 'ADMIN' && (
-              <Button asChild variant="outline" className="w-full justify-start gap-2">
-                <Link to="/admin">
-                  <ShieldCheck className="h-4 w-4" />
-                  پنل مدیریت
-                </Link>
-              </Button>
-            )}
+            {/* Pushes the account actions to the foot of the rail. */}
+            <div className="mt-auto space-y-2 pt-4">
+              {/* An admin visiting their own account keeps one click back to the panel. */}
+              {user?.role === 'ADMIN' && (
+                <Button asChild variant="outline" className="w-full justify-start gap-2">
+                  <Link to="/admin">
+                    <ShieldCheck className="h-4 w-4" />
+                    پنل مدیریت
+                  </Link>
+                </Button>
+              )}
 
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-2 text-muted-foreground"
-              onClick={logout}
-            >
-              <LogOut className="h-4 w-4" />
-              خروج
-            </Button>
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-2 text-muted-foreground"
+                onClick={logout}
+              >
+                <LogOut className="h-4 w-4" />
+                خروج
+              </Button>
+            </div>
           </div>
         </aside>
 
-        <div className="min-w-0 flex-1">
+        {/* The only scroll container in the panel. */}
+        <div className="min-w-0 flex-1 overflow-y-auto py-8">
           <div className="mb-4 md:hidden">
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
               <SheetTrigger asChild>
