@@ -44,7 +44,9 @@ export async function changeOwnPassword(
 
   await prisma.user.update({
     where: { id: user.id },
-    data: { passwordHash: await hashPassword(newPassword) },
+    // Changing the password ends every other session — the whole point of
+    // changing it is usually that someone else may hold the old one.
+    data: { passwordHash: await hashPassword(newPassword), tokenVersion: { increment: 1 } },
   });
 
   await logAudit({
@@ -72,7 +74,9 @@ export async function adminResetUserPassword(
 
   await prisma.user.update({
     where: { id: user.id },
-    data: { passwordHash: await hashPassword(newPassword) },
+    // Changing the password ends every other session — the whole point of
+    // changing it is usually that someone else may hold the old one.
+    data: { passwordHash: await hashPassword(newPassword), tokenVersion: { increment: 1 } },
   });
 
   // Any outstanding reset codes are void once the password changes.
@@ -207,7 +211,9 @@ export async function resetPasswordWithCode(
   await prisma.$transaction([
     prisma.user.update({
       where: { id: user.id },
-      data: { passwordHash: await hashPassword(newPassword) },
+      // Changing the password ends every other session — the whole point of
+    // changing it is usually that someone else may hold the old one.
+    data: { passwordHash: await hashPassword(newPassword), tokenVersion: { increment: 1 } },
     }),
     prisma.passwordResetToken.update({
       where: { id: token.id },

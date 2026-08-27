@@ -262,3 +262,105 @@ every request it accepts.
 
 > **CORS:** setting `CORS_ORIGIN=*` reflects any origin and therefore disables
 > credentialed CORS. In production list your real origins, comma-separated.
+
+---
+
+## ✅ 11. Serving Uploads and Static Assets from Nginx
+
+Node should never serve a byte of static content in production. Uploaded files
+are written with a random UUID filename and never rewritten, so they are safe to
+cache permanently.
+
+```nginx
+# Uploaded media — bypass Node entirely.
+location /uploads/ {
+    alias /var/www/jolfa-retail-gateway/Jolfa-Server/uploads/;
+    access_log off;
+    expires 1y;
+    add_header Cache-Control "public, immutable";
+    try_files $uri =404;
+}
+
+# Hashed frontend bundles — the filename changes whenever the content does.
+location /assets/ {
+    alias /var/www/jolfa-retail-gateway/Jolfa-web/dist/assets/;
+    access_log off;
+    expires 1y;
+    add_header Cache-Control "public, immutable";
+}
+
+# index.html must never be cached, or users stay pinned to a stale build.
+location = /index.html {
+    add_header Cache-Control "no-cache";
+}
+
+gzip on;
+gzip_types text/css application/javascript application/json image/svg+xml;
+gzip_min_length 1024;
+```
+
+If Brotli is available (`nginx-module-brotli`), enable it alongside gzip — it
+compresses the JS bundles roughly 15–20% smaller than gzip at the same CPU cost
+on static, pre-compressible files.
+
+The API sets its own `Cache-Control`: public catalogue reads are cacheable for
+60 seconds with `stale-while-revalidate`, and anything carrying an
+`Authorization` header is `no-store`. Responses also send
+`Vary: Authorization`, so a shared cache can never hand an admin response to a
+shopper.
+
+---
+
+## ✅ 12. Monitoring and Error Tracking
+
+### Uptime
+
+Point any monitor at `GET /health`, which is exempt from rate limiting. It
+returns `{ success: true, data: { status: "ok", timestamp } }`.
+
+### Errors
+
+The server logs structured JSON via Pino, with `authorization`, `cookie`,
+`password`, `token` and `confirmPassword` redacted. Stack traces are omitted
+from responses in production but retained in the log.
+
+Process-level failures are handled explicitly (`src/shared/crash-handlers.ts`):
+an unhandled promise rejection is logged and the server keeps serving; an
+uncaught exception is logged and the process exits so the manager can restart it
+clean.
+
+**Not yet wired: an error tracking service.** Errors currently land in a file on
+one machine. Ship the logs somewhere, or add an SDK — GlitchTip is
+Sentry-protocol compatible and can be self-hosted inside Iran, which matters
+because sentry.io is not reliably reachable from Iranian networks. Minimum
+viable alternative:
+
+```bash
+# Rotate logs so the disk cannot fill, and keep two weeks of history.
+sudo tee /etc/logrotate.d/jolfa <<'EOF'
+/var/log/jolfa/*.log {
+    daily
+    rotate 14
+    compress
+    missingok
+    notifempty
+    copytruncate
+}
+EOF
+```
+
+Configure PM2 to write there:
+
+```bash
+pm2 start dist/index.js --name jolfa-api \
+  --output /var/log/jolfa/out.log \
+  --error /var/log/jolfa/error.log
+pm2 save
+```
+
+### Graceful restarts
+
+The server handles `SIGTERM` and `SIGINT`: it stops accepting connections, lets
+in-flight requests finish, closes the database pool, then exits — with a
+10-second backstop. `pm2 reload jolfa-api` therefore no longer drops requests
+mid-checkout.

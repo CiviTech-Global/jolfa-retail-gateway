@@ -109,3 +109,10 @@ export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 export type AdminResetPasswordInput = z.infer<typeof adminResetPasswordSchema>;
+
+/** Body of POST /auth/refresh. Exported for the route's validateRequest. */
+export const refreshSchema = z.object({
+  refreshToken: z.string().min(1, "توکن تازه‌سازی الزامی است"),
+});
+
+export type RefreshInput = z.infer<typeof refreshSchema>;

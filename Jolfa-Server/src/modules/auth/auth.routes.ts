@@ -10,13 +10,17 @@ import {
   forgotPasswordController,
   resetPasswordController,
   updateProfileController,
+  refreshController,
+  logoutController,
 } from "./auth.controller.js";
 import {
   changePasswordSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
   updateProfileSchema,
+  refreshSchema,
 } from "./auth.types.js";
+import type { RefreshInput } from "./auth.types.js";
 
 /**
  * Tighter than the global bucket. These five routes are the ones worth
@@ -33,6 +37,16 @@ const authRateLimit = {
 export async function authRoutes(app: FastifyInstance): Promise<void> {
   app.post("/register", { config: authRateLimit }, registerController(app));
   app.post("/login", { config: authRateLimit }, loginController(app));
+  // Rate-limited like the other credential routes: a refresh token is a
+  // credential, and this endpoint mints new ones.
+  app.post<{ Body: RefreshInput }>(
+    "/refresh",
+    { config: authRateLimit, preHandler: [validateRequest({ body: refreshSchema })] },
+    refreshController(app),
+  );
+
+  app.post("/logout", { preHandler: [authenticate] }, logoutController);
+
   app.get("/me", { preHandler: [authenticate] }, meController);
 
   app.patch(

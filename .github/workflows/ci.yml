@@ -8,6 +8,28 @@ on:
   pull_request:
 
 jobs:
+  # Fails only on high/critical advisories. Lower severities are reported in the
+  # log without blocking a merge, so the gate stays something people trust
+  # rather than something they learn to skip.
+  audit:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace: [Jolfa-Server, Jolfa-web]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Report all advisories
+        run: npm audit --audit-level=low || true
+        working-directory: ./${{ matrix.workspace }}
+        continue-on-error: true
+      - name: Fail on high or critical
+        run: npm audit --audit-level=high
+        working-directory: ./${{ matrix.workspace }}
+
   frontend:
     runs-on: ubuntu-latest
     defaults:

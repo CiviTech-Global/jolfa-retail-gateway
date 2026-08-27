@@ -32,6 +32,8 @@ import { seedDefaults } from "./shared/seed.js";
 import paymentAdminRoutes from "./modules/payments/payment.admin.routes.js";
 import orderAdminRoutes from "./modules/orders/order.admin.routes.js";
 import { registerRequestLogging } from "./shared/logging.js";
+import { registerCacheHeaders } from "./shared/caching.js";
+import { registerCrashHandlers } from "./shared/crash-handlers.js";
 
 export function createFastifyInstance(): FastifyInstance {
   return Fastify({
@@ -58,6 +60,7 @@ export function createFastifyInstance(): FastifyInstance {
  */
 export async function buildApp(app: FastifyInstance): Promise<FastifyInstance> {
   registerRequestLogging(app);
+  registerCacheHeaders(app, env.API_PREFIX);
 
   // `origin: true` reflects whatever Origin the caller sent. Paired with
   // `credentials: true` that lets any site read authenticated responses, so the
@@ -112,9 +115,14 @@ export async function buildApp(app: FastifyInstance): Promise<FastifyInstance> {
   // on a fresh deploy before the first upload lands.
   await mkdir(getUploadDir(), { recursive: true });
 
+  // Uploaded files are content-addressed by a random UUID filename and never
+  // rewritten, so they can be cached forever. In production Nginx should serve
+  // this path directly and never wake Node at all — see docs DEPLOY.md §11.
   await app.register(fastifyStatic, {
     root: getUploadDir(),
     prefix: env.PUBLIC_UPLOAD_PATH,
+    maxAge: "365d",
+    immutable: true,
   });
 
   await app.register(fastifyStatic, {
@@ -206,10 +214,51 @@ export async function buildApp(app: FastifyInstance): Promise<FastifyInstance> {
   return app;
 }
 
+/**
+ * Stops accepting new connections, lets in-flight requests finish, then closes
+ * the database pool. Without this a deploy kills the process mid-request and
+ * the customer sees a failed checkout rather than a moment of latency.
+ */
+function registerShutdownHandlers(app: FastifyInstance): void {
+  let shuttingDown = false;
+
+  const shutdown = async (signal: string): Promise<void> => {
+    // A second Ctrl-C should not start a parallel teardown.
+    if (shuttingDown) return;
+    shuttingDown = true;
+
+    app.log.info({ signal }, "shutting down");
+
+    // Backstop: if a request hangs, exit anyway rather than blocking the deploy
+    // forever. Process managers send SIGKILL eventually; this is tidier.
+    const forceExit = setTimeout(() => {
+      app.log.error("graceful shutdown timed out, forcing exit");
+      process.exit(1);
+    }, 10_000);
+    forceExit.unref();
+
+    try {
+      await app.close();
+      const { prisma } = await import("./shared/prisma.js");
+      await prisma.$disconnect();
+      app.log.info("shutdown complete");
+      process.exit(0);
+    } catch (error) {
+      app.log.error({ err: error }, "error during shutdown");
+      process.exit(1);
+    }
+  };
+
+  process.on("SIGTERM", () => void shutdown("SIGTERM"));
+  process.on("SIGINT", () => void shutdown("SIGINT"));
+}
+
 async function bootstrap(): Promise<void> {
   const app = createFastifyInstance();
   await buildApp(app);
   await seedDefaults();
+  registerCrashHandlers(app);
+  registerShutdownHandlers(app);
   await app.listen({ port: env.PORT, host: env.HOST });
 }
 

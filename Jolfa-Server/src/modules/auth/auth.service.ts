@@ -17,7 +17,12 @@ const USER_PUBLIC_SELECT = {
   isActive: true,
 } as const;
 
+/** Everything `generateTokens` needs, including the revocation counter. */
+const USER_TOKEN_SELECT = { ...USER_PUBLIC_SELECT, tokenVersion: true } as const;
+
 type PrismaUserPayload = {
+  /** Optional so callers holding only the public projection still type-check. */
+  tokenVersion?: number;
   id: string;
   email: string | null;
   phone: string;
@@ -28,17 +33,82 @@ type PrismaUserPayload = {
 };
 
 export function generateTokens(user: PrismaUserPayload, app: FastifyInstance): AuthTokens {
-  const payload = {
-    id: user.id,
-    email: user.email ?? "",
-    phone: user.phone,
-    role: user.role,
-  };
+  // `tv` travels in both tokens so `authenticate` can reject one issued before
+  // the user logged out or changed their password. `typ` stops a refresh token
+  // being replayed as an access token: without it the two are interchangeable
+  // to any endpoint that only checks the signature.
+  const tokenVersion = user.tokenVersion ?? 0;
 
-  const accessToken = app.jwt.sign(payload, { expiresIn: env.JWT_ACCESS_EXPIRES_IN });
-  const refreshToken = app.jwt.sign({ id: user.id }, { expiresIn: env.JWT_REFRESH_EXPIRES_IN });
+  const accessToken = app.jwt.sign(
+    {
+      id: user.id,
+      email: user.email ?? "",
+      phone: user.phone,
+      role: user.role,
+      tv: tokenVersion,
+      typ: "access",
+    },
+    { expiresIn: env.JWT_ACCESS_EXPIRES_IN },
+  );
+
+  const refreshToken = app.jwt.sign(
+    { id: user.id, tv: tokenVersion, typ: "refresh" },
+    { expiresIn: env.JWT_REFRESH_EXPIRES_IN },
+  );
 
   return { accessToken, refreshToken };
+}
+
+/**
+ * Exchanges a refresh token for a fresh pair.
+ *
+ * Rotation is real: the returned refresh token is new, and because the user is
+ * re-read from the database on every exchange, a session that was revoked or an
+ * account that was deactivated stops working at the next refresh rather than
+ * lingering until the access token happens to expire.
+ */
+export async function refreshSession(
+  refreshToken: string,
+  app: FastifyInstance,
+): Promise<AuthResponse> {
+  let decoded: { id?: string; tv?: number; typ?: string };
+  try {
+    decoded = app.jwt.verify(refreshToken);
+  } catch {
+    throw new UnauthorizedError("توکن نامعتبر یا منقضی شده است");
+  }
+
+  if (decoded.typ !== "refresh" || !decoded.id) {
+    throw new UnauthorizedError("توکن نامعتبر یا منقضی شده است");
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: decoded.id },
+    select: USER_TOKEN_SELECT,
+  });
+
+  if (!user || !user.isActive) {
+    throw new UnauthorizedError("حساب کاربری در دسترس نیست");
+  }
+
+  if ((decoded.tv ?? 0) !== user.tokenVersion) {
+    throw new UnauthorizedError("این نشست منقضی شده است. دوباره وارد شوید");
+  }
+
+  const { tokenVersion: _tokenVersion, ...publicUser } = user;
+  return { user: publicUser, tokens: generateTokens(user, app) };
+}
+
+/**
+ * Ends every session for a user by invalidating all tokens carrying the old
+ * version. There is no server-side session list to clear — the version bump is
+ * what makes an already-issued token stop working.
+ */
+export async function revokeSessions(userId: string): Promise<void> {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { tokenVersion: { increment: 1 } },
+  });
 }
 
 export async function register(data: RegisterInput, app: FastifyInstance): Promise<AuthResponse> {
@@ -64,10 +134,11 @@ export async function register(data: RegisterInput, app: FastifyInstance): Promi
       firstName: parsed.firstName,
       lastName: parsed.lastName,
     },
-    select: USER_PUBLIC_SELECT,
+    select: USER_TOKEN_SELECT,
   });
 
-  return { user, tokens: generateTokens(user, app) };
+  const { tokenVersion: _newUserVersion, ...publicUser } = user;
+  return { user: publicUser, tokens: generateTokens(user, app) };
 }
 
 export async function login(data: LoginInput, app: FastifyInstance): Promise<AuthResponse> {
@@ -85,7 +156,7 @@ export async function login(data: LoginInput, app: FastifyInstance): Promise<Aut
       ],
     },
     select: {
-      ...USER_PUBLIC_SELECT,
+      ...USER_TOKEN_SELECT,
       passwordHash: true,
     },
   });
@@ -94,7 +165,7 @@ export async function login(data: LoginInput, app: FastifyInstance): Promise<Aut
     throw new UnauthorizedError("ایمیل/موبایل یا رمز عبور اشتباه است");
   }
 
-  const { passwordHash, ...publicUser } = user;
+  const { passwordHash, tokenVersion, ...publicUser } = user;
   const validPassword = await bcrypt.compare(parsed.password, passwordHash);
 
   if (!validPassword) {
@@ -105,7 +176,7 @@ export async function login(data: LoginInput, app: FastifyInstance): Promise<Aut
     throw new UnauthorizedError("حساب کاربری شما غیرفعال است");
   }
 
-  return { user: publicUser, tokens: generateTokens(publicUser, app) };
+  return { user: publicUser, tokens: generateTokens({ ...publicUser, tokenVersion }, app) };
 }
 
 export async function getUserById(id: string): Promise<AuthUser> {

@@ -7,6 +7,7 @@ import type {
   ChangePasswordInput,
   ForgotPasswordInput,
   LoginInput,
+  RefreshInput,
   RegisterInput,
   ResetPasswordInput,
   UpdateProfileInput,
@@ -25,6 +26,23 @@ export function loginController(app: FastifyInstance) {
     sendSuccess(reply, result);
   };
 }
+
+export function refreshController(app: FastifyInstance) {
+  return async (
+    request: FastifyRequest<{ Body: RefreshInput }>,
+    reply: FastifyReply,
+  ): Promise<void> => {
+    const result = await authService.refreshSession(request.body.refreshToken, app);
+    sendSuccess(reply, result);
+  };
+}
+
+export const logoutController = asyncHandler(
+  async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    await authService.revokeSessions(request.user.id);
+    sendSuccess(reply, { message: "از حساب کاربری خارج شدید" });
+  },
+);
 
 export async function meController(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const user = await authService.getUserById(request.user.id);

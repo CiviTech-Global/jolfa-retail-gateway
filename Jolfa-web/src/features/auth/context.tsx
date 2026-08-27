@@ -2,6 +2,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { apiRequest } from '@/api/client'
+import { clearTokens, getAccessToken, setTokens } from '@/api/tokens'
 import { login as loginApi, register as registerApi, getMe } from './api'
 import type { LoginRequest, RegisterRequest, User } from './types'
 
@@ -12,21 +13,19 @@ interface AuthContextValue {
   /** Resolves with the authenticated user so callers can route by role. */
   login: (data: LoginRequest) => Promise<User>
   register: (data: RegisterRequest) => Promise<User>
-  logout: () => void
+  logout: () => Promise<void>
   /** Re-reads the current user, e.g. after a profile edit. */
   refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
-const TOKEN_KEY = 'token'
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const token = localStorage.getItem(TOKEN_KEY)
+    const token = getAccessToken()
     if (!token) {
       setIsLoading(false)
       return
@@ -38,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!cancelled) setUser(response.user)
       })
       .catch(() => {
-        localStorage.removeItem(TOKEN_KEY)
+        clearTokens()
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false)
@@ -51,14 +50,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (data: LoginRequest) => {
     const response = await loginApi(data)
-    localStorage.setItem(TOKEN_KEY, response.tokens.accessToken)
+    setTokens(response.tokens)
     setUser(response.user)
     return response.user
   }, [])
 
   const register = useCallback(async (data: RegisterRequest) => {
     const response = await registerApi(data)
-    localStorage.setItem(TOKEN_KEY, response.tokens.accessToken)
+    setTokens(response.tokens)
     setUser(response.user)
     return response.user
   }, [])
@@ -68,11 +67,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(response.user)
   }, [])
 
-  const logout = useCallback(() => {
-    localStorage.removeItem(TOKEN_KEY)
+  const logout = useCallback(async () => {
+    // Tell the server first — it needs the token to know whose sessions to end,
+    // and clearing local storage beforehand sent the request unauthenticated,
+    // so signing out never actually revoked anything.
+    try {
+      await apiRequest('/auth/logout', { method: 'POST' })
+    } catch {
+      // Offline or already-invalid token: the local session still goes away.
+    }
+    clearTokens()
     setUser(null)
-    // Clear the default Authorization header used by apiRequest on next call.
-    void apiRequest('/auth/logout', { method: 'POST' }).catch(() => undefined)
   }, [])
 
   return (

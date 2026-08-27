@@ -520,9 +520,6 @@ export async function clearDemoData() {
 
       // Remove any products that belong to demo categories, plus their related rows.
       // This also cleans up user-created products that were placed under demo categories.
-      await tx.cartItem.deleteMany({
-        where: { product: { categoryId: { in: categoryIds } } },
-      });
       await tx.productImage.deleteMany({
         where: { product: { categoryId: { in: categoryIds } } },
       });
