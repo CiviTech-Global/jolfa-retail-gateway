@@ -1,5 +1,6 @@
 import { prisma } from "../../shared/prisma.js";
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from "../../shared/app-error.js";
+import { STOCK_NON_NEGATIVE_CONSTRAINT } from "./order.constants.js";
 import { logAudit, buildChangeMetadata } from "../../shared/audit/audit.service.js";
 import { shippingAddressSchema } from "./order.types.js";
 import type {
@@ -48,6 +49,17 @@ async function resolveShippingDetails(userId: string, data: OrderCreateBody) {
   }
 
   return revalidated.data;
+}
+
+/**
+ * True when Postgres rejected a write because stock would have gone negative.
+ * Prisma surfaces the constraint name inside the driver message rather than as
+ * structured metadata, so matching on the name is the available signal.
+ */
+function isStockConstraintViolation(error: unknown): boolean {
+  return (
+    error instanceof Error && error.message.includes(STOCK_NON_NEGATIVE_CONSTRAINT)
+  );
 }
 
 export async function createOrder(userId: string, data: OrderCreateBody) {
@@ -136,15 +148,30 @@ export async function createOrder(userId: string, data: OrderCreateBody) {
       },
     });
 
+    // The check above ran against a read taken before this transaction opened,
+    // so it cannot see a concurrent buyer. `UPDATE ... stock - n` takes a row
+    // lock, which serialises racing orders; the value it returns is therefore
+    // the authoritative post-decrement stock. Going negative means someone else
+    // took the last unit first, and throwing rolls the whole order back.
     for (const item of data.items) {
       const product = productMap.get(item.productId)!;
-      await tx.product.update({
-        where: { id: item.productId },
-        data: { stockQuantity: { decrement: item.quantity } },
-      });
-      if (product.stockQuantity < item.quantity) {
-        throw new ConflictError(`موجودی ${product.title} در طول تراکنش به پایان رسید`);
+      const soldOut = new ConflictError(`موجودی ${product.title} در طول تراکنش به پایان رسید`);
+
+      let updated: { stockQuantity: number };
+      try {
+        updated = await tx.product.update({
+          where: { id: item.productId },
+          data: { stockQuantity: { decrement: item.quantity } },
+          select: { stockQuantity: true },
+        });
+      } catch (error) {
+        // The CHECK constraint got there first. That is still "someone else took
+        // the last unit", so the buyer sees the same 409 rather than a 500.
+        if (isStockConstraintViolation(error)) throw soldOut;
+        throw error;
       }
+
+      if (updated.stockQuantity < 0) throw soldOut;
     }
 
     return created;

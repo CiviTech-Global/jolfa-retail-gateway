@@ -1,10 +1,13 @@
 import "dotenv/config";
 import Fastify, { type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
+import helmet from "@fastify/helmet";
+import rateLimit from "@fastify/rate-limit";
 import jwt from "@fastify/jwt";
 import multipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
 import { ZodError } from "zod";
+import { TooManyRequestsError } from "./shared/app-error.js";
 import { env } from "./config/env.js";
 import categoryRoutes from "./modules/categories/category.routes.js";
 import productRoutes from "./modules/products/product.routes.js";
@@ -56,9 +59,42 @@ export function createFastifyInstance(): FastifyInstance {
 export async function buildApp(app: FastifyInstance): Promise<FastifyInstance> {
   registerRequestLogging(app);
 
+  // `origin: true` reflects whatever Origin the caller sent. Paired with
+  // `credentials: true` that lets any site read authenticated responses, so the
+  // wildcard drops credentials instead of silently becoming a hole.
+  const allowAnyOrigin = env.CORS_ORIGIN === "*";
   await app.register(cors, {
-    origin: env.CORS_ORIGIN === "*" ? true : env.CORS_ORIGIN.split(","),
-    credentials: true,
+    origin: allowAnyOrigin ? true : env.CORS_ORIGIN.split(","),
+    credentials: !allowAnyOrigin,
+  });
+
+  await app.register(helmet, {
+    // The API serves JSON and uploaded images, never HTML, so the restrictive
+    // default CSP costs nothing here.
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        imgSrc: ["'self'", "data:"],
+        scriptSrc: ["'none'"],
+      },
+    },
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  });
+
+  // Registered before the routes so every route inherits the global bucket.
+  // Individual routes tighten it with `config.rateLimit`.
+  await app.register(rateLimit, {
+    global: true,
+    max: env.RATE_LIMIT_MAX,
+    timeWindow: env.RATE_LIMIT_WINDOW,
+    // Health checks come from monitoring, not users, and must never be limited.
+    allowList: (request) => request.url === "/health",
+    // Must be a real Error: the app's error handler coerces non-Errors into a
+    // bare Error, which would lose the 429 and report the throttle as a 500.
+    errorResponseBuilder: (_request, context) =>
+      new TooManyRequestsError(
+        `درخواست‌های شما بیش از حد مجاز است. لطفاً ${context.after} دیگر تلاش کنید.`,
+      ),
   });
 
   await app.register(jwt, {

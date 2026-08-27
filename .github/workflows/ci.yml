@@ -1,10 +1,11 @@
 name: CI
 
+# Runs on every branch, not just main. The previous configuration only fired on
+# main and PRs into it, so day-to-day work on feature branches was never gated.
 on:
   push:
-    branches: [main]
+    branches: ["**"]
   pull_request:
-    branches: [main]
 
 jobs:
   frontend:
@@ -21,6 +22,7 @@ jobs:
           cache-dependency-path: ./Jolfa-web/package-lock.json
       - run: npm ci
       - run: npm run lint
+      - run: npm run test:run
       - run: npm run build
 
   backend:
@@ -28,6 +30,24 @@ jobs:
     defaults:
       run:
         working-directory: ./Jolfa-Server
+
+    # The suite runs against a real Postgres — it applies migrations and
+    # truncates between tests rather than mocking Prisma.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: jolfa_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -35,7 +55,35 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: ./Jolfa-Server/package-lock.json
+
       - run: npm ci
-      - run: npm run lint
       - run: npx prisma generate
+      - run: npm run lint
+
+      # test/setup.ts reads .env.test, which is gitignored. Recreate it here
+      # with the same shape a developer would have locally.
+      - name: Write test environment
+        run: |
+          cat > .env.test <<'EOF'
+          NODE_ENV=test
+          PORT=3001
+          HOST=0.0.0.0
+          API_PREFIX=/api/v1
+          DATABASE_URL=postgresql://postgres:postgres@localhost:5432/jolfa_test?schema=public
+          JWT_SECRET=ci-secret-at-least-16-characters-long
+          JWT_ACCESS_EXPIRES_IN=24h
+          JWT_REFRESH_EXPIRES_IN=7d
+          CORS_ORIGIN=*
+          APP_URL=http://localhost:3001
+          UPLOAD_DIR=uploads-test
+          PUBLIC_UPLOAD_PATH=/uploads
+          MAX_FILE_SIZE=5242880
+          ZARINPAL_SANDBOX=true
+          RATE_LIMIT_MAX=10000
+          RATE_LIMIT_WINDOW=1 minute
+          AUTH_RATE_LIMIT_MAX=50
+          AUTH_RATE_LIMIT_WINDOW=15 minutes
+          EOF
+
+      - run: npm run test:run
       - run: npm run build

@@ -173,6 +173,92 @@ sudo certbot --nginx -d your-domain.ir -d www.your-domain.ir
 - [❌] Payment gateway callback URL is correct
 - [❌] Uploads directory is writable by Node process
 - [❌] Firewall allows 80/443 and blocks 3001 externally
-- [❌] Automated database backups configured
+- [❌] Automated backups configured — see §9 (`scripts/backup.sh` + cron + `BACKUP_REMOTE`)
+- [❌] Restore rehearsed once against a scratch database — see §9
+- [❌] `ZARINPAL_SANDBOX=false` and live merchant ID set
+- [❌] Rate limits reviewed for production — see §10
 
 > These items will be checked once the production VPS deployment is performed.
+
+---
+
+## ✅ 9. Backups and Restore
+
+`scripts/backup.sh` and `scripts/restore.sh` are implemented and have been
+exercised end to end (dump → restore into a scratch database → verify).
+
+Both halves of the application's state are captured together. Backing up only
+the database restores a catalogue whose product images are all missing, because
+uploaded media lives on the filesystem and is referenced from the database by
+path.
+
+### Install the nightly job
+
+```bash
+sudo apt install -y postgresql-client rclone
+
+# Configure an off-box destination once (e.g. an object-storage bucket).
+rclone config          # create a remote named e.g. "jolfa-backups"
+
+sudo crontab -e
+```
+
+Add:
+
+```cron
+30 3 * * * BACKUP_REMOTE=jolfa-backups:jolfa /var/www/jolfa-retail-gateway/scripts/backup.sh >> /var/log/jolfa-backup.log 2>&1
+```
+
+Without `BACKUP_REMOTE` the script still runs but warns loudly — a backup on the
+machine it is protecting does not survive that machine failing.
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `BACKUP_DIR` | `/var/backups/jolfa` | Local staging directory |
+| `RETENTION_DAYS` | `14` | Local copies older than this are pruned |
+| `BACKUP_REMOTE` | *(unset)* | rclone destination for the off-box copy |
+| `ENV_FILE` | `Jolfa-Server/.env` | Where `DATABASE_URL` and `UPLOAD_DIR` are read from |
+
+Each run writes `database.dump`, `uploads.tar.gz` and `manifest.txt` into a
+timestamped directory. The manifest is written **last**, so a directory without
+one is a partial backup; `restore.sh` refuses to use it.
+
+### Rehearse the restore
+
+Do this now, not during an incident:
+
+```bash
+sudo -u postgres createdb jolfa_restore_test
+scripts/restore.sh /var/backups/jolfa/<timestamp> \
+  --database-url 'postgresql://USER:PASS@localhost:5432/jolfa_restore_test' \
+  --uploads-path /tmp/restore-check
+```
+
+Then confirm the product count looks right and one restored image opens. Drop
+the scratch database afterwards.
+
+Restoring over production is the same command without the overrides. It prompts
+for confirmation because it drops every object in the target database first.
+
+---
+
+## ✅ 10. Rate Limiting and Security Headers
+
+The API ships with `@fastify/rate-limit` and `@fastify/helmet` enabled by
+default. Tune per environment in `.env`:
+
+```env
+RATE_LIMIT_MAX=300           # per IP, all routes
+RATE_LIMIT_WINDOW=1 minute
+AUTH_RATE_LIMIT_MAX=10       # login, register, change/forgot/reset password
+AUTH_RATE_LIMIT_WINDOW=15 minutes
+```
+
+The auth bucket is deliberately tight: those routes guard credentials, and
+`/auth/forgot-password` sends a real SMS — and therefore spends real money — on
+every request it accepts.
+
+`/health` is exempt from rate limiting so monitoring is never throttled.
+
+> **CORS:** setting `CORS_ORIGIN=*` reflects any origin and therefore disables
+> credentialed CORS. In production list your real origins, comma-separated.

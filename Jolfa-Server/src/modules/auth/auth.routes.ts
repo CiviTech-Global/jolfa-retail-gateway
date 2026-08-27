@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { env } from "../../config/env.js";
 import { authenticate } from "../../shared/middleware/auth.js";
 import { validateRequest } from "../../shared/middleware/validate-request.js";
 import {
@@ -17,9 +18,21 @@ import {
   updateProfileSchema,
 } from "./auth.types.js";
 
+/**
+ * Tighter than the global bucket. These five routes are the ones worth
+ * attacking: four accept credentials, and `/forgot-password` spends real money
+ * on an SMS for every request it accepts.
+ */
+const authRateLimit = {
+  rateLimit: {
+    max: env.AUTH_RATE_LIMIT_MAX,
+    timeWindow: env.AUTH_RATE_LIMIT_WINDOW,
+  },
+};
+
 export async function authRoutes(app: FastifyInstance): Promise<void> {
-  app.post("/register", registerController(app));
-  app.post("/login", loginController(app));
+  app.post("/register", { config: authRateLimit }, registerController(app));
+  app.post("/login", { config: authRateLimit }, loginController(app));
   app.get("/me", { preHandler: [authenticate] }, meController);
 
   app.patch(
@@ -30,20 +43,20 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
   app.post(
     "/change-password",
-    { preHandler: [authenticate, validateRequest({ body: changePasswordSchema })] },
+    { config: authRateLimit, preHandler: [authenticate, validateRequest({ body: changePasswordSchema })] },
     changePasswordController,
   );
 
   // Unauthenticated by design — the caller has lost access to their account.
   app.post(
     "/forgot-password",
-    { preHandler: [validateRequest({ body: forgotPasswordSchema })] },
+    { config: authRateLimit, preHandler: [validateRequest({ body: forgotPasswordSchema })] },
     forgotPasswordController,
   );
 
   app.post(
     "/reset-password",
-    { preHandler: [validateRequest({ body: resetPasswordSchema })] },
+    { config: authRateLimit, preHandler: [validateRequest({ body: resetPasswordSchema })] },
     resetPasswordController,
   );
 }
