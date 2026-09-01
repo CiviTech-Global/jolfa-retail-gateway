@@ -1,6 +1,7 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
 import { asyncHandler } from "../../shared/async-handler.js";
 import { listUsers, updateUserRole, updateUserStatus } from "./user.service.js";
+import { adminResetUserPassword } from "../auth/password.service.js";
 import type {
   UserListQuery,
   UserRoleUpdateBody,
@@ -32,5 +33,17 @@ export const updateUserStatusController = asyncHandler(
   ) => {
     const user = await updateUserStatus(request.params.id, request.body, request.user?.id);
     return reply.status(200).send({ success: true, data: { user } });
+  },
+);
+
+export const resetUserPasswordController = asyncHandler(
+  async (
+    request: FastifyRequest<{ Params: UserParams; Body: { newPassword: string } }>,
+    reply: FastifyReply,
+  ) => {
+    await adminResetUserPassword(request.params.id, request.body.newPassword, request.user!.id);
+    return reply
+      .status(200)
+      .send({ success: true, data: { message: "رمز عبور کاربر تغییر کرد" } });
   },
 );

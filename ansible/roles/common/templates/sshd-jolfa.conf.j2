@@ -1,0 +1,26 @@
+# {{ ansible_managed }}
+# Rendered by Ansible from roles/common/templates/sshd-jolfa.conf.j2.
+# Drop-in read by the stock sshd_config's `Include /etc/ssh/sshd_config.d/*.conf`.
+
+{% if ssh_permit_password_auth | bool %}
+# Password authentication is DELIBERATELY ENABLED on this host
+# (ssh_permit_password_auth: true in group_vars/all/main.yml), so
+# `ssh root@<host>` still prompts for a password.
+#
+# What that costs: port 22 is exposed to the internet, and every bot on it will
+# try. fail2ban is configured below to ban an address after repeated failures,
+# and MaxAuthTries caps attempts per connection — but the account is now only
+# as strong as the password itself. Rotate it if it has ever been shared.
+PasswordAuthentication yes
+PermitRootLogin yes
+KbdInteractiveAuthentication yes
+{% else %}
+# Key-only. Removes the entire class of brute-force attacks against port 22.
+PasswordAuthentication no
+PermitRootLogin prohibit-password
+KbdInteractiveAuthentication no
+{% endif %}
+
+# Applies either way.
+MaxAuthTries {{ ssh_max_auth_tries | default(3) }}
+X11Forwarding no

@@ -1,6 +1,7 @@
 import { Link } from 'react-router'
+import { Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice, FALLBACK_IMAGE_URL } from '@/lib/utils'
 import { useCart } from '../context'
 
 export function CartPage() {
@@ -27,13 +28,13 @@ export function CartPage() {
           {items.map((item) => (
             <div
               key={item.product.id}
-              className="flex gap-4 rounded-xl border border-border bg-background p-4"
+              className="flex gap-4 rounded-2xl border border-border bg-surface p-4"
             >
               <img
                 src={
                   item.product.images.find((image) => image.isPrimary)?.url ??
                   item.product.images[0]?.url ??
-                  `https://placehold.co/120x120/e2e8f0/475569?text=${encodeURIComponent(item.product.title)}`
+                  FALLBACK_IMAGE_URL
                 }
                 alt={item.product.title}
                 className="h-24 w-24 rounded-lg object-cover"
@@ -67,7 +68,13 @@ export function CartPage() {
                       +
                     </button>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => removeItem(item.product.id)}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5 text-danger hover:bg-danger-soft hover:text-danger"
+                    onClick={() => removeItem(item.product.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
                     حذف
                   </Button>
                 </div>
@@ -76,7 +83,7 @@ export function CartPage() {
           ))}
         </div>
 
-        <div className="h-fit rounded-xl border border-border bg-background p-6">
+        <div className="h-fit rounded-2xl border border-border bg-surface p-6 lg:sticky lg:top-20">
           <h2 className="text-lg font-bold text-foreground">خلاصه سفارش</h2>
           <div className="mt-4 space-y-2 text-sm">
             <div className="flex justify-between text-foreground">

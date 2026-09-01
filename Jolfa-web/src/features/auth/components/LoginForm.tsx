@@ -1,18 +1,20 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Input } from '@/components/ui/Input'
+import { Input, PasswordInput } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
+import { FormError, FormField } from '@/components/ui/FormField'
+import { currentPasswordSchema, iranMobileSchema } from '@/lib/validation'
 
 const loginSchema = z.object({
-  phone: z
-    .string()
-    .min(10, 'شماره موبایل باید حداقل ۱۰ رقم باشد')
-    .max(15, 'شماره موبایل باید حداکثر ۱۵ رقم باشد'),
-  password: z.string().min(6, 'رمز عبور باید حداقل ۶ کاراکتر باشد'),
+  phone: iranMobileSchema,
+  // Length rules belong on registration: an existing account may predate them,
+  // and echoing them here tells an attacker the password shape.
+  password: currentPasswordSchema,
 })
 
-export type LoginFormData = z.infer<typeof loginSchema>
+type LoginFormValues = z.input<typeof loginSchema>
+export type LoginFormData = z.output<typeof loginSchema>
 
 interface LoginFormProps {
   onSubmit: (data: LoginFormData) => Promise<void> | void
@@ -25,44 +27,42 @@ export function LoginForm({ onSubmit, isLoading, error }: LoginFormProps) {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginFormData>({
+  } = useForm<LoginFormValues, unknown, LoginFormData>({
     resolver: zodResolver(loginSchema),
+    defaultValues: { phone: '', password: '' },
+    mode: 'onBlur',
+    reValidateMode: 'onChange',
   })
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div>
-        <label htmlFor="phone" className="mb-1 block text-sm font-medium text-foreground">
-          شماره موبایل
-        </label>
-        <Input
-          id="phone"
-          type="tel"
-          inputMode="tel"
-          dir="ltr"
-          placeholder="09123456789"
-          autoComplete="tel"
-          {...register('phone')}
-        />
-        {errors.phone && <p className="mt-1 text-sm text-danger">{errors.phone.message}</p>}
-      </div>
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+      <FormField label="شماره موبایل" required error={errors.phone?.message}>
+        {(field) => (
+          <Input
+            {...field}
+            type="tel"
+            inputMode="tel"
+            dir="ltr"
+            placeholder="09123456789"
+            autoComplete="tel"
+            {...register('phone')}
+          />
+        )}
+      </FormField>
 
-      <div>
-        <label htmlFor="password" className="mb-1 block text-sm font-medium text-foreground">
-          رمز عبور
-        </label>
-        <Input
-          id="password"
-          type="password"
-          dir="ltr"
-          placeholder="••••••"
-          autoComplete="current-password"
-          {...register('password')}
-        />
-        {errors.password && <p className="mt-1 text-sm text-danger">{errors.password.message}</p>}
-      </div>
+      <FormField label="رمز عبور" required error={errors.password?.message}>
+        {(field) => (
+          <PasswordInput
+            {...field}
+            dir="ltr"
+            placeholder="••••••"
+            autoComplete="current-password"
+            {...register('password')}
+          />
+        )}
+      </FormField>
 
-      {error && <p className="rounded-md bg-danger-soft p-2 text-sm text-danger">{error}</p>}
+      <FormError message={error} />
 
       <Button type="submit" loading={isLoading} className="w-full">
         ورود

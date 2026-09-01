@@ -1,0 +1,167 @@
+---
+- name: Load platform-specific variables
+  ansible.builtin.include_vars: "{{ ansible_os_family }}.yml"
+
+# ---------------------------------------------------------------------------
+# Install
+# ---------------------------------------------------------------------------
+
+- name: Install PostgreSQL (RedHat)
+  when: ansible_os_family == 'RedHat'
+  block:
+    - name: Add the PGDG repository
+      ansible.builtin.dnf:
+        name: "{{ pgdg_repo_url }}"
+        state: present
+        disable_gpg_check: true   # the repo RPM itself carries the key
+
+    - name: Disable the AppStream postgresql module
+      # EL9's module stream provides PostgreSQL 13 and would otherwise take
+      # precedence over the PGDG packages, silently installing the wrong major
+      # version.
+      ansible.builtin.command: dnf -qy module disable postgresql
+      register: module_disable
+      changed_when: "'Disabling' in module_disable.stdout"
+      failed_when:
+        - module_disable.rc != 0
+        - "'no matching' not in (module_disable.stderr | lower)"
+
+    - name: Install PostgreSQL packages
+      ansible.builtin.dnf:
+        name: "{{ postgresql_packages }}"
+        state: present
+
+    - name: Check whether the cluster has been initialised
+      ansible.builtin.stat:
+        path: "{{ postgresql_data_dir }}/PG_VERSION"
+      register: pg_initialised
+
+    - name: Initialise the database cluster
+      # The PGDG RPMs deliberately do not create a cluster on install, unlike
+      # the Debian packages. Without this the service refuses to start.
+      ansible.builtin.command: "{{ postgresql_setup_bin }} initdb"
+      when: not pg_initialised.stat.exists
+      changed_when: true
+
+- name: Install PostgreSQL (Debian)
+  ansible.builtin.apt:
+    name: "{{ postgresql_packages }}"
+    state: present
+    update_cache: true
+  when: ansible_os_family == 'Debian'
+
+- name: Ensure PostgreSQL is running and enabled
+  ansible.builtin.systemd:
+    name: "{{ postgresql_service }}"
+    state: started
+    enabled: true
+
+# ---------------------------------------------------------------------------
+# Authentication
+# ---------------------------------------------------------------------------
+
+- name: Require a password for TCP connections from localhost
+  # EL9's stock pg_hba gives `ident` for host connections, which rejects the
+  # application's password login with a misleading "Ident authentication
+  # failed". The app connects over 127.0.0.1 with a password, so those two
+  # lines must be scram-sha-256.
+  ansible.builtin.lineinfile:
+    path: "{{ postgresql_hba }}"
+    regexp: "^host\\s+all\\s+all\\s+{{ item.cidr | regex_escape }}\\s+"
+    line: "host    all             all             {{ item.cidr }}            scram-sha-256"
+    insertafter: EOF
+  loop:
+    - { cidr: "127.0.0.1/32" }
+    - { cidr: "::1/128" }
+  notify: Reload postgresql
+
+- name: Confirm PostgreSQL listens on loopback only
+  # The database must never be reachable from the internet. The firewall
+  # already blocks 5432, but a listen_addresses of '*' plus one bad firewall
+  # edit is a published database — belt and braces.
+  ansible.builtin.lineinfile:
+    path: "{{ postgresql_conf }}"
+    regexp: "^#?listen_addresses"
+    line: "listen_addresses = 'localhost'"
+  notify: Restart postgresql
+
+- name: Tune connection limits
+  # PM2 runs {{ pm2_instances }} Node processes and Prisma opens a pool per
+  # process. The default of 100 is ample here; setting it explicitly makes a
+  # future scale-up a deliberate decision rather than a surprise.
+  ansible.builtin.lineinfile:
+    path: "{{ postgresql_conf }}"
+    regexp: "^#?max_connections"
+    line: "max_connections = {{ postgres_max_connections | default(100) }}"
+  notify: Restart postgresql
+
+- name: Apply pending PostgreSQL restarts before creating objects
+  # The role's own tasks below connect to the server; they must run against the
+  # configuration this play just wrote, not the one it replaced.
+  ansible.builtin.meta: flush_handlers
+
+# ---------------------------------------------------------------------------
+# Database and role
+# ---------------------------------------------------------------------------
+
+- name: Create the application database role
+  community.postgresql.postgresql_user:
+    name: "{{ db_user }}"
+    password: "{{ vault_db_password }}"
+    role_attr_flags: NOSUPERUSER,NOCREATEROLE,NOCREATEDB
+    state: present
+  become: true
+  become_user: postgres
+  vars:
+    ansible_ssh_pipelining: true
+  no_log: true
+
+- name: Create the application database
+  community.postgresql.postgresql_db:
+    name: "{{ db_name }}"
+    owner: "{{ db_user }}"
+    encoding: UTF-8
+    template: template0
+    state: present
+  become: true
+  become_user: postgres
+
+- name: Enable pgcrypto
+  # The Prisma schema defaults every primary key to gen_random_uuid(). That is
+  # built in on PostgreSQL 13+, but the extension is created explicitly so the
+  # same migrations also apply on an older cluster.
+  community.postgresql.postgresql_ext:
+    name: pgcrypto
+    db: "{{ db_name }}"
+  become: true
+  become_user: postgres
+
+- name: Revoke PUBLIC create on the public schema
+  # Default PostgreSQL lets any role create objects in `public`. This database
+  # has exactly one application role; nothing else should be able to add
+  # tables.
+  community.postgresql.postgresql_query:
+    db: "{{ db_name }}"
+    query: "REVOKE CREATE ON SCHEMA public FROM PUBLIC;"
+  become: true
+  become_user: postgres
+  changed_when: false
+
+- name: Grant schema ownership to the application role
+  community.postgresql.postgresql_query:
+    db: "{{ db_name }}"
+    query: "ALTER SCHEMA public OWNER TO {{ db_user }};"
+  become: true
+  become_user: postgres
+  changed_when: false
+
+- name: Put the PostgreSQL binaries on PATH (RedHat)
+  # pg_dump and psql live in /usr/pgsql-16/bin on EL, which is not on the
+  # default PATH. scripts/backup.sh calls pg_dump by name.
+  ansible.builtin.copy:
+    dest: /etc/profile.d/pgsql.sh
+    mode: "0644"
+    content: |
+      # Managed by Ansible — roles/postgresql
+      export PATH="{{ postgresql_bin_dir }}:$PATH"
+  when: ansible_os_family == 'RedHat'

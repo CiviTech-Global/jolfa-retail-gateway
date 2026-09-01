@@ -1,10 +1,22 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { ShoppingCart, Search, Menu, User, LogOut, X } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import {
+  ShoppingCart,
+  Search,
+  Menu,
+  User,
+  LogOut,
+  X,
+  ChevronDown,
+  ShieldCheck,
+  LayoutDashboard,
+  ShoppingBag,
+  UserCog,
+} from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/Sheet'
-import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,16 +25,75 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/DropdownMenu'
 import { useAuth } from '@/features/auth/context'
+import { isAdmin } from '@/features/auth/roles'
 import { useCart } from '@/features/cart/context'
-import { usePublicSettingBoolean, usePublicSettingValue } from '@/features/cms/hooks'
+import { usePublicSettingBoolean } from '@/features/cms/hooks'
+import { useBranding } from '@/features/cms/branding'
+import { SiteLogo } from './SiteLogo'
+import { getCategories } from '@/features/catalog/api'
+import type { CategoryTreeDto } from '@/features/catalog/types'
 
 const baseNavLinks = [
-  { to: '/', label: 'خانه' },
   { to: '/products', label: 'محصولات' },
-  { to: '/categories', label: 'دسته‌بندی‌ها' },
   { to: '/about', label: 'درباره ما', settingKey: 'show_about' },
   { to: '/contact', label: 'تماس', settingKey: 'show_contact' },
 ]
+
+function CategoryMegaMenu() {
+  const [open, setOpen] = useState(false)
+  const { data } = useQuery({
+    queryKey: ['categories', 'tree'],
+    queryFn: () => getCategories(true),
+    enabled: open,
+  })
+  const categories = (data?.categories ?? []) as CategoryTreeDto[]
+
+  return (
+    <div className="relative" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+      <Link
+        to="/categories"
+        className="flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+      >
+        دسته‌بندی‌ها
+        <ChevronDown className="h-3.5 w-3.5" />
+      </Link>
+      {open && (
+        <div className="absolute end-0 top-full z-50 w-[min(90vw,42rem)] rounded-2xl border border-border bg-surface-elevated p-5 shadow-lg">
+          {categories.length === 0 ? (
+            <p className="text-sm text-muted-foreground">در حال بارگذاری ...</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+              {categories.map((category) => (
+                <div key={category.id}>
+                  <Link
+                    to={`/categories/${category.slug}`}
+                    className="font-semibold text-foreground transition-colors hover:text-primary"
+                  >
+                    {category.name}
+                  </Link>
+                  {category.children.length > 0 && (
+                    <ul className="mt-2 space-y-1.5">
+                      {category.children.slice(0, 5).map((child) => (
+                        <li key={child.id}>
+                          <Link
+                            to={`/categories/${child.slug}`}
+                            className="text-sm text-muted-foreground transition-colors hover:text-primary"
+                          >
+                            {child.name}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export function Header() {
   const { user, isAuthenticated, logout } = useAuth()
@@ -32,7 +103,7 @@ export function Header() {
   const [query, setQuery] = useState('')
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  const siteName = usePublicSettingValue('site_name') ?? 'بازارچه جلفا'
+  const { name: siteName } = useBranding()
   const showSearchSetting = usePublicSettingBoolean('show_search')
   const showCartSetting = usePublicSettingBoolean('show_cart')
   const showUserMenuSetting = usePublicSettingBoolean('show_user_menu')
@@ -57,11 +128,18 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
-        <Link to="/" className="text-xl font-bold text-foreground">
-          {siteName}
+        <Link to="/" aria-label={siteName}>
+          <SiteLogo className="h-9" />
         </Link>
 
         <nav className="hidden items-center gap-6 md:flex">
+          <Link
+            to="/"
+            className="relative text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            خانه
+          </Link>
+          <CategoryMegaMenu />
           {navLinks.map((link) => (
             <Link
               key={link.to}
@@ -132,8 +210,6 @@ export function Header() {
             </Button>
           )}
 
-          <ThemeToggle className="hidden md:inline-flex" />
-
           {showUserMenuSetting &&
             (isAuthenticated && user ? (
               <DropdownMenu>
@@ -148,8 +224,26 @@ export function Header() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  {isAdmin(user) && (
+                    <>
+                      <DropdownMenuItem onClick={() => navigate('/admin')}>
+                        <ShieldCheck className="h-4 w-4" />
+                        پنل مدیریت
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
                   <DropdownMenuItem onClick={() => navigate('/profile')}>
+                    <LayoutDashboard className="h-4 w-4" />
+                    پنل کاربری
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/profile/orders')}>
+                    <ShoppingBag className="h-4 w-4" />
                     سفارش‌های من
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/profile/edit')}>
+                    <UserCog className="h-4 w-4" />
+                    اطلاعات حساب
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={logout}>
@@ -180,16 +274,38 @@ export function Header() {
                 <SheetTitle>{siteName}</SheetTitle>
               </SheetHeader>
               <nav className="mt-6 flex flex-col gap-2 p-6 pt-0">
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.to}
-                    to={link.to}
-                    onClick={() => setMobileOpen(false)}
-                    className="rounded-xl px-3 py-2.5 text-foreground transition-colors hover:bg-muted"
-                  >
-                    {link.label}
-                  </Link>
-                ))}
+                {[{ to: '/', label: 'خانه' }, { to: '/categories', label: 'دسته‌بندی‌ها' }, ...navLinks].map(
+                  (link) => (
+                    <Link
+                      key={link.to}
+                      to={link.to}
+                      onClick={() => setMobileOpen(false)}
+                      className="rounded-xl px-3 py-2.5 text-foreground transition-colors hover:bg-muted"
+                    >
+                      {link.label}
+                    </Link>
+                  ),
+                )}
+                {isAuthenticated && (
+                  <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4">
+                    {isAdmin(user) && (
+                      <Link
+                        to="/admin"
+                        onClick={() => setMobileOpen(false)}
+                        className="rounded-xl px-3 py-2.5 text-foreground transition-colors hover:bg-muted"
+                      >
+                        پنل مدیریت
+                      </Link>
+                    )}
+                    <Link
+                      to="/profile"
+                      onClick={() => setMobileOpen(false)}
+                      className="rounded-xl px-3 py-2.5 text-foreground transition-colors hover:bg-muted"
+                    >
+                      پنل کاربری
+                    </Link>
+                  </div>
+                )}
                 {!isAuthenticated && (
                   <div className="mt-4 flex flex-col gap-2">
                     <Button asChild variant="outline">

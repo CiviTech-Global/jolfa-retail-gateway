@@ -1,21 +1,30 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Input } from '@/components/ui/Input'
+import { Input, PasswordInput } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
+import { FormError, FormField } from '@/components/ui/FormField'
+import { iranMobileSchema, optionalEmailSchema, optionalText, passwordSchema } from '@/lib/validation'
 
-const registerSchema = z.object({
-  firstName: z.string().max(100, 'نام حداکثر ۱۰۰ کاراکتر').optional(),
-  lastName: z.string().max(100, 'نام خانوادگی حداکثر ۱۰۰ کاراکتر').optional(),
-  email: z.union([z.string().email('ایمیل معتبر نیست'), z.literal('')]).optional(),
-  phone: z
-    .string()
-    .min(10, 'شماره موبایل باید حداقل ۱۰ رقم باشد')
-    .max(15, 'شماره موبایل باید حداکثر ۱۵ رقم باشد'),
-  password: z.string().min(6, 'رمز عبور باید حداقل ۶ کاراکتر باشد'),
-})
+const registerSchema = z
+  .object({
+    firstName: optionalText('نام', 100),
+    lastName: optionalText('نام خانوادگی', 100),
+    email: optionalEmailSchema,
+    phone: iranMobileSchema,
+    password: passwordSchema,
+    confirmPassword: z.string({ required_error: 'تکرار رمز عبور الزامی است' }).min(1, 'تکرار رمز عبور الزامی است'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    path: ['confirmPassword'],
+    message: 'رمز عبور و تکرار آن یکسان نیستند',
+  })
 
-export type RegisterFormData = z.infer<typeof registerSchema>
+type RegisterFormValues = z.input<typeof registerSchema>
+type RegisterFormOutput = z.output<typeof registerSchema>
+
+/** The confirmation field is client-only; the API never receives it. */
+export type RegisterFormData = Omit<RegisterFormOutput, 'confirmPassword'>
 
 interface RegisterFormProps {
   onSubmit: (data: RegisterFormData) => Promise<void> | void
@@ -28,80 +37,94 @@ export function RegisterForm({ onSubmit, isLoading, error }: RegisterFormProps) 
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<RegisterFormData>({
+  } = useForm<RegisterFormValues, unknown, RegisterFormOutput>({
     resolver: zodResolver(registerSchema),
+    defaultValues: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      password: '',
+      confirmPassword: '',
+    },
+    mode: 'onBlur',
+    reValidateMode: 'onChange',
   })
 
+  const submit = (values: RegisterFormOutput) => {
+    const { confirmPassword, ...data } = values
+    void confirmPassword // client-only field, never sent to the API
+    return onSubmit(data)
+  }
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(submit)} noValidate className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor="firstName" className="mb-1 block text-sm font-medium text-foreground">
-            نام
-          </label>
-          <Input id="firstName" type="text" autoComplete="given-name" {...register('firstName')} />
-          {errors.firstName && (
-            <p className="mt-1 text-sm text-danger">{errors.firstName.message}</p>
-          )}
-        </div>
-        <div>
-          <label htmlFor="lastName" className="mb-1 block text-sm font-medium text-foreground">
-            نام خانوادگی
-          </label>
-          <Input id="lastName" type="text" autoComplete="family-name" {...register('lastName')} />
-          {errors.lastName && (
-            <p className="mt-1 text-sm text-danger">{errors.lastName.message}</p>
-          )}
-        </div>
+        <FormField label="نام" error={errors.firstName?.message}>
+          {(field) => <Input {...field} type="text" autoComplete="given-name" {...register('firstName')} />}
+        </FormField>
+        <FormField label="نام خانوادگی" error={errors.lastName?.message}>
+          {(field) => <Input {...field} type="text" autoComplete="family-name" {...register('lastName')} />}
+        </FormField>
       </div>
 
-      <div>
-        <label htmlFor="email" className="mb-1 block text-sm font-medium text-foreground">
-          ایمیل <span className="text-gray-400">(اختیاری)</span>
-        </label>
-        <Input
-          id="email"
-          type="email"
-          dir="ltr"
-          placeholder="you@example.com"
-          autoComplete="email"
-          {...register('email')}
-        />
-        {errors.email && <p className="mt-1 text-sm text-danger">{errors.email.message}</p>}
-      </div>
+      <FormField label="ایمیل" error={errors.email?.message}>
+        {(field) => (
+          <Input
+            {...field}
+            type="email"
+            dir="ltr"
+            placeholder="you@example.com"
+            autoComplete="email"
+            {...register('email')}
+          />
+        )}
+      </FormField>
 
-      <div>
-        <label htmlFor="phone" className="mb-1 block text-sm font-medium text-foreground">
-          شماره موبایل
-        </label>
-        <Input
-          id="phone"
-          type="tel"
-          inputMode="tel"
-          dir="ltr"
-          placeholder="09123456789"
-          autoComplete="tel"
-          {...register('phone')}
-        />
-        {errors.phone && <p className="mt-1 text-sm text-danger">{errors.phone.message}</p>}
-      </div>
+      <FormField label="شماره موبایل" required error={errors.phone?.message}>
+        {(field) => (
+          <Input
+            {...field}
+            type="tel"
+            inputMode="tel"
+            dir="ltr"
+            placeholder="09123456789"
+            autoComplete="tel"
+            {...register('phone')}
+          />
+        )}
+      </FormField>
 
-      <div>
-        <label htmlFor="password" className="mb-1 block text-sm font-medium text-foreground">
-          رمز عبور
-        </label>
-        <Input
-          id="password"
-          type="password"
-          dir="ltr"
-          placeholder="••••••"
-          autoComplete="new-password"
-          {...register('password')}
-        />
-        {errors.password && <p className="mt-1 text-sm text-danger">{errors.password.message}</p>}
-      </div>
+      <FormField
+        label="رمز عبور"
+        required
+        error={errors.password?.message}
+        hint="حداقل ۶ کاراکتر"
+      >
+        {(field) => (
+          <PasswordInput
+            {...field}
+            dir="ltr"
+            placeholder="••••••"
+            autoComplete="new-password"
+            {...register('password')}
+          />
+        )}
+      </FormField>
 
-      {error && <p className="rounded-md bg-danger-soft p-2 text-sm text-danger">{error}</p>}
+      <FormField label="تکرار رمز عبور" required error={errors.confirmPassword?.message}>
+        {(field) => (
+          <PasswordInput
+            {...field}
+            dir="ltr"
+            placeholder="••••••"
+            autoComplete="new-password"
+            {...register('confirmPassword')}
+          />
+        )}
+      </FormField>
+
+      <FormError message={error} />
 
       <Button type="submit" loading={isLoading} className="w-full">
         ثبت‌نام

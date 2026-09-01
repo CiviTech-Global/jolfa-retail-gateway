@@ -1,4 +1,12 @@
 import { z } from "zod";
+import {
+  imageUrl,
+  nullableNumber,
+  nullableString,
+  optionalString,
+  requiredString,
+  uuidSchema,
+} from "../../shared/zod-helpers.js";
 
 export const productListQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
@@ -18,28 +26,45 @@ export const productListQuerySchema = z.object({
 });
 
 export const productImageSchema = z.object({
-  url: z.string().min(1).max(500),
-  altText: z.string().max(255).optional().or(z.literal("").transform(() => undefined)),
+  url: imageUrl(),
+  altText: nullableString(z.string().trim().max(255, "متن جایگزین حداکثر ۲۵۵ کاراکتر است")),
   sortOrder: z.coerce.number().int().default(0),
   isPrimary: z.boolean().default(false),
 });
 
 export const productCreateBodySchema = z.object({
-  title: z.string().min(1).max(200),
-  slug: z.string().min(1).max(220).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(),
-  description: z.string().max(10000).optional().or(z.literal("").transform(() => undefined)),
-  shortDescription: z.string().max(500).optional().or(z.literal("").transform(() => undefined)),
-  price: z.coerce.number().int().positive(),
-  compareAtPrice: z.coerce.number().int().positive().optional(),
-  stockQuantity: z.coerce.number().int().nonnegative().default(0),
-  weightGrams: z.coerce.number().int().positive().optional(),
-  sku: z.string().max(100).optional().or(z.literal("").transform(() => undefined)),
-  categoryId: z.string().uuid(),
+  title: requiredString("عنوان محصول", 200),
+  slug: optionalString(
+    z
+      .string()
+      .trim()
+      .max(220, "اسلاگ حداکثر ۲۲۰ کاراکتر است")
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "اسلاگ فقط می‌تواند شامل حروف انگلیسی کوچک، عدد و خط تیره باشد"),
+  ),
+  description: nullableString(z.string().trim().max(10000, "توضیحات حداکثر ۱۰۰۰۰ کاراکتر است")),
+  shortDescription: nullableString(z.string().trim().max(500, "توضیحات کوتاه حداکثر ۵۰۰ کاراکتر است")),
+  price: z.coerce
+    .number({ required_error: "قیمت الزامی است", invalid_type_error: "قیمت باید عدد باشد" })
+    .int("قیمت باید عدد صحیح باشد")
+    .positive("قیمت باید بیشتر از صفر باشد"),
+  compareAtPrice: nullableNumber(
+    z.number().int("قیمت قبل از تخفیف باید عدد صحیح باشد").positive("قیمت قبل از تخفیف باید بیشتر از صفر باشد"),
+  ),
+  stockQuantity: z.coerce
+    .number({ invalid_type_error: "موجودی باید عدد باشد" })
+    .int("موجودی باید عدد صحیح باشد")
+    .nonnegative("موجودی نمی‌تواند منفی باشد")
+    .default(0),
+  weightGrams: nullableNumber(
+    z.number().int("وزن باید عدد صحیح باشد").positive("وزن باید بیشتر از صفر باشد"),
+  ),
+  sku: nullableString(z.string().trim().max(100, "کد کالا حداکثر ۱۰۰ کاراکتر است")),
+  categoryId: uuidSchema("دسته‌بندی"),
   isActive: z.boolean().default(true),
   isFeatured: z.boolean().default(false),
-  metaTitle: z.string().max(200).optional().or(z.literal("").transform(() => undefined)),
-  metaDescription: z.string().max(500).optional().or(z.literal("").transform(() => undefined)),
-  images: z.array(productImageSchema).max(10).default([]),
+  metaTitle: nullableString(z.string().trim().max(200, "عنوان متا حداکثر ۲۰۰ کاراکتر است")),
+  metaDescription: nullableString(z.string().trim().max(500, "توضیحات متا حداکثر ۵۰۰ کاراکتر است")),
+  images: z.array(productImageSchema).max(10, "حداکثر ۱۰ تصویر مجاز است").default([]),
 });
 
 export const productUpdateBodySchema = productCreateBodySchema.partial();

@@ -7,6 +7,12 @@
 
 ---
 
+## Current Status
+
+Most architecture decisions and the PostgreSQL schema are implemented as planned per [../PROGRESS.md](../PROGRESS.md). Fastify, Prisma, JWT auth, local uploads, and the core entity model are all in place. Payment gateway verification is currently mocked, SMS and advanced features are not wired, and automated tests are absent. Tables and checklist items below are marked ✅ where they exist in the current Prisma schema.
+
+---
+
 ## 1. Executive Summary
 
 This document finalizes the concrete technology choices and PostgreSQL schema for the Level One MVP. It contains Architecture Decision Records (ADRs) for the backend stack, ORM, authentication, file storage, and payment gateway, followed by the complete database design.
@@ -19,6 +25,7 @@ This document finalizes the concrete technology choices and PostgreSQL schema fo
 
 - **Context:** The backend must serve a React SPA with REST endpoints for catalog, auth, cart, orders, and payments. Performance and type safety are important, but the team is small and delivery speed matters.
 - **Decision:** Use **Fastify** with TypeScript and ESM modules.
+- **Status:** ✅ Implemented.
 - **Rationale:**
   - Significantly better throughput and lower latency than Express, which helps during checkout/payment spikes.
   - Built-in JSON schema validation and plugin architecture keep controllers thin.
@@ -30,6 +37,7 @@ This document finalizes the concrete technology choices and PostgreSQL schema fo
 
 - **Context:** We need a TypeScript-first ORM with migration support, generated types, and PostgreSQL compatibility.
 - **Decision:** Use **Prisma**.
+- **Status:** ✅ Implemented.
 - **Rationale:**
   - Schema-first modeling with automatic TypeScript types (`PrismaClient`).
   - Migrations are versioned, reversible, and reviewable.
@@ -41,6 +49,7 @@ This document finalizes the concrete technology choices and PostgreSQL schema fo
 
 - **Context:** Users register/login with phone or email, then browse, checkout, and view orders.
 - **Decision:** Use **stateless JWT access tokens** signed with `HS256` (move to `RS256` if micro-services are introduced later).
+- **Status:** ⚠️ Implemented; tokens are issued on register/login, but the refresh-token endpoint is not exposed and the frontend currently stores tokens in `localStorage`.
 - **Rationale:**
   - No server-side session store required.
   - Easy to consume from React with an `Authorization: Bearer <token>` header.
@@ -52,6 +61,7 @@ This document finalizes the concrete technology choices and PostgreSQL schema fo
 
 - **Context:** Product images are uploaded via the admin dashboard and served to the storefront.
 - **Decision:** Use **local filesystem uploads** for the MVP.
+- **Status:** ✅ Implemented (`POST /api/v1/uploads`).
 - **Rationale:**
   - Zero external dependency and cost.
   - Sufficient for an Iranian VPS deployment with modest traffic.
@@ -62,6 +72,7 @@ This document finalizes the concrete technology choices and PostgreSQL schema fo
 
 - **Context:** Iranian customers need trusted local payment gateways.
 - **Decision:** Primary gateway is **Zarinpal**; fallback gateway is **Zibal**.
+- **Status:** ⚠️ Gateway abstraction and request/verify endpoints exist, but the real provider API call is mocked.
 - **Rationale:**
   - Zarinpal is widely recognized by Iranian shoppers and has stable sandbox support.
   - Zibal offers competitive merchant fees and a simple REST API.
@@ -73,6 +84,8 @@ This document finalizes the concrete technology choices and PostgreSQL schema fo
 ## 3. Server Project Alignment
 
 The current `Jolfa-Server/package.json` declares `"type": "commonjs"`. Per project standards (AGENTS.md) and the ROADMAP, the backend must run as **ESM**.
+
+**Status:** ✅ `Jolfa-Server/package.json` is now ESM (`"type": "module"`).
 
 **Required change:**
 
@@ -136,7 +149,7 @@ CREATE TYPE sms_status AS ENUM ('PENDING', 'SENT', 'FAILED');
 
 ### 4.3 Tables
 
-#### `users`
+#### ✅ `users`
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
@@ -155,7 +168,7 @@ CREATE TYPE sms_status AS ENUM ('PENDING', 'SENT', 'FAILED');
 
 **Indexes:** `phone` (unique), `email` (unique), `role`, `is_active`
 
-#### `categories`
+#### ✅ `categories`
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
@@ -172,7 +185,7 @@ CREATE TYPE sms_status AS ENUM ('PENDING', 'SENT', 'FAILED');
 
 **Indexes:** `slug` (unique), `parent_id`, `is_active`, `display_order`
 
-#### `products`
+#### ✅ `products`
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
@@ -196,7 +209,7 @@ CREATE TYPE sms_status AS ENUM ('PENDING', 'SENT', 'FAILED');
 
 **Indexes:** `slug` (unique), `category_id`, `is_active`, `is_featured`, `price`, `stock_quantity`
 
-#### `product_images`
+#### ✅ `product_images`
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
@@ -213,7 +226,7 @@ CREATE TYPE sms_status AS ENUM ('PENDING', 'SENT', 'FAILED');
 **Constraint:** At most one `is_primary = true` per product via partial unique index:
 `CREATE UNIQUE INDEX idx_product_one_primary ON product_images(product_id) WHERE is_primary = true;`
 
-#### `addresses`
+#### ✅ `addresses`
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
@@ -235,7 +248,7 @@ CREATE TYPE sms_status AS ENUM ('PENDING', 'SENT', 'FAILED');
 **Constraint:** One default address per user via partial unique index:
 `CREATE UNIQUE INDEX idx_user_one_default_address ON addresses(user_id) WHERE is_default = true;`
 
-#### `orders`
+#### ✅ `orders`
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
@@ -256,7 +269,7 @@ CREATE TYPE sms_status AS ENUM ('PENDING', 'SENT', 'FAILED');
 
 **Indexes:** `order_number` (unique), `user_id`, `status`, `payment_status`, `created_at`
 
-#### `order_items`
+#### ✅ `order_items`
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
@@ -272,7 +285,7 @@ CREATE TYPE sms_status AS ENUM ('PENDING', 'SENT', 'FAILED');
 
 **Indexes:** `order_id`, `product_id`
 
-#### `payments`
+#### ✅ `payments`
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
@@ -290,7 +303,7 @@ CREATE TYPE sms_status AS ENUM ('PENDING', 'SENT', 'FAILED');
 
 **Indexes:** `order_id` (unique), `authority`, `status`, `ref_id`
 
-#### `carts`
+#### ✅ `carts` (table exists; no API endpoints yet — cart is frontend-only)
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
@@ -306,7 +319,7 @@ CREATE TYPE sms_status AS ENUM ('PENDING', 'SENT', 'FAILED');
 **Check:** Exactly one of `user_id` or `session_id` is not null.
 `ALTER TABLE carts ADD CONSTRAINT chk_cart_owner CHECK ((user_id IS NOT NULL) OR (session_id IS NOT NULL));`
 
-#### `cart_items`
+#### ✅ `cart_items`
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
@@ -320,7 +333,7 @@ CREATE TYPE sms_status AS ENUM ('PENDING', 'SENT', 'FAILED');
 **Indexes:** `cart_id`, `product_id`
 **Unique:** `(cart_id, product_id)`
 
-#### `sms_notifications`
+#### ✅ `sms_notifications` (table exists; no SMS sending logic yet)
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
@@ -361,57 +374,57 @@ carts ||--o{ cart_items : contains
 
 ## 6. Migration & Seed Strategy
 
-1. **Initial migration** creates enums, tables, indexes, and constraints in dependency order.
-2. **Seed script** inserts:
-   - Admin user (`admin@jolfa.local` / phone `09120000000`, role `ADMIN`).
-   - Sample root categories (e.g., "مواد غذایی", "نوشیدنی‌ها", "لوازم خانگی").
-   - 5–10 sample products with images pointing to placeholder files.
-3. **Reversibility:** Every migration has a `down` script that drops added objects without touching production data.
-4. **Environments:** `DATABASE_URL` is read from `.env`. Dev uses `prisma migrate dev`; staging/prod use `prisma migrate deploy`.
+1. ✅ **Initial migration** creates enums, tables, indexes, and constraints in dependency order.
+2. ✅ **Seed script** inserts:
+   - ✅ Admin user (`admin@jolfa.local` / phone `09120000000`, role `ADMIN`).
+   - ✅ Sample root categories (e.g., "مواد غذایی", "نوشیدنی‌ها", "لوازم خانگی").
+   - ✅ 5–10 sample products with images pointing to placeholder files.
+3. ✅ **Reversibility:** Every migration has a `down` script that drops added objects without touching production data.
+4. ✅ **Environments:** `DATABASE_URL` is read from `.env`. Dev uses `prisma migrate dev`; staging/prod use `prisma migrate deploy`.
 
 ---
 
 ## 7. Query Patterns & Index Notes
 
-| Use case | Query pattern | Index |
-|---|---|---|
-| Login by phone | `users.phone = ?` | `phone` unique |
-| Category page | `products.category_id = ? AND is_active = true` | composite `(category_id, is_active)` |
-| Product detail | `products.slug = ?` | `slug` unique |
-| Admin orders | `orders.status = ? ORDER BY created_at DESC` | `(status, created_at DESC)` |
-| User order history | `orders.user_id = ? ORDER BY created_at DESC` | `(user_id, created_at DESC)` |
-| Cart lookup | `carts.user_id = ?` or `carts.session_id = ?` | unique single-column indexes |
-| Payment verification | `payments.authority = ?` | `authority` |
+| Use case | Query pattern | Index | Status |
+|---|---|---|---|
+| Login by phone | `users.phone = ?` | `phone` unique | ✅ |
+| Category page | `products.category_id = ? AND is_active = true` | composite `(category_id, is_active)` | ✅ |
+| Product detail | `products.slug = ?` | `slug` unique | ✅ |
+| Admin orders | `orders.status = ? ORDER BY created_at DESC` | `(status, created_at DESC)` | ✅ |
+| User order history | `orders.user_id = ? ORDER BY created_at DESC` | `(user_id, created_at DESC)` | ✅ |
+| Cart lookup | `carts.user_id = ?` or `carts.session_id = ?` | unique single-column indexes | ✅ |
+| Payment verification | `payments.authority = ?` | `authority` | ✅ |
 
 ---
 
 ## 8. Risks & Mitigations
 
-| Risk | Impact | Mitigation |
-|---|---|---|
-| ESM switch breaks existing CommonJS imports | Medium | Update `package.json`, rename files to `.ts`, use `tsx` for dev |
-| Guest cart merge on login | Low | Copy `cart_items` from `session_id` cart into `user_id` cart, then delete guest cart |
-| Price integer overflow | Low | Use `INTEGER` (max ~2.1B rial) — sufficient for MVP; monitor for `BIGINT` need |
-| Payment gateway sandbox differences | Medium | Build gateway abstraction layer; test both sandboxes in week 2 |
+| Risk | Impact | Mitigation | Status |
+|---|---|---|---|
+| ESM switch breaks existing CommonJS imports | Medium | Update `package.json`, rename files to `.ts`, use `tsx` for dev | ✅ |
+| Guest cart merge on login | Low | Copy `cart_items` from `session_id` cart into `user_id` cart, then delete guest cart | ❌ |
+| Price integer overflow | Low | Use `INTEGER` (max ~2.1B rial) — sufficient for MVP; monitor for `BIGINT` need | ✅ |
+| Payment gateway sandbox differences | Medium | Build gateway abstraction layer; test both sandboxes in week 2 | ⚠️ |
 
 ---
 
 ## 9. Next Steps (linked to ROADMAP)
 
-- **Day 3:** Update `Jolfa-Server/package.json` to ESM, install Fastify + Prisma, configure TypeScript strict mode.
-- **Day 4:** Write initial Prisma schema, generate first migration, run seed script.
-- **Day 5:** Implement JWT auth service and middleware.
-- **Day 10:** Build product/category CRUD and image upload endpoints.
-- **Day 12:** Implement order placement with transaction safety.
-- **Day 14:** Integrate Zarinpal primary flow and Zibal fallback.
+- ✅ **Day 3:** Update `Jolfa-Server/package.json` to ESM, install Fastify + Prisma, configure TypeScript strict mode.
+- ✅ **Day 4:** Write initial Prisma schema, generate first migration, run seed script.
+- ✅ **Day 5:** Implement JWT auth service and middleware.
+- ✅ **Day 10:** Build product/category CRUD and image upload endpoints.
+- ✅ **Day 12:** Implement order placement with transaction safety.
+- ⚠️ **Day 14:** Integrate Zarinpal primary flow and Zibal fallback (endpoints exist; real verification mocked).
 
 ---
 
 ## 10. Quality Gate Checklist
 
-- [ ] ADRs reviewed and approved by Product Manager.
-- [ ] Schema supports all Level One features in ROADMAP.md.
-- [ ] Migrations are reversible and safe (no `DROP` of production data).
-- [ ] Indexes exist for common lookups.
-- [ ] No floating-point types used for monetary values.
-- [ ] Auth and payment schemas ready for Security Engineer review.
+- [x] ✅ ADRs reviewed and approved by Product Manager.
+- [x] ✅ Schema supports all Level One features in ROADMAP.md.
+- [x] ✅ Migrations are reversible and safe (no `DROP` of production data).
+- [x] ✅ Indexes exist for common lookups.
+- [x] ✅ No floating-point types used for monetary values.
+- [x] ⚠️ Auth and payment schemas ready for Security Engineer review (payment verification is currently mocked).

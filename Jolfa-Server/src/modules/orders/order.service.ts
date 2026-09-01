@@ -1,11 +1,66 @@
 import { prisma } from "../../shared/prisma.js";
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from "../../shared/app-error.js";
+import { STOCK_NON_NEGATIVE_CONSTRAINT } from "./order.constants.js";
 import { logAudit, buildChangeMetadata } from "../../shared/audit/audit.service.js";
+import { shippingAddressSchema } from "./order.types.js";
 import type {
   OrderCreateBody,
   OrderListQuery,
   OrderStatusUpdateBody,
 } from "./order.types.js";
+
+/**
+ * Resolves the shipping details for a new order, from either a saved book
+ * entry or a one-off address typed at checkout. Returns plain fields rather
+ * than an id: the order always gets its own immutable snapshot row, so later
+ * edits to the book never rewrite the address of a past order.
+ */
+async function resolveShippingDetails(userId: string, data: OrderCreateBody) {
+  if (data.shippingAddress) {
+    return data.shippingAddress;
+  }
+
+  const saved = await prisma.address.findFirst({
+    where: { id: data.shippingAddressId, userId, isSaved: true },
+  });
+
+  if (!saved) {
+    throw new BadRequestError("آدرس انتخاب‌شده یافت نشد");
+  }
+
+  // Re-checked against the same schema a typed address goes through. A stored
+  // row can predate a tightened rule or have been written straight through the
+  // API, and an order must not reach the payment gateway on a half-filled
+  // address just because it came from the book.
+  const revalidated = shippingAddressSchema.safeParse({
+    title: saved.title ?? undefined,
+    recipientName: saved.recipientName,
+    phone: saved.phone,
+    province: saved.province,
+    city: saved.city,
+    district: saved.district ?? undefined,
+    postalCode: saved.postalCode ?? undefined,
+    addressLine: saved.addressLine,
+  });
+
+  if (!revalidated.success) {
+    const reason = revalidated.error.issues[0]?.message ?? "اطلاعات آدرس کامل نیست";
+    throw new BadRequestError(`آدرس انتخاب‌شده کامل نیست: ${reason}`);
+  }
+
+  return revalidated.data;
+}
+
+/**
+ * True when Postgres rejected a write because stock would have gone negative.
+ * Prisma surfaces the constraint name inside the driver message rather than as
+ * structured metadata, so matching on the name is the available signal.
+ */
+function isStockConstraintViolation(error: unknown): boolean {
+  return (
+    error instanceof Error && error.message.includes(STOCK_NON_NEGATIVE_CONSTRAINT)
+  );
+}
 
 export async function createOrder(userId: string, data: OrderCreateBody) {
   const productIds = data.items.map((item) => item.productId);
@@ -37,15 +92,32 @@ export async function createOrder(userId: string, data: OrderCreateBody) {
   const finalAmount = totalAmount + shippingCost;
 
   const orderNumber = generateOrderNumber();
+  const shippingDetails = await resolveShippingDetails(userId, data);
 
   const order = await prisma.$transaction(async (tx) => {
     const address = await tx.address.create({
       data: {
         userId,
-        ...data.shippingAddress,
+        ...shippingDetails,
         isDefault: false,
+        // The order's own copy, never listed in the address book.
+        isSaved: false,
       },
     });
+
+    // "Save this address for next time" — a separate book entry, so editing it
+    // later leaves this order's snapshot untouched.
+    if (data.shippingAddress && data.saveAddress) {
+      const bookCount = await tx.address.count({ where: { userId, isSaved: true } });
+      await tx.address.create({
+        data: {
+          userId,
+          ...data.shippingAddress,
+          isSaved: true,
+          isDefault: bookCount === 0,
+        },
+      });
+    }
 
     const created = await tx.order.create({
       data: {
@@ -76,15 +148,30 @@ export async function createOrder(userId: string, data: OrderCreateBody) {
       },
     });
 
+    // The check above ran against a read taken before this transaction opened,
+    // so it cannot see a concurrent buyer. `UPDATE ... stock - n` takes a row
+    // lock, which serialises racing orders; the value it returns is therefore
+    // the authoritative post-decrement stock. Going negative means someone else
+    // took the last unit first, and throwing rolls the whole order back.
     for (const item of data.items) {
       const product = productMap.get(item.productId)!;
-      await tx.product.update({
-        where: { id: item.productId },
-        data: { stockQuantity: { decrement: item.quantity } },
-      });
-      if (product.stockQuantity < item.quantity) {
-        throw new ConflictError(`موجودی ${product.title} در طول تراکنش به پایان رسید`);
+      const soldOut = new ConflictError(`موجودی ${product.title} در طول تراکنش به پایان رسید`);
+
+      let updated: { stockQuantity: number };
+      try {
+        updated = await tx.product.update({
+          where: { id: item.productId },
+          data: { stockQuantity: { decrement: item.quantity } },
+          select: { stockQuantity: true },
+        });
+      } catch (error) {
+        // The CHECK constraint got there first. That is still "someone else took
+        // the last unit", so the buyer sees the same 409 rather than a 500.
+        if (isStockConstraintViolation(error)) throw soldOut;
+        throw error;
       }
+
+      if (updated.stockQuantity < 0) throw soldOut;
     }
 
     return created;

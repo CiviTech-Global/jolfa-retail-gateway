@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router'
 import { ProductGrid } from '../components/ProductGrid'
 import { getCategoryBySlug, getProducts } from '../api'
+import { BackButton, Breadcrumbs } from '@/components/layout/Breadcrumbs'
 
 export function CategoryPage() {
   const { slug } = useParams<{ slug: string }>()
@@ -41,6 +42,15 @@ export function CategoryPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
+      <Breadcrumbs
+        className="mb-4"
+        items={[
+          { label: 'خانه', to: '/' },
+          { label: 'دسته‌بندی‌ها', to: '/categories' },
+          { label: category.name },
+        ]}
+      />
+      <BackButton to="/categories" label="بازگشت به دسته‌بندی‌ها" className="-ms-2 mb-2" />
       <h1 className="text-2xl font-bold text-foreground">{category.name}</h1>
       {category.description && <p className="mt-2 text-muted-foreground">{category.description}</p>}
 

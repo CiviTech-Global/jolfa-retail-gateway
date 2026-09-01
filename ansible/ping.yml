@@ -1,0 +1,34 @@
+---
+# Smoke test: proves Ansible can reach the server and escalate to root.
+# Run this first, before anything that changes state.
+#
+#   ansible-playbook -i inventory.ini ping.yml
+
+- name: Verify connectivity to the Jolfa server
+  hosts: jolfa
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Ping
+      ansible.builtin.ping:
+
+    - name: Report what we are talking to
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }} ({{ ansible_host }}) —
+          {{ ansible_distribution }} {{ ansible_distribution_version }},
+          {{ ansible_processor_vcpus }} vCPU,
+          {{ (ansible_memtotal_mb / 1024) | round(1) }} GB RAM,
+          {{ (ansible_mounts | selectattr('mount', 'equalto', '/') | first).size_available
+             // 1073741824 }} GB free on /
+
+    - name: Warn on a server too small for an on-box build
+      # `npm ci` plus a Vite build peaks around 1.5 GB. On a 1 GB box the build
+      # is OOM-killed halfway through, which reads as a mysterious npm crash.
+      ansible.builtin.debug:
+        msg: >-
+          WARNING: {{ (ansible_memtotal_mb / 1024) | round(1) }} GB RAM. The
+          deploy builds on the server and needs ~2 GB. Add swap, or build
+          elsewhere and ship the dist directory.
+      when: ansible_memtotal_mb < 1900

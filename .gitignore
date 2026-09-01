@@ -1,0 +1,28 @@
+# Repository-wide ignores.
+#
+# Per-project ignores live in Jolfa-Server/.gitignore, Jolfa-web/.gitignore and
+# ansible/.gitignore. This file covers anything that holds real customer
+# infrastructure details and must never leave this machine.
+
+# Local-only operator notes: server IPs, credentials, handover details.
+.local/
+
+# Secrets and keys, wherever they land
+*.pem
+*.key
+!**/public/**/*.key
+id_rsa
+id_ed25519
+*.ppk
+.vault-pass
+*.vault-pass
+
+# Env files. Only .env.example is ever committed.
+.env
+.env.*
+!.env.example
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp

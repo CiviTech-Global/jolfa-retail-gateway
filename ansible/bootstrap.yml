@@ -1,0 +1,64 @@
+---
+# Install your SSH public key on the server, using password authentication.
+#
+#   ansible-playbook -i inventory.ini bootstrap.yml
+#
+# RUN THIS BEFORE provision.yml IF YOU ARE STILL CONNECTING WITH A PASSWORD.
+#
+# `roles/common` sets `PasswordAuthentication no`. If your key is not installed
+# and working when that task runs, the next connection attempt is your last one
+# and recovery means the VPS provider's web console. This playbook exists so
+# that cannot happen: it pushes the key, then proves key auth works, and fails
+# loudly if it does not.
+#
+# Requires `sshpass` on the control machine for password auth:
+#   sudo apt install -y sshpass
+
+- name: Install the deploy SSH key before SSH is hardened
+  hosts: jolfa
+  gather_facts: false
+
+  vars:
+    # Override with -e if your key lives elsewhere.
+    deploy_public_key_file: "~/.ssh/jolfa_ed25519.pub"
+
+  tasks:
+    - name: Confirm the public key exists on the control machine
+      ansible.builtin.stat:
+        path: "{{ deploy_public_key_file | expanduser }}"
+      delegate_to: localhost
+      register: pubkey
+
+    - name: Fail with instructions when there is no key yet
+      ansible.builtin.assert:
+        that:
+          - pubkey.stat.exists
+        fail_msg: >-
+          No public key at {{ deploy_public_key_file }}. Generate one first:
+          ssh-keygen -t ed25519 -C jolfa-deploy -f ~/.ssh/jolfa_ed25519
+
+    - name: Authorise the key for root
+      ansible.posix.authorized_key:
+        user: root
+        key: "{{ lookup('file', deploy_public_key_file | expanduser) }}"
+        state: present
+        exclusive: false
+
+    - name: Prove key authentication works
+      # Deliberately connects with the key and nothing else. If this fails,
+      # stop — do not run provision.yml.
+      ansible.builtin.command:
+        cmd: >-
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new
+          -o PasswordAuthentication=no
+          -i {{ (deploy_public_key_file | expanduser) | regex_replace('\.pub$', '') }}
+          {{ ansible_user }}@{{ ansible_host }} true
+      delegate_to: localhost
+      changed_when: false
+
+    - name: Report
+      ansible.builtin.debug:
+        msg: >-
+          Key authentication confirmed for {{ ansible_user }}@{{ ansible_host }}.
+          Remove ansible_ssh_pass from inventory.ini, switch to
+          ansible_ssh_private_key_file, and only then run provision.yml.

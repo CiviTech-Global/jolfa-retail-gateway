@@ -1,0 +1,23 @@
+---
+# Debian / Ubuntu. Kept working so the playbooks remain usable if the customer
+# ever moves to an Ubuntu box, but AlmaLinux 9 is the tested platform.
+
+base_packages:
+  - curl
+  - git
+  - ca-certificates
+  - gnupg
+  - tar
+  - rsync
+  - logrotate
+  - cron
+  - acl
+  - python3-psycopg2
+  - unattended-upgrades
+  - ufw
+  - fail2ban
+
+epel_packages: []
+
+ssh_service_name: ssh
+nginx_user: www-data

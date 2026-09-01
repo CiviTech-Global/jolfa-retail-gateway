@@ -4,6 +4,7 @@ import { HelmetProvider } from 'react-helmet-async'
 import { Toaster, toast } from 'sonner'
 import { AuthProvider } from '@/features/auth/context'
 import { CartProvider } from '@/features/cart/context'
+import { TooltipProvider } from '@/components/ui/Tooltip'
 import { ThemeProvider } from './theme-provider'
 
 function extractErrorMessage(error: unknown): string {
@@ -38,8 +39,12 @@ export function AppProviders({ children }: { children: ReactNode }) {
         <ThemeProvider>
           <AuthProvider>
             <CartProvider>
-              {children}
-              <Toaster richColors position="top-center" />
+              {/* Radix tooltips throw without a provider ancestor, so it is
+                  mounted app-wide rather than per-consumer. */}
+              <TooltipProvider>
+                {children}
+                <Toaster richColors position="top-center" />
+              </TooltipProvider>
             </CartProvider>
           </AuthProvider>
         </ThemeProvider>

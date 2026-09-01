@@ -1,0 +1,11 @@
+---
+# EL9 nginx has no sites-available/sites-enabled convention — everything is
+# included from conf.d. It also ships a default server block inside
+# /etc/nginx/nginx.conf itself rather than as a separate file.
+
+nginx_packages: [nginx]
+nginx_site_path: /etc/nginx/conf.d/jolfa.conf
+nginx_has_sites_enabled: false
+certbot_packages:
+  - certbot
+  - python3-certbot-nginx

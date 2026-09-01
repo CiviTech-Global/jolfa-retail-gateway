@@ -1,0 +1,63 @@
+---
+# Semaphore UI — a web front end for these same playbooks.
+#
+# Semaphore does not replace Ansible; it stores inventories, keys and playbook
+# "templates", runs ansible-playbook for you, and keeps the output of every run.
+# The value is that the customer's operator can redeploy or restore from a
+# browser without a WSL shell, and that every run is logged with who ran it.
+#
+# It runs in Docker because that is how upstream ships it. The application
+# itself stays a native install — see docs/deployment/00-before-you-start.
+
+- name: Install Docker
+  ansible.builtin.shell:
+    cmd: curl -fsSL https://get.docker.com | sh
+    creates: /usr/bin/docker
+
+- name: Ensure Docker is running
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Create the Semaphore directory
+  ansible.builtin.file:
+    path: "{{ semaphore_dir }}"
+    state: directory
+    mode: "0750"
+
+- name: Render the Semaphore compose file
+  ansible.builtin.template:
+    src: semaphore-compose.yml.j2
+    dest: "{{ semaphore_dir }}/docker-compose.yml"
+    mode: "0600"
+  no_log: true
+  register: semaphore_compose
+
+- name: Start Semaphore
+  ansible.builtin.command:
+    cmd: docker compose up -d
+    chdir: "{{ semaphore_dir }}"
+  changed_when: true
+
+- name: Wait for Semaphore to answer
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ semaphore_port }}/api/ping"
+    status_code: [200, 204]
+  register: sem_ping
+  until: sem_ping.status in [200, 204]
+  retries: 20
+  delay: 3
+
+- name: Explain how to reach Semaphore
+  # Deliberately NOT opened in the firewall. Semaphore holds the SSH key and
+  # the vault password for this server; exposing its login form to the internet
+  # makes it the softest target on the box. Reach it over an SSH tunnel, or put
+  # it behind its own nginx vhost with TLS and IP allow-listing.
+  ansible.builtin.debug:
+    msg: >-
+      Semaphore is listening on 127.0.0.1:{{ semaphore_port }} and is NOT
+      exposed publicly. Tunnel to it from your laptop:
+      ssh -L {{ semaphore_port }}:127.0.0.1:{{ semaphore_port }}
+      {{ ansible_user }}@{{ ansible_host }}
+      then open http://localhost:{{ semaphore_port }}

@@ -5,8 +5,10 @@ export function createOrder(data: CreateOrderRequest): Promise<{ order: OrderDto
   return apiRequest<{ order: OrderDto }>('/orders', { method: 'POST', body: data })
 }
 
-export function getOrders(page = 1, limit = 20): Promise<OrderListResponse> {
-  return apiRequest<OrderListResponse>(`/orders?page=${page}&limit=${limit}`)
+export function getOrders(page = 1, limit = 20, status?: string): Promise<OrderListResponse> {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) })
+  if (status) params.set('status', status)
+  return apiRequest<OrderListResponse>(`/orders?${params.toString()}`)
 }
 
 export function getOrder(id: string): Promise<{ order: OrderDto }> {

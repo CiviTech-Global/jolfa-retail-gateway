@@ -10,6 +10,16 @@ const envSchema = z.object({
   JWT_ACCESS_EXPIRES_IN: z.string().default("24h"),
   JWT_REFRESH_EXPIRES_IN: z.string().default("7d"),
   CORS_ORIGIN: z.string().default("*"),
+
+  // Rate limiting. The global bucket is generous enough that a real shopper
+  // never sees it; the auth bucket is deliberately tight because those routes
+  // guard credentials and, via password reset, spend real money on SMS.
+  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
+  RATE_LIMIT_WINDOW: z.string().default("1 minute"),
+  AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
+  AUTH_RATE_LIMIT_WINDOW: z.string().default("15 minutes"),
+
+  APP_URL: z.string().default("http://localhost:3001"),
   UPLOAD_DIR: z.string().default("uploads"),
   PUBLIC_UPLOAD_PATH: z.string().default("/uploads"),
   MAX_FILE_SIZE: z.coerce.number().int().positive().default(5 * 1024 * 1024),

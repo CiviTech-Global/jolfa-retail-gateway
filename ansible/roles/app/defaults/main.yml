@@ -1,0 +1,13 @@
+---
+# Derived once here so the backend's CORS_ORIGIN, the payment callback URLs and
+# the frontend's baked-in API base can never drift apart.
+#
+# `site_scheme` follows `enable_ssl` by default, which is what makes a
+# pre-DNS deployment against the bare IP work: with enable_ssl=false the
+# frontend is built against http://IP/api/v1 and CORS allows the same origin.
+# The moment the domain resolves and nginx.yml runs with TLS, re-running
+# deploy.yml rebuilds the bundle against https://domain — both halves move
+# together because both read this one value.
+site_scheme: "{{ 'https' if (enable_ssl | default(true) | bool) else 'http' }}"
+site_url: "{{ site_scheme }}://{{ domain_name }}"
+frontend_api_base_url: "{{ site_url }}{{ api_prefix }}"

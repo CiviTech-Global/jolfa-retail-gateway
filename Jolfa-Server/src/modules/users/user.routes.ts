@@ -5,6 +5,7 @@ import {
   listUsersController,
   updateUserRoleController,
   updateUserStatusController,
+  resetUserPasswordController,
 } from "./user.controller.js";
 import {
   userListQuerySchema,
@@ -12,6 +13,7 @@ import {
   userRoleUpdateSchema,
   userStatusUpdateSchema,
 } from "./user.types.js";
+import { adminResetPasswordSchema } from "../auth/auth.types.js";
 
 export default async function userRoutes(
   app: FastifyInstance,
@@ -45,5 +47,16 @@ export default async function userRoutes(
       ],
     },
     updateUserStatusController,
+  );
+
+  app.patch(
+    "/users/:id/password",
+    {
+      preHandler: [
+        ...adminPreHandler,
+        validateRequest({ params: userParamsSchema, body: adminResetPasswordSchema }),
+      ],
+    },
+    resetUserPasswordController,
   );
 }

@@ -1,10 +1,19 @@
-# Level One — Deployment Guide
+# Level One — Deployment Guide (manual)
+
+> **There is now an automated path.** [`docs/deployment/`](../deployment/README.md)
+> does everything below with Ansible playbooks — plus release directories,
+> rollback, pre-migration backups and a Semaphore UI dashboard. Use this file to
+> understand *what* the server needs; use the playbooks to actually build it.
+
+> **Current Status:** ⚠️ Ready but not yet executed. The deployment scripts and Nginx/PM2/Certbot instructions are documented; the application has only been run locally and via `npm run preview`. See `../PROGRESS.md` for live-site status.
+
+> **Legend:** ✅ Completed · ⚠️ Documented but not executed / partial · ❌ Not implemented
 
 This guide covers deploying Jolfa Retail Gateway to an Iranian VPS.
 
 ---
 
-## Target Architecture
+## ⚠️ Target Architecture
 
 ```
 Internet → Nginx (HTTPS) → Frontend static files
@@ -15,7 +24,7 @@ PostgreSQL runs locally on the VPS
 
 ---
 
-## 1. Server Preparation (Ubuntu 24.04)
+## ⚠️ 1. Server Preparation (Ubuntu 24.04)
 
 ```bash
 # Update system
@@ -35,7 +44,7 @@ sudo npm install -g pm2
 
 ---
 
-## 2. Database Setup on VPS
+## ⚠️ 2. Database Setup on VPS
 
 ```bash
 sudo -u postgres psql -c "CREATE USER jolfa_app WITH PASSWORD 'STRONG_PASSWORD';"
@@ -45,7 +54,7 @@ sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE jolfa TO jolfa_app;"
 
 ---
 
-## 3. Project Deployment
+## ⚠️ 3. Project Deployment
 
 ```bash
 # Clone repository
@@ -67,7 +76,7 @@ npm run build
 
 ---
 
-## 4. Environment Configuration
+## ⚠️ 4. Environment Configuration
 
 Create `/var/www/jolfa-retail-gateway/Jolfa-Server/.env`:
 
@@ -99,7 +108,7 @@ SMS_SENDER_NUMBER=your-sender-number
 
 ---
 
-## 5. PM2 Process
+## ⚠️ 5. PM2 Process
 
 ```bash
 cd /var/www/jolfa-retail-gateway/Jolfa-Server
@@ -110,7 +119,7 @@ pm2 startup
 
 ---
 
-## 6. Nginx Configuration
+## ⚠️ 6. Nginx Configuration
 
 Create `/etc/nginx/sites-available/jolfa`:
 
@@ -152,7 +161,7 @@ sudo systemctl reload nginx
 
 ---
 
-## 7. SSL with Let's Encrypt
+## ⚠️ 7. SSL with Let's Encrypt
 
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
@@ -161,12 +170,202 @@ sudo certbot --nginx -d your-domain.ir -d www.your-domain.ir
 
 ---
 
-## 8. Post-Deployment Checklist
+## ❌ 8. Post-Deployment Checklist
 
-- [ ] API health check passes: `curl https://your-domain.ir/health`
-- [ ] Frontend loads without 404s
-- [ ] Admin login works
-- [ ] Payment gateway callback URL is correct
-- [ ] Uploads directory is writable by Node process
-- [ ] Firewall allows 80/443 and blocks 3001 externally
-- [ ] Automated database backups configured
+- [❌] API health check passes: `curl https://your-domain.ir/health`
+- [❌] Frontend loads without 404s
+- [❌] Admin login works
+- [❌] Payment gateway callback URL is correct
+- [❌] Uploads directory is writable by Node process
+- [❌] Firewall allows 80/443 and blocks 3001 externally
+- [❌] Automated backups configured — see §9 (`scripts/backup.sh` + cron + `BACKUP_REMOTE`)
+- [❌] Restore rehearsed once against a scratch database — see §9
+- [❌] `ZARINPAL_SANDBOX=false` and live merchant ID set
+- [❌] Rate limits reviewed for production — see §10
+
+> These items will be checked once the production VPS deployment is performed.
+
+---
+
+## ✅ 9. Backups and Restore
+
+`scripts/backup.sh` and `scripts/restore.sh` are implemented and have been
+exercised end to end (dump → restore into a scratch database → verify).
+
+Both halves of the application's state are captured together. Backing up only
+the database restores a catalogue whose product images are all missing, because
+uploaded media lives on the filesystem and is referenced from the database by
+path.
+
+### Install the nightly job
+
+```bash
+sudo apt install -y postgresql-client rclone
+
+# Configure an off-box destination once (e.g. an object-storage bucket).
+rclone config          # create a remote named e.g. "jolfa-backups"
+
+sudo crontab -e
+```
+
+Add:
+
+```cron
+30 3 * * * BACKUP_REMOTE=jolfa-backups:jolfa /var/www/jolfa-retail-gateway/scripts/backup.sh >> /var/log/jolfa-backup.log 2>&1
+```
+
+Without `BACKUP_REMOTE` the script still runs but warns loudly — a backup on the
+machine it is protecting does not survive that machine failing.
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `BACKUP_DIR` | `/var/backups/jolfa` | Local staging directory |
+| `RETENTION_DAYS` | `14` | Local copies older than this are pruned |
+| `BACKUP_REMOTE` | *(unset)* | rclone destination for the off-box copy |
+| `ENV_FILE` | `Jolfa-Server/.env` | Where `DATABASE_URL` and `UPLOAD_DIR` are read from |
+
+Each run writes `database.dump`, `uploads.tar.gz` and `manifest.txt` into a
+timestamped directory. The manifest is written **last**, so a directory without
+one is a partial backup; `restore.sh` refuses to use it.
+
+### Rehearse the restore
+
+Do this now, not during an incident:
+
+```bash
+sudo -u postgres createdb jolfa_restore_test
+scripts/restore.sh /var/backups/jolfa/<timestamp> \
+  --database-url 'postgresql://USER:PASS@localhost:5432/jolfa_restore_test' \
+  --uploads-path /tmp/restore-check
+```
+
+Then confirm the product count looks right and one restored image opens. Drop
+the scratch database afterwards.
+
+Restoring over production is the same command without the overrides. It prompts
+for confirmation because it drops every object in the target database first.
+
+---
+
+## ✅ 10. Rate Limiting and Security Headers
+
+The API ships with `@fastify/rate-limit` and `@fastify/helmet` enabled by
+default. Tune per environment in `.env`:
+
+```env
+RATE_LIMIT_MAX=300           # per IP, all routes
+RATE_LIMIT_WINDOW=1 minute
+AUTH_RATE_LIMIT_MAX=10       # login, register, change/forgot/reset password
+AUTH_RATE_LIMIT_WINDOW=15 minutes
+```
+
+The auth bucket is deliberately tight: those routes guard credentials, and
+`/auth/forgot-password` sends a real SMS — and therefore spends real money — on
+every request it accepts.
+
+`/health` is exempt from rate limiting so monitoring is never throttled.
+
+> **CORS:** setting `CORS_ORIGIN=*` reflects any origin and therefore disables
+> credentialed CORS. In production list your real origins, comma-separated.
+
+---
+
+## ✅ 11. Serving Uploads and Static Assets from Nginx
+
+Node should never serve a byte of static content in production. Uploaded files
+are written with a random UUID filename and never rewritten, so they are safe to
+cache permanently.
+
+```nginx
+# Uploaded media — bypass Node entirely.
+location /uploads/ {
+    alias /var/www/jolfa-retail-gateway/Jolfa-Server/uploads/;
+    access_log off;
+    expires 1y;
+    add_header Cache-Control "public, immutable";
+    try_files $uri =404;
+}
+
+# Hashed frontend bundles — the filename changes whenever the content does.
+location /assets/ {
+    alias /var/www/jolfa-retail-gateway/Jolfa-web/dist/assets/;
+    access_log off;
+    expires 1y;
+    add_header Cache-Control "public, immutable";
+}
+
+# index.html must never be cached, or users stay pinned to a stale build.
+location = /index.html {
+    add_header Cache-Control "no-cache";
+}
+
+gzip on;
+gzip_types text/css application/javascript application/json image/svg+xml;
+gzip_min_length 1024;
+```
+
+If Brotli is available (`nginx-module-brotli`), enable it alongside gzip — it
+compresses the JS bundles roughly 15–20% smaller than gzip at the same CPU cost
+on static, pre-compressible files.
+
+The API sets its own `Cache-Control`: public catalogue reads are cacheable for
+60 seconds with `stale-while-revalidate`, and anything carrying an
+`Authorization` header is `no-store`. Responses also send
+`Vary: Authorization`, so a shared cache can never hand an admin response to a
+shopper.
+
+---
+
+## ✅ 12. Monitoring and Error Tracking
+
+### Uptime
+
+Point any monitor at `GET /health`, which is exempt from rate limiting. It
+returns `{ success: true, data: { status: "ok", timestamp } }`.
+
+### Errors
+
+The server logs structured JSON via Pino, with `authorization`, `cookie`,
+`password`, `token` and `confirmPassword` redacted. Stack traces are omitted
+from responses in production but retained in the log.
+
+Process-level failures are handled explicitly (`src/shared/crash-handlers.ts`):
+an unhandled promise rejection is logged and the server keeps serving; an
+uncaught exception is logged and the process exits so the manager can restart it
+clean.
+
+**Not yet wired: an error tracking service.** Errors currently land in a file on
+one machine. Ship the logs somewhere, or add an SDK — GlitchTip is
+Sentry-protocol compatible and can be self-hosted inside Iran, which matters
+because sentry.io is not reliably reachable from Iranian networks. Minimum
+viable alternative:
+
+```bash
+# Rotate logs so the disk cannot fill, and keep two weeks of history.
+sudo tee /etc/logrotate.d/jolfa <<'EOF'
+/var/log/jolfa/*.log {
+    daily
+    rotate 14
+    compress
+    missingok
+    notifempty
+    copytruncate
+}
+EOF
+```
+
+Configure PM2 to write there:
+
+```bash
+pm2 start dist/index.js --name jolfa-api \
+  --output /var/log/jolfa/out.log \
+  --error /var/log/jolfa/error.log
+pm2 save
+```
+
+### Graceful restarts
+
+The server handles `SIGTERM` and `SIGINT`: it stops accepting connections, lets
+in-flight requests finish, closes the database pool, then exits — with a
+10-second backstop. `pm2 reload jolfa-api` therefore no longer drops requests
+mid-checkout.

@@ -25,6 +25,9 @@
   --color-success-soft: var(--success-soft);
   --color-warning-soft: var(--warning-soft);
   --color-danger-soft: var(--danger-soft);
+  --color-sale: var(--sale);
+  --color-sale-foreground: var(--sale-foreground);
+  --color-sale-soft: var(--sale-soft);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-ring: var(--ring);
@@ -43,8 +46,8 @@
   --shadow: 0 4px 12px -2px rgb(0 0 0 / 0.06);
   --shadow-md: 0 8px 20px -4px rgb(0 0 0 / 0.08);
   --shadow-lg: 0 12px 32px -4px rgb(0 0 0 / 0.1);
-  --shadow-glow: 0 0 24px -4px hsl(20 39% 39% / 0.25);
-  --shadow-glow-dark: 0 0 32px -4px hsl(20 30% 53% / 0.35);
+  --shadow-glow: 0 0 24px -4px hsl(208 63% 41% / 0.25);
+  --shadow-glow-dark: 0 0 32px -4px hsl(205 75% 60% / 0.35);
 
   /* Motion */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -55,23 +58,23 @@
 }
 
 :root {
-  /* Warm retail palette — light mode */
-  --background: hsl(36 33% 97.6%);
-  --foreground: hsl(36 20% 14%);
-  --surface: hsl(36 30% 100%);
-  --surface-elevated: hsl(36 25% 99%);
-  --muted: hsl(36 20% 92%);
-  --muted-foreground: hsl(36 12% 45%);
-  --border: hsl(36 24% 88%);
-  --input: hsl(36 24% 88%);
-  --ring: hsl(20 39% 39%);
+  /* Trust Blue palette — light mode (derived from #ADE1FB / #266CA9 / #0F2573 / #041D56 / #01082D) */
+  --background: hsl(210 45% 98%);
+  --foreground: hsl(230 45% 12%);
+  --surface: hsl(0 0% 100%);
+  --surface-elevated: hsl(210 40% 99%);
+  --muted: hsl(210 35% 94%);
+  --muted-foreground: hsl(220 15% 45%);
+  --border: hsl(212 30% 88%);
+  --input: hsl(212 30% 88%);
+  --ring: hsl(208 63% 41%);
 
-  --accent: hsl(16 60% 59%);
-  --accent-foreground: hsl(0 0% 100%);
+  --accent: hsl(200 90% 83%);
+  --accent-foreground: hsl(230 45% 12%);
 
-  --primary: hsl(20 39% 39%);
-  --primary-foreground: hsl(36 33% 97%);
-  --primary-soft: hsl(20 35% 94%);
+  --primary: hsl(208 63% 41%);
+  --primary-foreground: hsl(210 40% 98%);
+  --primary-soft: hsl(200 85% 92%);
 
   --secondary: hsl(154 26% 49%);
   --secondary-foreground: hsl(0 0% 100%);
@@ -88,42 +91,50 @@
   --danger: hsl(0 65% 55%);
   --danger-foreground: hsl(0 0% 100%);
   --danger-soft: hsl(0 60% 95%);
+
+  --sale: hsl(14 85% 55%);
+  --sale-foreground: hsl(0 0% 100%);
+  --sale-soft: hsl(14 85% 94%);
 }
 
 .dark {
-  /* Warm retail palette — dark mode */
-  --background: hsl(36 14% 10%);
-  --foreground: hsl(36 20% 94%);
-  --surface: hsl(36 12% 13%);
-  --surface-elevated: hsl(36 11% 16%);
-  --muted: hsl(36 12% 22%);
-  --muted-foreground: hsl(36 12% 60%);
-  --border: hsl(36 12% 22%);
-  --input: hsl(36 12% 25%);
-  --ring: hsl(20 30% 53%);
+  /* Trust Blue palette — dark mode, anchored at #01082D / #041D56 */
+  --background: hsl(230 60% 9%);
+  --foreground: hsl(200 60% 94%);
+  --surface: hsl(227 45% 13%);
+  --surface-elevated: hsl(225 40% 16%);
+  --muted: hsl(222 30% 20%);
+  --muted-foreground: hsl(212 25% 65%);
+  --border: hsl(222 30% 22%);
+  --input: hsl(222 30% 24%);
+  --ring: hsl(200 90% 70%);
 
-  --accent: hsl(16 55% 62%);
-  --accent-foreground: hsl(36 14% 10%);
+  --accent: hsl(200 85% 70%);
+  --accent-foreground: hsl(230 55% 10%);
 
-  --primary: hsl(20 30% 53%);
-  --primary-foreground: hsl(36 14% 10%);
-  --primary-soft: hsl(20 25% 22%);
+  --primary: hsl(205 75% 60%);
+  --primary-foreground: hsl(230 55% 8%);
+  --primary-soft: hsl(222 45% 22%);
 
   --secondary: hsl(154 22% 62%);
-  --secondary-foreground: hsl(36 14% 10%);
+  --secondary-foreground: hsl(230 55% 8%);
   --secondary-soft: hsl(154 20% 20%);
 
   --success: hsl(158 45% 55%);
-  --success-foreground: hsl(36 14% 10%);
+  --success-foreground: hsl(230 55% 8%);
   --success-soft: hsl(158 30% 18%);
 
   --warning: hsl(38 85% 58%);
-  --warning-foreground: hsl(36 14% 10%);
+  --warning-foreground: hsl(230 55% 8%);
   --warning-soft: hsl(38 50% 18%);
 
   --danger: hsl(0 70% 65%);
-  --danger-foreground: hsl(36 14% 10%);
+  --danger-foreground: hsl(230 55% 8%);
   --danger-soft: hsl(0 40% 20%);
+
+  --sale: hsl(14 85% 62%);
+  --sale-foreground: hsl(230 55% 8%);
+  --sale-soft: hsl(14 60% 20%);
 }
 
 html {

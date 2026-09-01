@@ -1,0 +1,32 @@
+---
+# Install (or re-install) the nightly backup job, and optionally take a backup
+# right now.
+#
+#   ansible-playbook -i inventory.ini backup.yml
+#   ansible-playbook -i inventory.ini backup.yml -e run_now=true
+
+- name: Configure backups for Jolfa
+  hosts: jolfa
+  become: true
+
+  roles:
+    - backup
+
+  tasks:
+    - name: Take a backup now
+      ansible.builtin.command:
+        cmd: "{{ app_root }}/current/scripts/backup.sh"
+      environment:
+        BACKUP_DIR: "{{ backup_dir }}"
+        RETENTION_DAYS: "{{ backup_retention_days | string }}"
+        BACKUP_REMOTE: "{{ backup_remote }}"
+        ENV_FILE: "{{ app_root }}/shared/Jolfa-Server/.env"
+      become_user: "{{ app_user }}"
+      changed_when: true
+      register: backup_run
+      when: run_now | default(false) | bool
+
+    - name: Show the backup output
+      ansible.builtin.debug:
+        var: backup_run.stdout_lines
+      when: run_now | default(false) | bool

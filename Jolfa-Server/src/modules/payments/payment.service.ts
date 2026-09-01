@@ -5,14 +5,16 @@ import type { PaymentGateway, PaymentStatus } from "@prisma/client";
 import type { PaymentRequestBody, PaymentVerifyBody } from "./payment.types.js";
 import { createTransaction } from "./transaction.service.js";
 
-interface GatewayConfig {
+export interface GatewayConfig {
   gateway: PaymentGateway;
   merchantId: string;
   apiBase: string;
+  /** Where the customer is redirected to pay. Must match `apiBase`'s environment. */
+  startPayBase: string;
   callbackUrl: string;
 }
 
-function getGatewayConfig(): GatewayConfig {
+export function getGatewayConfig(): GatewayConfig {
   const gateway: PaymentGateway = env.ZIBAL_MERCHANT_ID ? "ZIBAL" : "ZARINPAL";
 
   if (gateway === "ZIBAL") {
@@ -20,15 +22,22 @@ function getGatewayConfig(): GatewayConfig {
       gateway,
       merchantId: env.ZIBAL_MERCHANT_ID!,
       apiBase: "https://gateway.zibal.ir/v1",
+      startPayBase: "https://gateway.zibal.ir/start",
       callbackUrl: env.ZIBAL_CALLBACK_URL ?? `${env.API_PREFIX}/payments/verify/zibal`,
     };
   }
 
+  // Both of these must move together: minting an authority against the live API
+  // and then sending the customer to the sandbox to pay it fails every real
+  // order, and does so silently because the redirect itself looks fine.
   const sandbox = env.ZARINPAL_SANDBOX === "true";
   return {
     gateway,
     merchantId: env.ZARINPAL_MERCHANT_ID ?? (sandbox ? "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" : ""),
     apiBase: sandbox ? "https://sandbox.zarinpal.com/pg/v4" : "https://api.zarinpal.com/pg/v4",
+    startPayBase: sandbox
+      ? "https://sandbox.zarinpal.com/pg/StartPay"
+      : "https://www.zarinpal.com/pg/StartPay",
     callbackUrl: env.ZARINPAL_CALLBACK_URL ?? `${env.API_PREFIX}/payments/verify/zarinpal`,
   };
 }
@@ -55,7 +64,7 @@ export async function requestPayment(userId: string, data: PaymentRequestBody) {
 
   if (order.payment && order.payment.status === "PENDING" && order.payment.authority) {
     return {
-      paymentUrl: buildPaymentUrl(config.gateway, order.payment.authority),
+      paymentUrl: buildPaymentUrl(config, order.payment.authority),
       authority: order.payment.authority,
     };
   }
@@ -85,7 +94,7 @@ export async function requestPayment(userId: string, data: PaymentRequestBody) {
   });
 
   return {
-    paymentUrl: buildPaymentUrl(config.gateway, authority),
+    paymentUrl: buildPaymentUrl(config, authority),
     authority,
   };
 }
@@ -173,9 +182,10 @@ export async function getPaymentByAuthority(authority: string) {
   return { payment };
 }
 
-function buildPaymentUrl(gateway: PaymentGateway, authority: string): string {
-  if (gateway === "ZIBAL") {
-    return `https://gateway.zibal.ir/start/${authority}`;
-  }
-  return `https://sandbox.zarinpal.com/pg/StartPay/${authority}`;
+/**
+ * Takes the config rather than just the gateway name so the redirect can never
+ * drift from the API base it was minted against.
+ */
+export function buildPaymentUrl(config: GatewayConfig, authority: string): string {
+  return `${config.startPayBase}/${authority}`;
 }

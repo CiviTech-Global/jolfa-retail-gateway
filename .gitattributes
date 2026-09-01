@@ -1,0 +1,12 @@
+# Normalise line endings so a Windows checkout cannot produce files that break
+# on the Linux deployment target.
+* text=auto
+
+# Shell scripts MUST be LF. A CRLF shebang makes the kernel look for an
+# interpreter literally named "bash\r", which fails as "bad interpreter".
+*.sh text eol=lf
+
+# Same reasoning for anything else executed by a Linux toolchain.
+*.yml text eol=lf
+*.yaml text eol=lf
+Dockerfile text eol=lf

@@ -1,0 +1,14 @@
+---
+# Install Semaphore UI so deployments can be run from a browser.
+#
+#   ansible-playbook -i inventory.ini semaphore.yml --ask-vault-pass
+#
+# Semaphore binds to 127.0.0.1 only. Reach it over an SSH tunnel — see
+# docs/deployment/06-semaphore-ui/.
+
+- name: Install Semaphore UI
+  hosts: semaphore
+  become: true
+
+  roles:
+    - semaphore

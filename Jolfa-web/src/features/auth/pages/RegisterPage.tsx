@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { RegisterForm, type RegisterFormData } from '../components/RegisterForm'
 import { useAuth } from '../context'
+import { roleHome } from '../roles'
 
 export function RegisterPage() {
   const navigate = useNavigate()
@@ -14,12 +15,12 @@ export function RegisterPage() {
     setError(undefined)
     setIsLoading(true)
     try {
-      await register({
+      const user = await register({
         ...data,
         email: data.email || undefined,
       })
       toast.success('ثبت‌نام با موفقیت انجام شد')
-      navigate('/')
+      navigate(roleHome(user), { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'خطا در ثبت‌نام')
     } finally {

@@ -1,14 +1,21 @@
 import { prisma } from "../../shared/prisma.js";
 import { AppError } from "../../shared/app-error.js";
+import { env } from "../../config/env.js";
+import { ensureDefaultSettings } from "../settings/settings.service.js";
 
 const DEMO_CATEGORY_PREFIX = "demo-";
 const DEMO_PRODUCT_PREFIX = "demo-";
 
+/** Locally-served demo asset (checked into assets/demo-images, no external network needed). */
+function demoAsset(filename: string): string {
+  return `${env.APP_URL}/demo-assets/${filename}`;
+}
+
 const demoCategories = [
-  { name: "چای و دمنوش", slug: "demo-chai", imageUrl: "https://images.unsplash.com/photo-1594631252845-29fc4cc8cde9?w=400" },
-  { name: "عسل و مربا", slug: "demo-asal", imageUrl: "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=400" },
-  { name: "ادویه و چاشنی", slug: "demo-adviye", imageUrl: "https://images.unsplash.com/photo-1532336414038-cf19250c5757?w=400" },
-  { name: "خشکبار و آجیل", slug: "demo-khoshkbar", imageUrl: "https://images.unsplash.com/photo-1606923829579-0cb981a83e2e?w=400" },
+  { name: "چای و دمنوش", slug: "demo-chai", imageUrl: demoAsset("category-01.jpg") },
+  { name: "عسل و مربا", slug: "demo-asal", imageUrl: demoAsset("category-02.webp") },
+  { name: "ادویه و چاشنی", slug: "demo-adviye", imageUrl: demoAsset("category-03.webp") },
+  { name: "خشکبار و آجیل", slug: "demo-khoshkbar", imageUrl: demoAsset("category-04.webp") },
 ];
 
 const demoProducts = [
@@ -22,7 +29,11 @@ const demoProducts = [
     isActive: true,
     isFeatured: true,
     categorySlug: "demo-chai",
-    imageUrl: "https://images.unsplash.com/photo-1563822249548-9a72b6353cd1?w=600",
+    images: [
+      { url: demoAsset("product-01.jpg"), altText: "فنجان چای سیاه ارگانیک تازه دم شده" },
+      { url: demoAsset("product-02.jpg"), altText: "برگ‌های خشک چای سیاه ارگانیک درجه یک" },
+      { url: demoAsset("product-03.webp"), altText: "بسته‌بندی چای سیاه ارگانیک بازارچه جلفا" },
+    ],
   },
   {
     title: "عسل طبیعی کوهستان",
@@ -34,7 +45,11 @@ const demoProducts = [
     isActive: true,
     isFeatured: true,
     categorySlug: "demo-asal",
-    imageUrl: "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=600",
+    images: [
+      { url: demoAsset("product-04.webp"), altText: "ظرف عسل طبیعی کوهستان" },
+      { url: demoAsset("product-05.webp"), altText: "قاشق عسل طبیعی خام در حال برداشت" },
+      { url: demoAsset("product-06.jpg"), altText: "برچسب و بسته‌بندی عسل طبیعی کوهستان" },
+    ],
   },
   {
     title: "زعفران سرگل درجه یک",
@@ -46,7 +61,11 @@ const demoProducts = [
     isActive: true,
     isFeatured: true,
     categorySlug: "demo-adviye",
-    imageUrl: "https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=600",
+    images: [
+      { url: demoAsset("product-07.jpg"), altText: "رشته‌های زعفران سرگل درجه یک" },
+      { url: demoAsset("product-08.webp"), altText: "زعفران سرگل در ظرف بلوری" },
+      { url: demoAsset("product-09.jpg"), altText: "بسته‌بندی زعفران سرگل بازارچه جلفا" },
+    ],
   },
   {
     title: "مغز گردو خام",
@@ -58,7 +77,11 @@ const demoProducts = [
     isActive: true,
     isFeatured: false,
     categorySlug: "demo-khoshkbar",
-    imageUrl: "https://images.unsplash.com/photo-1575481636764-7f8bc25b5d1f?w=600",
+    images: [
+      { url: demoAsset("product-10.jpg"), altText: "مغز گردوی خام و تازه" },
+      { url: demoAsset("product-11.jpg"), altText: "گردو و آجیل خشکبار مخلوط" },
+      { url: demoAsset("product-12.jpg"), altText: "بسته‌بندی مغز گردوی خام بازارچه جلفا" },
+    ],
   },
   {
     title: "چای سبز لاغری",
@@ -70,7 +93,11 @@ const demoProducts = [
     isActive: true,
     isFeatured: false,
     categorySlug: "demo-chai",
-    imageUrl: "https://images.unsplash.com/photo-1627435601361-ec25f5b1d0e5?w=600",
+    images: [
+      { url: demoAsset("product-13.jpg"), altText: "فنجان چای سبز تازه دم" },
+      { url: demoAsset("product-14.jpg"), altText: "برگ‌های خشک چای سبز" },
+      { url: demoAsset("product-15.webp"), altText: "بسته‌بندی چای سبز لاغری بازارچه جلفا" },
+    ],
   },
   {
     title: "مربای گل محمدی",
@@ -82,7 +109,11 @@ const demoProducts = [
     isActive: true,
     isFeatured: true,
     categorySlug: "demo-asal",
-    imageUrl: "https://images.unsplash.com/photo-1601000938259-9e9200199226?w=600",
+    images: [
+      { url: demoAsset("product-16.webp"), altText: "مربای گل محمدی در ظرف شیشه‌ای" },
+      { url: demoAsset("product-17.png"), altText: "شهد طبیعی مربای گل محمدی" },
+      { url: demoAsset("product-18.jpg"), altText: "بسته‌بندی مربای سنتی گل محمدی" },
+    ],
   },
 ];
 
@@ -90,10 +121,28 @@ const demoBanners = [
   {
     title: "تازگی محصولات محلی",
     subtitle: "از کوهستان تا سبد خرید شما",
-    imageUrl: "https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=1200",
+    imageUrl: demoAsset("banner-01.jpg"),
     link: "/products",
     position: "hero",
     displayOrder: 0,
+    isActive: true,
+  },
+  {
+    title: "زعفران و ادویه‌جات اصیل",
+    subtitle: "مستقیم از مزارع جلفا",
+    imageUrl: demoAsset("banner-02.jpg"),
+    link: "/categories/demo-adviye",
+    position: "sidebar",
+    displayOrder: 1,
+    isActive: true,
+  },
+  {
+    title: "خشکبار تازه، ارسال سریع",
+    subtitle: "بدون واسطه از تولیدکننده",
+    imageUrl: demoAsset("banner-03.jpg"),
+    link: "/categories/demo-khoshkbar",
+    position: "footer",
+    displayOrder: 2,
     isActive: true,
   },
 ];
@@ -102,41 +151,111 @@ const demoHomepageSections = [
   {
     key: "hero",
     title: "اسلایدر بنر",
-    type: "hero",
-    config: { limit: 3 },
+    type: "hero_carousel",
+    config: {
+      autoplayMs: 5000,
+      banners: [
+        {
+          title: "بازارچه جلفا",
+          subtitle: "محصولات محلی، سنتی و باکیفیت مستقیماً از تولیدکننده به دست شما",
+          image: demoAsset("hero-01.jpg"),
+          link: "/products",
+          buttonText: "مشاهده محصولات",
+        },
+        {
+          title: "زعفران سرگل درجه یک",
+          subtitle: "خالص‌ترین زعفران ایران، برداشت تازه امسال",
+          image: demoAsset("hero-02.jpg"),
+          link: "/products/demo-saffron",
+          buttonText: "خرید زعفران",
+        },
+        {
+          title: "عسل طبیعی کوهستان",
+          subtitle: "بدون افزودنی، مستقیم از کندوهای کوهستان",
+          image: demoAsset("hero-03.jpg"),
+          link: "/products/demo-mountain-honey",
+          buttonText: "خرید عسل",
+        },
+      ],
+    },
     displayOrder: 0,
+    isActive: true,
+  },
+  {
+    key: "flash_deals",
+    title: "پیشنهادهای لحظه‌ای",
+    type: "flash_deals",
+    // No window configured: the section shows with no countdown until an admin
+    // sets an explicit start/end in the homepage-sections editor.
+    config: { filter: "discounted", limit: 8, startsAt: null, endsAt: null },
+    displayOrder: 1,
     isActive: true,
   },
   {
     key: "categories",
     title: "دسته‌بندی‌ها",
-    type: "categories",
+    type: "category_grid",
     config: { limit: 8 },
-    displayOrder: 1,
+    displayOrder: 2,
     isActive: true,
   },
   {
     key: "featured_products",
     title: "محصولات ویژه",
-    type: "featured_products",
-    config: { filter: "featured", limit: 8 },
-    displayOrder: 2,
+    type: "product_carousel",
+    config: { filter: "featured", limit: 8, layout: "carousel" },
+    displayOrder: 3,
+    isActive: true,
+  },
+  {
+    key: "banner_grid",
+    title: "بنرهای تبلیغاتی",
+    type: "banner_grid",
+    config: {
+      banners: [
+        {
+          title: "چای و دمنوش",
+          subtitle: "طعم‌های اصیل ایرانی",
+          image: demoAsset("banner-01.jpg"),
+          link: "/categories/demo-chai",
+        },
+        {
+          title: "عسل و مربا",
+          subtitle: "شیرینی طبیعت",
+          image: demoAsset("banner-02.jpg"),
+          link: "/categories/demo-asal",
+        },
+        {
+          title: "ادویه و چاشنی",
+          subtitle: "عطر و رنگ اصیل",
+          image: demoAsset("banner-03.jpg"),
+          link: "/categories/demo-adviye",
+        },
+        {
+          title: "خشکبار و آجیل",
+          subtitle: "تازه و مرغوب",
+          image: demoAsset("hero-01.jpg"),
+          link: "/categories/demo-khoshkbar",
+        },
+      ],
+    },
+    displayOrder: 4,
     isActive: true,
   },
   {
     key: "new_products",
     title: "جدیدترین محصولات",
-    type: "new_products",
-    config: { filter: "new", limit: 8 },
-    displayOrder: 3,
+    type: "product_carousel",
+    config: { filter: "new", limit: 8, layout: "carousel" },
+    displayOrder: 5,
     isActive: true,
   },
   {
     key: "promo_banner",
     title: "تخفیف‌دارها",
-    type: "promo_banner",
-    config: { filter: "discounted", limit: 8 },
-    displayOrder: 4,
+    type: "product_carousel",
+    config: { filter: "discounted", limit: 8, layout: "grid" },
+    displayOrder: 7,
     isActive: true,
   },
   {
@@ -151,41 +270,9 @@ const demoHomepageSections = [
         { icon: "Headphones", title: "پشتیبانی", description: "۷ روز هفته" },
       ],
     },
-    displayOrder: 5,
+    displayOrder: 8,
     isActive: true,
   },
-  {
-    key: "newsletter",
-    title: "خبرنامه",
-    type: "newsletter",
-    config: {
-      title: "از تخفیف‌ها جا نمانید",
-      description: "ایمیل خود را وارد کنید تا از جدیدترین پیشنهادها مطلع شوید.",
-      buttonText: "عضویت",
-    },
-    displayOrder: 6,
-    isActive: true,
-  },
-];
-
-const demoSettings = [
-  { key: "site_name", value: "بازارچه جلفا", group: "general", isPublic: true, description: "Site name shown in header and footer" },
-  { key: "site_description", value: "فروشگاه محصولات محلی و سنتی بازارچه جلفا", group: "general", isPublic: true, description: "Meta description and hero subtitle" },
-  { key: "currency", value: "تومان", group: "general", isPublic: true, description: "Currency label" },
-  { key: "show_search", value: "true", group: "header", isPublic: true, description: "Show search input in header" },
-  { key: "show_cart", value: "true", group: "header", isPublic: true, description: "Show cart icon in header" },
-  { key: "show_user_menu", value: "true", group: "header", isPublic: true, description: "Show user account menu in header" },
-  { key: "show_footer_links", value: "true", group: "footer", isPublic: true, description: "Show footer quick links" },
-  { key: "show_about", value: "true", group: "static_pages", isPublic: true, description: "Show About page link" },
-  { key: "show_contact", value: "true", group: "static_pages", isPublic: true, description: "Show Contact page link" },
-  { key: "show_rules", value: "true", group: "static_pages", isPublic: true, description: "Show Rules page link" },
-  { key: "show_hero", value: "true", group: "home_features", isPublic: true, description: "Show hero banner section" },
-  { key: "show_categories", value: "true", group: "home_features", isPublic: true, description: "Show categories grid section" },
-  { key: "show_featured_products", value: "true", group: "home_features", isPublic: true, description: "Show featured products section" },
-  { key: "show_new_products", value: "true", group: "home_features", isPublic: true, description: "Show new products section" },
-  { key: "show_discounted_products", value: "true", group: "home_features", isPublic: true, description: "Show discounted products section" },
-  { key: "show_trust_badges", value: "true", group: "home_features", isPublic: true, description: "Show trust badges section" },
-  { key: "show_newsletter", value: "true", group: "home_features", isPublic: true, description: "Show newsletter section" },
 ];
 
 async function snapshotEntity(entityType: string, entityId: string) {
@@ -215,7 +302,7 @@ async function seedDemoProducts() {
     const categoryId = categoryMap.get(product.categorySlug);
     if (!categoryId) continue;
 
-    const { categorySlug: _categorySlug, imageUrl, ...productData } = product;
+    const { categorySlug: _categorySlug, images, ...productData } = product;
     const upserted = await prisma.product.upsert({
       where: { slug: product.slug },
       update: { ...productData, categoryId },
@@ -225,14 +312,14 @@ async function seedDemoProducts() {
     await snapshotEntity("PRODUCT", upserted.id);
 
     await prisma.productImage.deleteMany({ where: { productId: upserted.id } });
-    await prisma.productImage.create({
-      data: {
+    await prisma.productImage.createMany({
+      data: images.map((image, index) => ({
         productId: upserted.id,
-        url: imageUrl,
-        altText: product.title,
-        isPrimary: true,
-        sortOrder: 0,
-      },
+        url: image.url,
+        altText: image.altText,
+        isPrimary: index === 0,
+        sortOrder: index,
+      })),
     });
   }
 }
@@ -379,15 +466,14 @@ async function seedDemoHomepageSections() {
   }
 }
 
+/**
+ * Settings are core configuration, not demo content: they now hold the site
+ * name, title and logo. So demo seeding only fills in keys that are missing
+ * and never snapshots them — clearing demo data must not wipe an admin's
+ * branding along with the sample products.
+ */
 async function seedDemoSettings() {
-  for (const setting of demoSettings) {
-    const upserted = await prisma.setting.upsert({
-      where: { key: setting.key },
-      update: { value: setting.value },
-      create: setting,
-    });
-    await snapshotEntity("SETTING", upserted.id);
-  }
+  await ensureDefaultSettings();
 }
 
 export async function seedDemoData() {
@@ -434,9 +520,6 @@ export async function clearDemoData() {
 
       // Remove any products that belong to demo categories, plus their related rows.
       // This also cleans up user-created products that were placed under demo categories.
-      await tx.cartItem.deleteMany({
-        where: { product: { categoryId: { in: categoryIds } } },
-      });
       await tx.productImage.deleteMany({
         where: { product: { categoryId: { in: categoryIds } } },
       });
@@ -463,12 +546,10 @@ export async function clearDemoData() {
         where: { id: { in: homepageSectionIds } },
       });
 
-      await tx.demoSnapshot.deleteMany();
+      // Settings are intentionally left alone: they carry the site name, title
+      // and logo, which are not demo content.
 
-      await tx.setting.updateMany({
-        where: { key: { startsWith: "show_" } },
-        data: { value: "false" },
-      });
+      await tx.demoSnapshot.deleteMany();
     });
   } catch (error) {
     console.error("Clear demo data error:", error);

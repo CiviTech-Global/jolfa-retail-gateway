@@ -1,0 +1,280 @@
+---
+# Base server hardening and packages.
+#
+# Target platform: AlmaLinux 9 (RHEL family). Debian/Ubuntu is kept working via
+# the per-family vars files and a handful of os_family branches, but RHEL is
+# the tested path — it is what the customer's VPS runs.
+#
+# Idempotent: safe to re-run whenever anything in group_vars changes.
+
+- name: Load platform-specific variables
+  ansible.builtin.include_vars: "{{ ansible_os_family }}.yml"
+
+- name: Refuse to run on an unsupported platform
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family in ['RedHat', 'Debian']
+    fail_msg: >-
+      These playbooks support RedHat-family (AlmaLinux/Rocky/RHEL 9) and
+      Debian-family hosts. This one reports
+      {{ ansible_distribution }} {{ ansible_distribution_version }}
+      (os_family {{ ansible_os_family }}).
+
+- name: Fail fast on an unconfigured domain
+  ansible.builtin.assert:
+    that:
+      - domain_name is defined
+      - not (domain_name | string).startswith('REPLACE_ME')
+    fail_msg: >-
+      domain_name is still a placeholder in inventory.ini. Set it to the real
+      hostname, or to the server's IP address for a pre-DNS deployment on plain
+      HTTP — it feeds the Nginx server_name, CORS_ORIGIN, the payment callback
+      URL and the frontend's baked-in API base, so a half-configured value
+      produces a store that builds fine and fails in every browser.
+
+- name: Fail fast on a missing certbot email
+  # Only needed when TLS is being issued. A pre-DNS deployment
+  # (enable_ssl=false) never runs certbot, so it must not be blocked on this.
+  ansible.builtin.assert:
+    that:
+      - certbot_email is defined
+      - certbot_email | length > 0
+      - not (certbot_email | string).startswith('REPLACE_ME')
+    fail_msg: >-
+      enable_ssl is true but certbot_email is not set. Let's Encrypt sends
+      expiry warnings there; use a mailbox someone actually reads.
+  when: enable_ssl | default(true) | bool
+
+# ---------------------------------------------------------------------------
+# Packages
+# ---------------------------------------------------------------------------
+
+- name: Refresh the package cache (Debian)
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_os_family == 'Debian'
+
+- name: Enable EPEL (RedHat)
+  # fail2ban, rclone and certbot's nginx plugin all live in EPEL on EL9.
+  ansible.builtin.dnf:
+    name: epel-release
+    state: present
+  when: ansible_os_family == 'RedHat'
+
+- name: Install base packages
+  ansible.builtin.package:
+    name: "{{ base_packages }}"
+    state: present
+
+- name: Install EPEL packages
+  ansible.builtin.package:
+    name: "{{ epel_packages }}"
+    state: present
+  when: epel_packages | length > 0
+
+- name: Set the system timezone
+  community.general.timezone:
+    name: "{{ server_timezone | default('Asia/Tehran') }}"
+
+# ---------------------------------------------------------------------------
+# The service account
+# ---------------------------------------------------------------------------
+
+- name: Create the application group
+  ansible.builtin.group:
+    name: "{{ app_group }}"
+    state: present
+
+- name: Create the unprivileged application user
+  # The API runs as this user, not root. A remote-code bug in an image upload
+  # handler then owns a service account with no sudo instead of the machine.
+  ansible.builtin.user:
+    name: "{{ app_user }}"
+    group: "{{ app_group }}"
+    shell: /bin/bash
+    home: "/home/{{ app_user }}"
+    create_home: true
+    system: false
+    state: present
+
+# ---------------------------------------------------------------------------
+# Unattended security updates
+# ---------------------------------------------------------------------------
+
+- name: Configure unattended upgrades (Debian)
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    mode: "0644"
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+  when: ansible_os_family == 'Debian'
+
+- name: Configure dnf-automatic to apply security updates (RedHat)
+  when: ansible_os_family == 'RedHat'
+  block:
+    - name: Apply updates rather than only downloading them
+      ansible.builtin.lineinfile:
+        path: /etc/dnf/automatic.conf
+        regexp: "^apply_updates"
+        line: "apply_updates = yes"
+
+    - name: Limit automatic updates to security errata
+      # A full auto-upgrade on a production box can pull a major version of
+      # something at 03:00. Security only.
+      ansible.builtin.lineinfile:
+        path: /etc/dnf/automatic.conf
+        regexp: "^upgrade_type"
+        line: "upgrade_type = security"
+
+    - name: Enable the dnf-automatic timer
+      ansible.builtin.systemd:
+        name: dnf-automatic.timer
+        state: started
+        enabled: true
+
+# ---------------------------------------------------------------------------
+# SSH
+# ---------------------------------------------------------------------------
+
+- name: Harden SSH
+  # Both families ship an `Include /etc/ssh/sshd_config.d/*.conf` in the stock
+  # sshd_config, so a drop-in is the least invasive way to do this.
+  #
+  # Whether passwords are still accepted is decided by
+  # ssh_permit_password_auth — see the template and group_vars/all/main.yml.
+  ansible.builtin.template:
+    src: sshd-jolfa.conf.j2
+    dest: /etc/ssh/sshd_config.d/10-jolfa.conf
+    mode: "0600"
+    validate: "/usr/sbin/sshd -t -f %s"
+  when: ssh_hardening_enabled | default(true) | bool
+  notify: Restart sshd
+
+- name: Protect SSH with fail2ban
+  # This matters far more when password authentication is left on: port 22 is
+  # then guessable, and installing fail2ban without configuring it does
+  # nothing at all — on EL9 the package ships no enabled jail and the service
+  # is not started.
+  block:
+    - name: Configure the sshd jail
+      ansible.builtin.copy:
+        dest: /etc/fail2ban/jail.d/sshd.local
+        mode: "0644"
+        content: |
+          # Managed by Ansible — roles/common
+          [sshd]
+          enabled  = true
+          port     = ssh
+          backend  = systemd
+          maxretry = {{ fail2ban_max_retry | default(5) }}
+          findtime = {{ fail2ban_find_time | default('10m') }}
+          bantime  = {{ fail2ban_ban_time | default('1h') }}
+          # Never lock yourself out from these.
+          ignoreip = 127.0.0.1/8 ::1{% for ip in fail2ban_ignore_ips | default([]) %} {{ ip }}{% endfor %}
+      notify: Restart fail2ban
+
+    - name: Enable and start fail2ban
+      ansible.builtin.systemd:
+        name: fail2ban
+        state: started
+        enabled: true
+
+# ---------------------------------------------------------------------------
+# Firewall
+# ---------------------------------------------------------------------------
+
+- name: Configure the firewall (RedHat / firewalld)
+  when:
+    - firewall_enabled | bool
+    - ansible_os_family == 'RedHat'
+  block:
+    - name: Ensure firewalld is running and enabled
+      ansible.builtin.systemd:
+        name: firewalld
+        state: started
+        enabled: true
+
+    - name: Allow the required ports
+      ansible.posix.firewalld:
+        port: "{{ item }}/tcp"
+        permanent: true
+        immediate: true
+        state: enabled
+      loop: "{{ firewall_allowed_tcp_ports }}"
+
+    - name: Remove services the default zone allows but we do not use
+      # A stock EL9 public zone allows cockpit and dhcpv6-client. Neither is
+      # needed here, and cockpit is a login form on port 9090.
+      ansible.posix.firewalld:
+        service: "{{ item }}"
+        permanent: true
+        immediate: true
+        state: disabled
+      loop:
+        - cockpit
+        - dhcpv6-client
+      failed_when: false
+
+- name: Configure the firewall (Debian / ufw)
+  when:
+    - firewall_enabled | bool
+    - ansible_os_family == 'Debian'
+  block:
+    - name: Allow required TCP ports
+      community.general.ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop: "{{ firewall_allowed_tcp_ports }}"
+
+    - name: Default deny incoming
+      community.general.ufw:
+        direction: incoming
+        policy: deny
+
+    - name: Default allow outgoing
+      community.general.ufw:
+        direction: outgoing
+        policy: allow
+
+    - name: Enable ufw
+      community.general.ufw:
+        state: enabled
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+
+- name: Create the log directory
+  ansible.builtin.file:
+    path: /var/log/jolfa
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: "0755"
+
+- name: Install logrotate policy
+  # PM2 writes to /var/log/jolfa. Without rotation a chatty request log fills
+  # the disk, and a full disk takes PostgreSQL down with it.
+  ansible.builtin.copy:
+    dest: /etc/logrotate.d/jolfa
+    mode: "0644"
+    content: |
+      /var/log/jolfa/*.log {
+          daily
+          rotate 14
+          compress
+          delaycompress
+          missingok
+          notifempty
+          copytruncate
+          su {{ app_user }} {{ app_group }}
+      }
+
+- name: Ensure the cron daemon is running
+  ansible.builtin.systemd:
+    name: "{{ 'crond' if ansible_os_family == 'RedHat' else 'cron' }}"
+    state: started
+    enabled: true

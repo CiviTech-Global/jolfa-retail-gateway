@@ -1,5 +1,6 @@
 import { Link } from 'react-router'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
+import { FALLBACK_IMAGE_URL } from '@/lib/utils'
 import type { CategoryDto, CategoryTreeDto } from '../types'
 
 interface CategoryListProps {
@@ -11,10 +12,7 @@ function isTree(categories: CategoryDto[] | CategoryTreeDto[]): categories is Ca
 }
 
 function getImageUrl(category: CategoryDto): string {
-  return (
-    category.imageUrl ??
-    `https://placehold.co/400x300/e2e8f0/475569?text=${encodeURIComponent(category.name)}`
-  )
+  return category.imageUrl ?? FALLBACK_IMAGE_URL
 }
 
 export function CategoryList({ categories }: CategoryListProps) {

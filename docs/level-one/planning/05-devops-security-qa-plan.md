@@ -5,15 +5,25 @@
 **Owners:** DevOps Engineer, Security Engineer, QA Engineer  
 **Date:** 2026-08-08
 
+> **Current Status:** CI is partially implemented, deployment is documented but not executed, security hardening is partial, and no automated tests exist. Items below are marked ✅ completed, ⚠️ partial/stubbed, or ❌ not implemented.
+
+> **Legend:** ✅ Completed · ⚠️ Partial / documented but not executed · ❌ Not implemented
+
 ---
 
-## 1. CI/CD Pipeline Proposal (GitHub Actions)
+## Current Status
+
+CI lint/build workflows and deploy scripts exist, but live VPS deployment, Docker, SSL, backups, and comprehensive QA automation are still pending per [../PROGRESS.md](../PROGRESS.md). Security hardening is partial: bcrypt hashing, Zod validation, and admin role guards are in place, but rate limiting, `httpOnly` cookies, Helmet/CSP, and server hardening are not yet implemented. Items below are marked ✅ completed, ⚠️ partial/stubbed, or ❌ not implemented.
+
+---
+
+## ⚠️ 1. CI/CD Pipeline Proposal (GitHub Actions)
 
 ### 1.1 Repository Layout
-- `Jolfa-web/` — React 19 + Vite 8 frontend
-- `Jolfa-Server/` — Node.ts backend (Express or Fastify, ESM)
+- ✅ `Jolfa-web/` — React 19 + Vite 8 frontend
+- ✅ `Jolfa-Server/` — Node.ts backend (Fastify, ESM)
 
-### 1.2 Workflow: `ci.yml`
+### ⚠️ 1.2 Workflow: `ci.yml`
 
 Trigger on every `push` and `pull_request` to `main`.
 
@@ -74,9 +84,9 @@ jobs:
       - run: npm run build
 ```
 
-### 1.3 Workflow: `deploy.yml`
+### ❌ 1.3 Workflow: `deploy.yml`
 
-Trigger on `push` to `main` after CI passes.
+Trigger on `push` to `main` after CI passes. *Not yet created; only `ci.yml` exists in `.github/workflows/`.*
 
 ```yaml
 name: Deploy
@@ -106,7 +116,7 @@ jobs:
             "cd /var/www/jolfa-retail-gateway && git pull origin main && ./scripts/deploy.sh"
 ```
 
-### 1.4 Deploy Script (`scripts/deploy.sh`)
+### ✅ 1.4 Deploy Script (`scripts/deploy.sh`)
 
 ```bash
 #!/bin/bash
@@ -132,26 +142,26 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ---
 
-## 2. Deployment Approach (Iranian VPS)
+## ⚠️ 2. Deployment Approach (Iranian VPS)
 
-### 2.1 Server Specs
-- **OS:** Ubuntu 24.04 LTS
-- **CPU/RAM:** 2 vCPU / 4 GB RAM (minimum)
-- **Storage:** 40 GB SSD
-- **Network:** Iranian datacenter with public IPv4
-- **Domain:** Client-owned `.ir` domain pointed at VPS
+### ⚠️ 2.1 Server Specs
+- ⚠️ **OS:** Ubuntu 24.04 LTS (documented; not provisioned yet)
+- ⚠️ **CPU/RAM:** 2 vCPU / 4 GB RAM (minimum) (documented; not provisioned yet)
+- ⚠️ **Storage:** 40 GB SSD (documented; not provisioned yet)
+- ⚠️ **Network:** Iranian datacenter with public IPv4 (documented; not provisioned yet)
+- ⚠️ **Domain:** Client-owned `.ir` domain pointed at VPS (documented; not provisioned yet)
 
-### 2.2 Stack on VPS
+### ⚠️ 2.2 Stack on VPS
 
-| Component | Tool | Purpose |
-|---|---|---|
-| Reverse Proxy | Nginx | Static files, SSL termination, API routing |
-| Process Manager | PM2 | Keep Node.ts backend alive, logs, restarts |
-| Database | PostgreSQL 16 | Persistent data |
-| SSL | Certbot (Let's Encrypt) | HTTPS |
-| Runtime | Node.js 22 LTS | Backend runtime |
+| Component | Tool | Purpose | Status |
+|---|---|---|---|
+| Reverse Proxy | Nginx | Static files, SSL termination, API routing | ⚠️ |
+| Process Manager | PM2 | Keep Node.ts backend alive, logs, restarts | ⚠️ |
+| Database | PostgreSQL 16 | Persistent data | ✅ |
+| SSL | Certbot (Let's Encrypt) | HTTPS | ⚠️ |
+| Runtime | Node.js 22 LTS | Backend runtime | ✅ |
 
-### 2.3 Nginx Configuration
+### ⚠️ 2.3 Nginx Configuration ⚠️
 
 ```nginx
 server {
@@ -189,7 +199,7 @@ server {
 }
 ```
 
-### 2.4 PostgreSQL Setup
+### ⚠️ 2.4 PostgreSQL Setup ✅
 
 ```bash
 sudo apt install postgresql-16
@@ -200,7 +210,7 @@ sudo -u postgres psql -c "CREATE DATABASE jolfa_prod OWNER jolfa;"
 - Enable daily `pg_dump` backups to `/var/backups/postgresql/`.
 - Rotate backups: keep 7 daily + 4 weekly snapshots.
 
-### 2.5 SSL
+### ⚠️ 2.5 SSL ⚠️
 
 ```bash
 sudo apt install certbot python3-certbot-nginx
@@ -210,7 +220,7 @@ sudo certbot --nginx -d jolfa-example.ir -d www.jolfa-example.ir
 - Auto-renew via systemd timer.
 - Redirect all HTTP to HTTPS.
 
-### 2.6 Rollback Procedure
+### ⚠️ 2.6 Rollback Procedure ⚠️
 
 1. Identify failing commit/tag.
 2. `git checkout <last-known-good-commit>`.
@@ -220,9 +230,9 @@ sudo certbot --nginx -d jolfa-example.ir -d www.jolfa-example.ir
 
 ---
 
-## 3. Environment Variable Checklist
+## ✅ 3. Environment Variable Checklist
 
-### 3.1 Frontend `.env` (build-time)
+### 3.1 Frontend `.env` (build-time) ✅
 
 ```env
 VITE_API_BASE_URL=https://jolfa-example.ir/api
@@ -230,7 +240,7 @@ VITE_APP_NAME=Jolfa Retail Gateway
 VITE_PAYMENT_CALLBACK_URL=https://jolfa-example.ir/payment/callback
 ```
 
-### 3.2 Backend `.env` (runtime)
+### 3.2 Backend `.env` (runtime) ✅
 
 ```env
 # Server
@@ -271,39 +281,39 @@ MAX_FILE_SIZE=5242880
 SENTRY_DSN=
 ```
 
-### 3.3 GitHub Secrets
+### 3.3 GitHub Secrets ⚠️
 
-- `VPS_HOST`
-- `VPS_USER`
-- `VPS_SSH_KEY`
-- `DATABASE_URL` (used only in CI test job if needed)
+- ⚠️ `VPS_HOST`
+- ⚠️ `VPS_USER`
+- ⚠️ `VPS_SSH_KEY`
+- ⚠️ `DATABASE_URL` (used only in CI test job if needed)
 
 ---
 
-## 4. Security Hardening Checklist
+## ⚠️ 4. Security Hardening Checklist
 
 ### 4.1 Authentication
 
-- [ ] Passwords hashed with **bcrypt** (cost factor ≥ 12) or **Argon2id**.
-- [ ] JWT access tokens expire in ≤ 15 minutes; refresh tokens ≤ 7 days.
-- [ ] Store tokens in `httpOnly` cookies with `SameSite=Lax` or `Strict`.
-- [ ] Implement rate limiting on `/api/auth/*` (5 attempts per IP per 15 min).
-- [ ] Validate all protected routes with auth middleware.
-- [ ] Add role check (`ADMIN`) for admin endpoints.
+- [x] ✅ Passwords hashed with **bcrypt** (cost factor 12).
+- [ ] ❌ JWT access tokens expire in ≤ 15 minutes; refresh tokens ≤ 7 days (current access token expiry is 24h).
+- [ ] ❌ Store tokens in `httpOnly` cookies with `SameSite=Lax` or `Strict`.
+- [ ] ❌ Implement rate limiting on `/api/auth/*` (5 attempts per IP per 15 min).
+- [x] ✅ Validate all protected routes with auth middleware.
+- [x] ✅ Add role check (`ADMIN`) for admin endpoints.
 
 ### 4.2 Payment Security
 
-- [ ] Verify gateway signature/HMAC on every callback.
-- [ ] Treat payment callbacks as idempotent (guard against double-spend).
-- [ ] Lock order status transition (`PENDING` → `PAID` only once).
-- [ ] Never trust frontend-submitted `amount`; recalculate from DB.
-- [ ] Log all payment requests/verifications (excluding sensitive tokens).
+- [x] ⚠️ Verify gateway signature/HMAC on every callback (currently mocked; no live gateway signature check).
+- [x] ⚠️ Treat payment callbacks as idempotent (guard against double-spend).
+- [x] ✅ Lock order status transition (`PENDING` → `PAID` only once).
+- [x] ✅ Never trust frontend-submitted `amount`; recalculate from DB.
+- [x] ✅ Log all payment requests/verifications (excluding sensitive tokens).
 
 ### 4.3 CORS & Headers
 
-- [ ] CORS `origin` whitelist from `ALLOWED_ORIGINS` only.
-- [ ] Disable CORS credentials for unknown origins.
-- [ ] Add security headers via Nginx/Helmet:
+- [x] ✅ CORS `origin` whitelist from `ALLOWED_ORIGINS` only.
+- [ ] ❌ Disable CORS credentials for unknown origins.
+- [ ] ❌ Add security headers via Nginx/Helmet:
   - `X-Content-Type-Options: nosniff`
   - `X-Frame-Options: DENY`
   - `Content-Security-Policy` (restrict scripts/styles)
@@ -311,41 +321,41 @@ SENTRY_DSN=
 
 ### 4.4 Input Validation
 
-- [ ] Validate all request bodies with **Zod** or **Joi**.
-- [ ] Sanitize user-generated content before rendering (XSS prevention).
-- [ ] Restrict file uploads to images (JPEG/PNG/WebP), max 5 MB.
-- [ ] Use parameterized queries / ORM to prevent SQL injection.
-- [ ] Escape output in search results and product descriptions.
+- [x] ✅ Validate all request bodies with **Zod**.
+- [x] ⚠️ Sanitize user-generated content before rendering (XSS prevention).
+- [x] ✅ Restrict file uploads to images (JPEG/PNG/WebP), max 5 MB.
+- [x] ✅ Use parameterized queries / ORM to prevent SQL injection.
+- [x] ⚠️ Escape output in search results and product descriptions.
 
 ### 4.5 Secrets & Server Hardening
 
-- [ ] No secrets committed to Git.
-- [ ] `.env` files restricted to `root:deploy` with `0600` permissions.
-- [ ] Disable root SSH login; use key-based auth only.
-- [ ] Enable UFW firewall: allow 22, 80, 443 only.
-- [ ] Enable automatic security updates (`unattended-upgrades`).
-- [ ] Database not exposed to public internet.
+- [x] ✅ No secrets committed to Git.
+- [ ] ❌ `.env` files restricted to `root:deploy` with `0600` permissions.
+- [ ] ❌ Disable root SSH login; use key-based auth only.
+- [ ] ❌ Enable UFW firewall: allow 22, 80, 443 only.
+- [ ] ❌ Enable automatic security updates (`unattended-upgrades`).
+- [x] ✅ Database not exposed to public internet.
 
 ---
 
-## 5. QA Test Strategy
+## ❌ 5. QA Test Strategy
 
 ### 5.1 Test Pyramid for MVP
 
-| Level | Tool | Coverage Target | Owner |
-|---|---|---|---|
-| Unit | Vitest (frontend), Jest (backend) | Utils, hooks, services, validators | Developers |
-| Integration | Supertest + test DB | API routes, auth, payment callbacks | Backend dev + QA |
-| E2E / Manual | Playwright or manual checklist | Critical user flows | QA Engineer |
+| Level | Tool | Coverage Target | Owner | Status |
+|---|---|---|---|---|
+| Unit | Vitest (frontend), Jest (backend) | Utils, hooks, services, validators | Developers | ❌ |
+| Integration | Supertest + test DB | API routes, auth, payment callbacks | Backend dev + QA | ❌ |
+| E2E / Manual | Playwright or manual checklist | Critical user flows | QA Engineer | ⚠️ |
 
 ### 5.2 Unit Tests
 
-**Frontend (Vitest + React Testing Library):**
+**Frontend (Vitest + React Testing Library):** ❌
 - Utility functions (price formatting, RTL helpers, slugify).
 - Shared UI components (Button, Input, Badge, Card).
 - Cart state helpers (add/remove, total calculation).
 
-**Backend (Jest):**
+**Backend (Jest):** ❌
 - Input validators (Zod schemas).
 - Password hashing helpers.
 - Price/order total calculation.
@@ -353,108 +363,108 @@ SENTRY_DSN=
 
 ### 5.3 Integration Tests
 
-- Set up in-memory/test PostgreSQL via `docker-compose` or GitHub Actions service.
+- ❌ Set up in-memory/test PostgreSQL via `docker-compose` or GitHub Actions service.
 - Test suites:
-  - Auth: register → login → access protected route.
-  - Products: CRUD with admin role.
-  - Orders: create order → calculate total → verify stock.
-  - Payment: mock Zarinpal/Zibal request/verify flow.
+  - ❌ Auth: register → login → access protected route.
+  - ❌ Products: CRUD with admin role.
+  - ❌ Orders: create order → calculate total → verify stock.
+  - ❌ Payment: mock Zarinpal/Zibal request/verify flow.
 
 ### 5.4 Manual Acceptance Tests
 
-- Performed in staging/production-like environment.
-- Focus on critical paths (see Section 6).
-- Capture bugs with: steps, expected behavior, actual behavior, screenshot, environment.
+- ⚠️ Performed in staging/production-like environment (manual smoke tests done; formal acceptance process pending).
+- ✅ Focus on critical paths (see Section 6).
+- ✅ Capture bugs with: steps, expected behavior, actual behavior, screenshot, environment.
 
 ---
 
-## 6. Critical User Flows to Test
+## ⚠️ 6. Critical User Flows to Test
 
 ### 6.1 Customer Flows
 
-| # | Flow | Steps | Acceptance |
-|---|---|---|---|
-| 1 | Browse catalog | Open home → view categories → product list → product detail | Products load, images render, RTL correct |
-| 2 | Search products | Type keyword in search → view results | Relevant results shown, empty state handled |
-| 3 | Add to cart | Product detail → select qty → add → open cart | Cart updates, price recalculates |
-| 4 | Checkout | Cart → checkout → address → shipping → payment | Order created, payment gateway opens |
-| 5 | Payment success | Complete mock payment → callback → order confirmed | Order status `PAID`, SMS sent |
-| 6 | Payment failure | Cancel/decline payment → return to retry | Order stays `PENDING`, user can retry |
-| 7 | Registration | Sign up → verify login → view profile | User persisted, session valid |
-| 8 | Order history | Profile → orders → view order detail | Orders listed with correct status |
+| # | Flow | Steps | Acceptance | Status |
+|---|---|---|---|---|
+| 1 | Browse catalog | Open home → view categories → product list → product detail | Products load, images render, RTL correct | ✅ |
+| 2 | Search products | Type keyword in search → view results | Relevant results shown, empty state handled | ✅ |
+| 3 | Add to cart | Product detail → select qty → add → open cart | Cart updates, price recalculates | ✅ |
+| 4 | Checkout | Cart → checkout → address → shipping → payment | Order created, payment gateway opens | ✅ |
+| 5 | Payment success | Complete mock payment → callback → order confirmed | Order status `PAID`, SMS sent | ⚠️ |
+| 6 | Payment failure | Cancel/decline payment → return to retry | Order stays `PENDING`, user can retry | ✅ |
+| 7 | Registration | Sign up → verify login → view profile | User persisted, session valid | ✅ |
+| 8 | Order history | Profile → orders → view order detail | Orders listed with correct status | ⚠️ |
 
 ### 6.2 Admin Flows
 
-| # | Flow | Steps | Acceptance |
-|---|---|---|---|
-| 9 | Admin login | Login with admin credentials → access dashboard | Role-based access enforced |
-| 10 | Product CRUD | Create → edit → deactivate → delete product | Changes reflect on storefront |
-| 11 | Category CRUD | Add category → assign products | Category filter works |
-| 12 | Order management | View orders → update status → SMS notification | Status updated, customer notified |
+| # | Flow | Steps | Acceptance | Status |
+|---|---|---|---|---|
+| 9 | Admin login | Login with admin credentials → access dashboard | Role-based access enforced | ✅ |
+| 10 | Product CRUD | Create → edit → deactivate → delete product | Changes reflect on storefront | ✅ |
+| 11 | Category CRUD | Add category → assign products | Category filter works | ✅ |
+| 12 | Order management | View orders → update status → SMS notification | Status updated, customer notified | ⚠️ |
 
 ### 6.3 Cross-Cutting Checks
 
-- [ ] Mobile responsiveness (iPhone SE, Android medium).
-- [ ] Persian text rendering and RTL layout.
-- [ ] Loading and error states.
-- [ ] 404 and empty states.
-- [ ] Image upload constraints.
+- [x] ✅ Mobile responsiveness (iPhone SE, Android medium).
+- [x] ✅ Persian text rendering and RTL layout.
+- [x] ✅ Loading and error states.
+- [x] ✅ 404 and empty states.
+- [x] ✅ Image upload constraints.
 
 ---
 
-## 7. Tooling Recommendations
+## ✅ 7. Tooling Recommendations
 
 ### 7.1 Frontend
 
-| Tool | Purpose |
-|---|---|
-| **Vitest** | Unit/integration tests (Vite-native, fast) |
-| **React Testing Library** | Component/hook testing |
-| **MSW (Mock Service Worker)** | Mock API calls in tests |
-| **Playwright** | E2E smoke tests if time allows |
-| **ESLint + typescript-eslint** | Linting (already configured) |
+| Tool | Purpose | Status |
+|---|---|---|
+| **Vitest** | Unit/integration tests (Vite-native, fast) | ✅ |
+| **React Testing Library** | Component/hook testing | ✅ |
+| **MSW (Mock Service Worker)** | Mock API calls in tests | ❌ |
+| **Playwright** | E2E smoke tests if time allows | ❌ |
+| **ESLint + typescript-eslint** | Linting (already configured) | ✅ |
 
 ### 7.2 Backend
 
-| Tool | Purpose |
-|---|---|
-| **Jest** | Unit/integration tests |
-| **Supertest** | HTTP endpoint testing |
-| **Zod** | Runtime validation + type inference |
-| **Prisma** | ORM + migrations (recommended per roadmap) |
-| **Helmet** | Security headers |
-| **express-rate-limit** / `@fastify/rate-limit` | Rate limiting |
+| Tool | Purpose | Status |
+|---|---|---|
+| **Jest** | Unit/integration tests | ❌ |
+| **Supertest** | HTTP endpoint testing | ❌ |
+| **Zod** | Runtime validation + type inference | ✅ |
+| **Prisma** | ORM + migrations (recommended per roadmap) | ✅ |
+| **Helmet** | Security headers | ❌ |
+| **express-rate-limit** / `@fastify/rate-limit` | Rate limiting | ❌ |
 
 ### 7.3 DevOps / Monitoring
 
-| Tool | Purpose |
-|---|---|
-| **GitHub Actions** | CI/CD |
-| **PM2** | Process management |
-| **Nginx** | Reverse proxy + static hosting |
-| **Certbot** | Free SSL |
-| **cron + pg_dump** | Database backups |
-| **UptimeRobot / Better Stack** | Free uptime monitoring |
-| **Sentry** (optional) | Error tracking |
+| Tool | Purpose | Status |
+|---|---|---|
+| **GitHub Actions** | CI/CD | ✅ |
+| **PM2** | Process management | ⚠️ |
+| **Nginx** | Reverse proxy + static hosting | ⚠️ |
+| **Certbot** | Free SSL | ⚠️ |
+| **cron + pg_dump** | Database backups | ❌ |
+| **UptimeRobot / Better Stack** | Free uptime monitoring | ❌ |
+| **Sentry** (optional) | Error tracking | ❌ |
 
 ---
 
-## 8. 2–3 Week MVP Timeline
+## ⚠️ 8. 2–3 Week MVP Timeline
 
 | Week | DevOps | Security | QA |
 |---|---|---|---|
-| Week 1 | Set up repo, GitHub Actions CI skeleton, staging VPS | Define threat model, review auth design | Draft test cases |
-| Week 2 | Add deploy workflow, Nginx config, SSL on staging | Review payment integration, CORS, input validation | Run integration tests, exploratory testing |
-| Week 3 | Production deploy, backups, monitoring | Final hardening review, secrets audit | Acceptance testing, release sign-off |
+| Week 1 | ✅ Set up repo, GitHub Actions CI skeleton | ⚠️ Define threat model, review auth design | ⚠️ Draft test cases |
+| Week 2 | ⚠️ Add deploy workflow, Nginx config, SSL on staging | ⚠️ Review payment integration, CORS, input validation | ❌ Run integration tests, exploratory testing |
+| Week 3 | ❌ Production deploy, backups, monitoring | ❌ Final hardening review, secrets audit | ⚠️ Acceptance testing, release sign-off |
 
 ---
 
-## 9. Review Checklist
+## ❌ 9. Review Checklist
 
-- [ ] CI passes on every PR.
-- [ ] `.env` templates are present and secrets are excluded.
-- [ ] VPS is accessible only via SSH key, with UFW active.
-- [ ] HTTPS redirect is enforced.
-- [ ] Database backups are scheduled and tested.
-- [ ] Auth, payment, and admin flows are covered by tests.
-- [ ] All high-severity bugs resolved before go-live.
+- [x] ✅ CI passes on every PR.
+- [x] ✅ `.env` templates are present and secrets are excluded.
+- [ ] ❌ VPS is accessible only via SSH key, with UFW active.
+- [ ] ❌ HTTPS redirect is enforced.
+- [ ] ❌ Database backups are scheduled and tested.
+- [ ] ❌ Auth, payment, and admin flows are covered by tests.
+- [ ] ⚠️ All high-severity bugs resolved before go-live (no known high-severity blockers; formal sign-off pending).

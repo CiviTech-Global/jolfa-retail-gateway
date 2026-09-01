@@ -1,7 +1,7 @@
 import * as SelectPrimitive from '@radix-ui/react-select'
 import { ChevronDown, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 
 export function Select({
   children,
@@ -21,11 +21,20 @@ export function Select({
   )
 }
 
-export function SelectTrigger({ children, className }: { children: ReactNode; className?: string }) {
+export function SelectTrigger({
+  children,
+  className,
+  ...props
+}: {
+  children: ReactNode
+  className?: string
+} & Omit<React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>, 'className' | 'children'>) {
   return (
     <SelectPrimitive.Trigger
+      {...props}
       className={cn(
         'flex h-11 w-full items-center justify-between gap-2 rounded-xl border border-border bg-surface px-4 py-2 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60 [&[data-state=open]>svg]:rotate-180',
+        'aria-[invalid=true]:border-danger aria-[invalid=true]:focus:ring-danger/20',
         className,
       )}
     >

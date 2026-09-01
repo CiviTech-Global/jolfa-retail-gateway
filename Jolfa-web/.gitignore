@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Build-time API URL: differs per environment, and a committed copy would be
+# pulled over the server's own file on deploy. Use .env.example as the template.
+.env.production

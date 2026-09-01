@@ -1,6 +1,7 @@
 import { prisma } from "../../shared/prisma.js";
 import { AppError, ConflictError, NotFoundError } from "../../shared/app-error.js";
 import { logAudit, buildChangeMetadata } from "../../shared/audit/audit.service.js";
+import { uniqueSlug } from "../../shared/slugify.js";
 import type { CategoryCreateBody, CategoryUpdateBody } from "./category.types.js";
 
 export interface CategoryTreeNode {
@@ -106,13 +107,27 @@ export async function getCategoryBySlug(slug: string): Promise<{
   };
 }
 
-export async function createCategory(data: CategoryCreateBody) {
-  const slug = data.slug ?? slugify(data.name);
+const categorySlugTaken = async (slug: string): Promise<boolean> => {
+  const found = await prisma.category.findUnique({ where: { slug }, select: { id: true } });
+  return found !== null;
+};
 
-  const existing = await prisma.category.findUnique({
+export async function createCategory(data: CategoryCreateBody) {
+  // An explicit slug is the admin's choice, so a clash is an error worth
+  // reporting. A derived one is ours to make unique — Persian names slugify to
+  // nothing, so otherwise every category after the first would collide.
+  const slug =
+    data.slug ??
+    (await uniqueSlug(data.name, {
+      prefix: "category",
+      isTaken: categorySlugTaken,
+      maxLength: 120,
+    }));
+
+  const existing = data.slug ? await prisma.category.findUnique({
     where: { slug },
     select: { id: true },
-  });
+  }) : null;
   if (existing) {
     throw new ConflictError("این اسلاگ دسته‌بندی قبلاً استفاده شده است");
   }
@@ -262,12 +277,3 @@ export async function deleteCategory(slug: string, actorId?: string): Promise<{ 
   return { success: true };
 }
 
-function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9-]/g, "")
-    .replace(/-+/g, "-")
-    .substring(0, 120);
-}

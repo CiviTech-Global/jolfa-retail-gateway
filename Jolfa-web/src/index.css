@@ -1,5 +1,8 @@
 @import "tailwindcss";
-@import "vazirmatn/Vazirmatn-font-face.css";
+/* The variable font is 111 KB and covers weights 100–900. The static set is
+   nine files totalling ~459 KB, and every one of them was being downloaded even
+   though the UI only ever asks for four weights. */
+@import "vazirmatn/Vazirmatn-Variable-font-face.css";
 @import "./design-system/tokens.css";
 @import "./design-system/animations.css";
 

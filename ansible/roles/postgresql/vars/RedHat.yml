@@ -1,0 +1,20 @@
+---
+# EL9 ships PostgreSQL 13 in AppStream. We want 16, which means the PGDG
+# repository, disabling the AppStream module so it does not shadow the newer
+# packages, and an explicit initdb — the RPMs deliberately do not create a
+# cluster for you the way the Debian packages do.
+
+pgdg_repo_url: "https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-{{ ansible_architecture }}/pgdg-redhat-repo-latest.noarch.rpm"
+
+postgresql_packages:
+  - "postgresql{{ postgresql_version }}-server"
+  - "postgresql{{ postgresql_version }}"
+  - "postgresql{{ postgresql_version }}-contrib"
+
+postgresql_client_package: "postgresql{{ postgresql_version }}"
+postgresql_service: "postgresql-{{ postgresql_version }}"
+postgresql_data_dir: "/var/lib/pgsql/{{ postgresql_version }}/data"
+postgresql_conf: "{{ postgresql_data_dir }}/postgresql.conf"
+postgresql_hba: "{{ postgresql_data_dir }}/pg_hba.conf"
+postgresql_setup_bin: "/usr/pgsql-{{ postgresql_version }}/bin/postgresql-{{ postgresql_version }}-setup"
+postgresql_bin_dir: "/usr/pgsql-{{ postgresql_version }}/bin"

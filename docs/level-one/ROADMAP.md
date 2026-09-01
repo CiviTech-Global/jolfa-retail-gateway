@@ -2,7 +2,9 @@
 
 **Duration:** 2–3 weeks (14–21 working days)  
 **Goal:** Deliver an MVP Persian e-commerce site ready for real sales  
-**Stack:** React 19 + TypeScript 6 + Vite 8 + Node.ts + PostgreSQL  
+**Stack:** React 19 + TypeScript 6 + Vite 8 + Fastify + Prisma + PostgreSQL
+
+**Current Status:** Core MVP is implemented and both projects build/lint. See [PROGRESS.md](PROGRESS.md) for detailed completion and remaining gaps.  
 
 ---
 
@@ -15,10 +17,10 @@
 | Styling | Tailwind CSS 4 + Vazirmatn | Modern RTL design |
 | Backend | Node.ts (ESM) + Express/Fastify | REST API, auth, business logic |
 | Database | PostgreSQL 16+ | Products, orders, users |
-| ORM | Prisma or Drizzle | To be decided in week 1 |
+| ORM | Prisma | Migrated and in use |
 | Storage | Local / MinIO | Product images |
-| Payment | Zarinpal / Zibal | Iranian gateway |
-| SMS | Kavenegar / SMS.ir | Order status notifications |
+| Payment | Zarinpal / Zibal | Endpoints stubbed; real gateway integration pending |
+| SMS | Kavenegar / SMS.ir | Table exists; sending logic pending |
 | Deploy | GitHub Actions + Iranian VPS | CI/CD |
 
 ---
@@ -114,13 +116,13 @@ Payment: id, orderId, gateway, authority, amount, status, refId
 
 ## Acceptance Criteria
 
-- [ ] Users can browse, search, and add products to cart.
-- [ ] Users can register/login and place orders.
-- [ ] Online payment works via Zarinpal/Zibal.
-- [ ] Admin can manage products and orders.
+- [x] Users can browse, search, and add products to cart.
+- [x] Users can register/login and place orders.
+- [ ] Online payment works via real Zarinpal/Zibal (verification is currently mocked).
+- [x] Admin can manage products and orders.
 - [ ] Site is live on client domain with HTTPS.
-- [ ] Pages are responsive on mobile and desktop.
-- [ ] SMS notifications are sent for order status.
+- [x] Pages are responsive on mobile and desktop.
+- [ ] SMS notifications are sent for order status (logic not wired).
 
 ---
 

@@ -1,0 +1,31 @@
+# {{ ansible_managed }}
+# Rendered by Ansible from roles/semaphore/templates/semaphore-compose.yml.j2.
+
+services:
+  semaphore:
+    image: {{ semaphore_image }}
+    container_name: semaphore
+    restart: unless-stopped
+    ports:
+      # Bound to loopback on purpose. Semaphore holds the SSH key to this
+      # server and the Ansible Vault password; its login form must not face
+      # the internet. Reach it through an SSH tunnel.
+      - "127.0.0.1:{{ semaphore_port }}:3000"
+    environment:
+      # BoltDB — a single embedded file. Right for one project and one or two
+      # operators. Switch SEMAPHORE_DB_DIALECT to postgres if this ever grows
+      # into a shared team instance.
+      SEMAPHORE_DB_DIALECT: bolt
+      SEMAPHORE_ADMIN: {{ semaphore_admin_user }}
+      SEMAPHORE_ADMIN_PASSWORD: {{ vault_semaphore_admin_password }}
+      SEMAPHORE_ADMIN_NAME: {{ semaphore_admin_name }}
+      SEMAPHORE_ADMIN_EMAIL: {{ semaphore_admin_email }}
+      # Semaphore installs collections into this path on first run.
+      ANSIBLE_HOST_KEY_CHECKING: "True"
+    volumes:
+      - semaphore-data:/etc/semaphore
+      - semaphore-tmp:/tmp/semaphore
+
+volumes:
+  semaphore-data:
+  semaphore-tmp:

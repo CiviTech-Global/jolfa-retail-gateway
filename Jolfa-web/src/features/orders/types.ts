@@ -47,18 +47,24 @@ export interface OrderDto {
   }
 }
 
+export interface ShippingAddressInput {
+  title?: string
+  recipientName: string
+  phone: string
+  province: string
+  city: string
+  district?: string
+  postalCode?: string
+  addressLine: string
+}
+
 export interface CreateOrderRequest {
   items: { productId: string; quantity: number }[]
-  shippingAddress: {
-    title?: string
-    recipientName: string
-    phone: string
-    province: string
-    city: string
-    district?: string
-    postalCode?: string
-    addressLine: string
-  }
+  /** Pick a saved address, or supply `shippingAddress` — exactly one. */
+  shippingAddressId?: string
+  shippingAddress?: ShippingAddressInput
+  /** Also store a typed address in the address book for next time. */
+  saveAddress?: boolean
   shippingMethod: 'POST' | 'COURIER'
   customerNote?: string
 }

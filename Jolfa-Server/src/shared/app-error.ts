@@ -48,6 +48,12 @@ export class ConflictError extends AppError {
   }
 }
 
+export class TooManyRequestsError extends AppError {
+  constructor(message = "Too many requests") {
+    super(message, 429, "RATE_LIMITED");
+  }
+}
+
 export class ValidationError extends AppError {
   constructor(message = "Validation failed", details?: Record<string, unknown>) {
     super(message, 422, "VALIDATION_ERROR", details);

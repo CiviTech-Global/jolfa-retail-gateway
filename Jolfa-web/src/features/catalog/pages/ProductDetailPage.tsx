@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Link, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 import { CheckCircle, ShieldCheck, Truck, Headphones } from 'lucide-react'
 import { getProductBySlug } from '../api'
 import { ProductGrid } from '../components/ProductGrid'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
-import { formatPrice } from '@/lib/utils'
-import { useCart } from '@/features/cart/context'
+import { BackButton, Breadcrumbs } from '@/components/layout/Breadcrumbs'
+import { formatPrice, FALLBACK_IMAGE_URL } from '@/lib/utils'
+import { resolvePurchaseState, usePurchaseAction, usePurchaseViewer } from '@/features/cart/purchase'
 import { toast } from 'sonner'
 
 const trustItems = [
@@ -20,7 +21,9 @@ const trustItems = [
 
 export function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>()
-  const { addItem } = useCart()
+  const runPurchase = usePurchaseAction()
+  const navigate = useNavigate()
+  const viewer = usePurchaseViewer()
   const [quantity, setQuantity] = useState(1)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
 
@@ -50,6 +53,7 @@ export function ProductDetailPage() {
   }
 
   const { product, relatedProducts } = data
+  const purchase = resolvePurchaseState(viewer, product)
   const images = product.images.length > 0 ? product.images : []
   const primaryIndex = images.findIndex((image) => image.isPrimary)
   const defaultIndex = primaryIndex >= 0 ? primaryIndex : 0
@@ -58,24 +62,36 @@ export function ProductDetailPage() {
   const hasDiscount = product.compareAtPrice && product.compareAtPrice > product.price
 
   function handleAddToCart() {
-    addItem({ product, quantity })
-    toast.success(`${product.title} به سبد خرید اضافه شد`, {
-      description: `${quantity} × ${formatPrice(product.price)}`,
-    })
+    // The hook decides what "buy" means for this visitor: add to cart, send a
+    // guest to sign in, or explain why an admin cannot purchase.
+    if (runPurchase(product, quantity, purchase)) {
+      toast.success(`${product.title} به سبد خرید اضافه شد`, {
+        description: `${quantity} × ${formatPrice(product.price)}`,
+        action: { label: 'مشاهده سبد', onClick: () => void navigate('/cart') },
+      })
+    }
   }
 
   return (
     <div className="mx-auto max-w-7xl flex-1 px-4 py-8">
+      <Breadcrumbs
+        className="mb-3"
+        items={[
+          { label: 'خانه', to: '/' },
+          { label: 'محصولات', to: '/products' },
+          { label: product.category.name, to: `/categories/${product.category.slug}` },
+          { label: product.title },
+        ]}
+      />
+      <BackButton to="/products" label="بازگشت به محصولات" className="-ms-2 mb-4" />
+
       <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
         {/* Image gallery */}
         <ScrollReveal direction="up" className="space-y-4">
           <div className="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
             <img
-              src={
-                selectedImage?.url ??
-                `https://placehold.co/600x600/e2e8f0/475569?text=${encodeURIComponent(product.title)}`
-              }
-              alt={product.title}
+              src={selectedImage?.url ?? FALLBACK_IMAGE_URL}
+              alt={selectedImage?.altText || product.title}
               className="aspect-square w-full object-cover"
             />
           </div>
@@ -94,7 +110,7 @@ export function ProductDetailPage() {
                 >
                   <img
                     src={image.url}
-                    alt={product.title}
+                    alt={image.altText || product.title}
                     className="aspect-square h-20 w-20 object-cover"
                   />
                 </button>
@@ -104,10 +120,14 @@ export function ProductDetailPage() {
         </ScrollReveal>
 
         {/* Product info */}
-        <ScrollReveal direction="up" delay={0.1} className="flex flex-col">
+        <ScrollReveal direction="up" delay={0.1} className="flex flex-col lg:sticky lg:top-24 lg:self-start">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary">{product.category.name}</Badge>
-            {hasDiscount && <Badge variant="danger">تخفیف ویژه</Badge>}
+            {hasDiscount && (
+              <span className="rounded-full bg-sale px-2.5 py-1 text-xs font-bold text-sale-foreground">
+                تخفیف ویژه
+              </span>
+            )}
           </div>
 
           <h1 className="mt-4 text-2xl font-bold text-foreground sm:text-3xl">{product.title}</h1>
@@ -159,10 +179,21 @@ export function ProductDetailPage() {
                 +
               </button>
             </div>
-            <Button onClick={handleAddToCart} className="flex-1">
-              افزودن به سبد خرید
+            <Button
+              onClick={handleAddToCart}
+              disabled={purchase.disabled}
+              title={'reason' in purchase ? purchase.reason : undefined}
+              className="flex-1"
+            >
+              {purchase.kind === 'sign-in' ? 'ورود و خرید' : purchase.label}
             </Button>
           </div>
+
+          {'reason' in purchase && (
+            <p role="status" className="mt-3 text-sm text-muted-foreground">
+              {purchase.reason}
+            </p>
+          )}
 
           <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {trustItems.map((item) => (

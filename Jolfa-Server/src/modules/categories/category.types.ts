@@ -1,4 +1,10 @@
 import { z } from "zod";
+import {
+  imageUrl as imageUrlSchema,
+  nullableString,
+  optionalString,
+  requiredString,
+} from "../../shared/zod-helpers.js";
 
 export const categoryListQuerySchema = z.object({
   tree: z
@@ -12,12 +18,23 @@ export const categoryListQuerySchema = z.object({
 });
 
 export const categoryCreateBodySchema = z.object({
-  name: z.string().min(1).max(100),
-  slug: z.string().min(1).max(120).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(),
-  description: z.string().max(1000).optional(),
-  imageUrl: z.string().url().max(500).optional().or(z.literal("").transform(() => undefined)),
-  parentId: z.string().uuid().optional().or(z.literal("").transform(() => undefined)),
-  displayOrder: z.coerce.number().int().default(0),
+  name: requiredString("نام دسته‌بندی", 100),
+  slug: optionalString(
+    z
+      .string()
+      .trim()
+      .max(120, "اسلاگ حداکثر ۱۲۰ کاراکتر است")
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "اسلاگ فقط می‌تواند شامل حروف انگلیسی کوچک، عدد و خط تیره باشد"),
+  ),
+  description: nullableString(z.string().trim().max(1000, "توضیحات حداکثر ۱۰۰۰ کاراکتر است")),
+  // Was `z.string().url()`, which rejected the server-relative paths the
+  // upload endpoint returns.
+  imageUrl: nullableString(imageUrlSchema()),
+  parentId: nullableString(z.string().uuid("دسته‌بندی والد معتبر نیست")),
+  displayOrder: z.coerce
+    .number({ invalid_type_error: "ترتیب نمایش باید عدد باشد" })
+    .int("ترتیب نمایش باید عدد صحیح باشد")
+    .default(0),
   isActive: z.boolean().default(true),
 });
 

@@ -63,21 +63,34 @@ function applyTheme(resolvedTheme: ResolvedTheme) {
   }
 }
 
+// Dark theme is temporarily disabled — only light is offered for now.
+const DARK_THEME_ENABLED = false
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(readStoredTheme)
+  const [theme, setThemeState] = useState<Theme>(() =>
+    DARK_THEME_ENABLED ? readStoredTheme() : 'light',
+  )
   const systemDark = useSyncExternalStore(subscribeDark, getDarkSnapshot, getDarkServerSnapshot)
-  const resolvedTheme: ResolvedTheme = theme === 'system' ? (systemDark ? 'dark' : 'light') : theme
+  const resolvedTheme: ResolvedTheme = DARK_THEME_ENABLED
+    ? theme === 'system'
+      ? systemDark
+        ? 'dark'
+        : 'light'
+      : theme
+    : 'light'
 
   useEffect(() => {
     applyTheme(resolvedTheme)
   }, [resolvedTheme])
 
   const setTheme = (next: Theme) => {
+    if (!DARK_THEME_ENABLED) return
     writeStoredTheme(next)
     setThemeState(next)
   }
 
   const toggleTheme = () => {
+    if (!DARK_THEME_ENABLED) return
     setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')
   }
 
