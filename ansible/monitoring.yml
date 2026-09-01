@@ -1,0 +1,17 @@
+---
+# Install the on-server health check timer.
+#
+#   ansible-playbook -i inventory.ini monitoring.yml
+#
+# SCOPE, so this is not mistaken for more than it is: a checker running on the
+# server catches the application dying while the machine lives. It cannot tell
+# you the machine is gone — it would be gone too. The same script is built to
+# run from a laptop or any other host for exactly that half of the problem; see
+# docs/deployment/07-day-2-operations/06-scaling-and-monitoring.md.
+
+- name: Install health monitoring on the Jolfa server
+  hosts: jolfa
+  become: true
+
+  roles:
+    - monitoring

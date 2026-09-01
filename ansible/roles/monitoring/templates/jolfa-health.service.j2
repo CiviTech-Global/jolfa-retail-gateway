@@ -1,0 +1,29 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Araspro health check
+Documentation=file://{{ app_root }}/current/scripts/healthcheck.sh
+After=network-online.target
+
+[Service]
+Type=oneshot
+User={{ app_user }}
+Group={{ app_group }}
+
+Environment=HEALTH_URLS={{ health_check_urls }}
+Environment=HEALTH_TIMEOUT={{ health_check_timeout }}
+Environment=HEALTH_THRESHOLD={{ health_failure_threshold }}
+Environment=HEALTH_STATE_DIR=/var/lib/jolfa-health
+Environment=HEALTH_LOG=/var/log/jolfa/health.log
+{% if vault_telegram_bot_token | default('') %}
+Environment=TELEGRAM_BOT_TOKEN={{ vault_telegram_bot_token }}
+Environment=TELEGRAM_CHAT_ID={{ vault_telegram_chat_id | default('') }}
+{% endif %}
+{% if health_webhook_url | default('') %}
+Environment=HEALTH_WEBHOOK_URL={{ health_webhook_url }}
+{% endif %}
+
+ExecStart=/usr/local/bin/jolfa-healthcheck
+# A failing check is the normal signal this unit exists to produce, not a
+# systemd-level fault — otherwise every outage also marks the unit failed and
+# the timer's own status becomes noise.
+SuccessExitStatus=0 1

@@ -1,0 +1,102 @@
+---
+# On-server health monitoring.
+#
+# Scope, stated honestly: this catches the APPLICATION failing while the
+# machine is alive — a crashed Node process, a database refusing connections,
+# nginx not reloading. It cannot report that the server itself is gone, because
+# it would be gone with it.
+#
+# The same script is written to run from a laptop or any other machine for
+# exactly that reason (scripts/healthcheck.sh documents both modes), and
+# docs/deployment/07-day-2-operations/06-scaling-and-monitoring.md covers
+# setting the external half up. Run both when there is somewhere to run the
+# second one.
+
+- name: Create the health state directory
+  # Holds the consecutive-failure counter, so a single dropped packet does not
+  # raise an alert.
+  ansible.builtin.file:
+    path: /var/lib/jolfa-health
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: "0755"
+
+- name: Install the health check script
+  # Copied out of the release rather than symlinked into it: monitoring must
+  # keep working during a deploy, when `current` is mid-flip, and must not
+  # disappear if a release is pruned.
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../scripts/healthcheck.sh"
+    dest: /usr/local/bin/jolfa-healthcheck
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install the health check service unit
+  ansible.builtin.template:
+    src: jolfa-health.service.j2
+    dest: /etc/systemd/system/jolfa-health.service
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Install the health check timer
+  ansible.builtin.template:
+    src: jolfa-health.timer.j2
+    dest: /etc/systemd/system/jolfa-health.timer
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Apply the unit changes before enabling the timer
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start the health timer
+  ansible.builtin.systemd:
+    name: jolfa-health.timer
+    state: started
+    enabled: true
+    daemon_reload: true
+
+- name: Rotate the health log
+  ansible.builtin.copy:
+    dest: /etc/logrotate.d/jolfa-health
+    mode: "0644"
+    content: |
+      /var/log/jolfa/health.log {
+          weekly
+          rotate 8
+          compress
+          missingok
+          notifempty
+          copytruncate
+          su {{ app_user }} {{ app_group }}
+      }
+
+- name: Run the check once now
+  # Proves the whole path works while someone is watching, rather than leaving
+  # the first real run to happen unobserved at 3am.
+  ansible.builtin.command: /usr/local/bin/jolfa-healthcheck
+  environment:
+    HEALTH_URLS: "{{ health_check_urls }}"
+    HEALTH_TIMEOUT: "{{ health_check_timeout | string }}"
+    HEALTH_THRESHOLD: "{{ health_failure_threshold | string }}"
+    HEALTH_LOG: /var/log/jolfa/health.log
+  register: health_now
+  changed_when: false
+
+- name: Report the check result
+  ansible.builtin.debug:
+    msg: "{{ health_now.stdout_lines }}"
+
+- name: Warn when no alert channel is configured
+  # Without this the timer runs faithfully, writes to a log nobody opens, and
+  # creates the impression that something is watching.
+  ansible.builtin.debug:
+    msg: >-
+      NOTE: no alert channel configured — failures will only be written to
+      /var/log/jolfa/health.log. Set telegram_bot_token and telegram_chat_id
+      (or health_webhook_url) in the vault to actually be told. Until then this
+      is a record, not a monitor.
+  when:
+    - not (vault_telegram_bot_token | default(''))
+    - not (health_webhook_url | default(''))

@@ -44,3 +44,15 @@ vault_sms_ir_api_key: ""
 
 # Semaphore UI admin password (only used by semaphore.yml).
 vault_semaphore_admin_password: "REPLACE_ME_SEMAPHORE_PASSWORD"
+
+# Telegram alerting for the health monitor. Optional, but without it (or
+# health_webhook_url) the monitor only writes to a log file — which is a record
+# of outages, not a warning about them.
+#
+#   1. Message @BotFather on Telegram, /newbot, copy the token.
+#   2. Message your new bot once, then open
+#      https://api.telegram.org/bot<TOKEN>/getUpdates and copy chat.id.
+#
+# Works from a phone, which is what makes it useful to whoever is on call.
+vault_telegram_bot_token: ""
+vault_telegram_chat_id: ""

@@ -73,28 +73,95 @@ images and enforces no rate limit, which is worse than one server.
 - Crash handlers: an unhandled rejection is logged and survived; an uncaught
   exception is logged and exits for a clean PM2 restart
 - Semaphore's task history for deploys
+- An on-server health timer every 2 minutes, with consecutive-failure debouncing
+  and once-per-outage alerting (see below)
 
 ### Does not exist
 
-- **Uptime monitoring.** Nothing checks `/health` on a schedule. Nobody is
-  paged. This is the single biggest gap, and the cheapest to close
+- **External uptime monitoring.** The on-server timer below covers the app; nothing
+  outside this machine would notice the machine itself going away
 - **Error tracking.** See 7.3
 - **Metrics.** No request-rate, latency or error-rate time series
-- **Alerting on anything at all**
+- **Alerting** — the health timer is installed but has no channel configured yet
 
-### Close the first gap today
+### Half of it is installed. Here is which half.
 
-Point any external monitor at `https://shop.example.ir/health` on a one-minute
-interval with certificate-expiry alerting. UptimeRobot, BetterStack, or a cron
-job on any other machine you control:
+`scripts/healthcheck.sh` is one script with two deployment modes, because the
+two catch different failures and neither substitutes for the other.
+
+#### Mode 1 — on the server (installed)
 
 ```bash
-*/2 * * * * curl -fsS --max-time 10 https://shop.example.ir/health > /dev/null \
-  || curl -s "https://api.telegram.org/bot<TOKEN>/sendMessage?chat_id=<ID>&text=Jolfa+health+check+failed"
+ansible-playbook -i inventory.ini monitoring.yml
 ```
 
-Crude, five minutes of work, and it is the difference between finding out from a
-monitor and finding out from the customer.
+A systemd timer runs the check every two minutes against both
+`http://127.0.0.1/health` (through nginx) and `http://127.0.0.1:3001/health`
+(Node directly). Two URLs because they fail for different reasons: the first
+also catches a broken vhost or a stopped nginx, the second says unambiguously
+that the application is the problem.
+
+It alerts after **two consecutive** failures rather than one, so a single
+dropped packet does not wake anybody, and it alerts **once per outage** rather
+than once per check — a latch file that clears on recovery, which also produces
+a "back up" message.
+
+Verified against a real outage: stopping PM2 produced
+
+```text
+DOWN http://127.0.0.1/health — HTTP 502 (consecutive: 1)
+DOWN http://127.0.0.1/health — HTTP 502 (consecutive: 2)
+RECOVERED after 2 consecutive failures
+```
+
+**What this mode cannot do:** tell you the server is gone. It would be gone
+with it. That is not a flaw to fix, it is the reason mode 2 exists.
+
+#### Mode 2 — from anywhere else (not installed, no second machine yet)
+
+The same script, pointed at the public URL, from a laptop or any other host:
+
+```bash
+# Linux/macOS cron, every 5 minutes
+*/5 * * * * HEALTH_URLS="http://198.51.100.10/health" \
+  TELEGRAM_BOT_TOKEN=… TELEGRAM_CHAT_ID=… \
+  /path/to/scripts/healthcheck.sh >> ~/jolfa-health.log 2>&1
+```
+
+On Windows, the same command under WSL via Task Scheduler. A laptop that sleeps
+is an imperfect monitor — it will miss outages while closed — but it catches
+the class of failure the server cannot report at all, and it costs nothing.
+
+The permanent answer is an external service (UptimeRobot and BetterStack both
+have free tiers that cover this) once someone is willing to own the account.
+
+### Alerting
+
+With no channel configured the timer writes to `/var/log/jolfa/health.log` and
+nothing else — a record of outages, not a warning about them. The playbook says
+so on every run rather than letting the timer create a false sense of safety.
+
+To actually be told, put a Telegram bot token and chat id in the vault:
+
+```yaml
+vault_telegram_bot_token: "…"   # @BotFather
+vault_telegram_chat_id: "…"     # /getUpdates after messaging the bot once
+```
+
+Telegram is the practical choice here: it works from a phone and is reachable
+from Iran. `health_webhook_url` is the generic alternative — any endpoint that
+accepts a JSON `{"text": "…"}` POST.
+
+### A known rough edge
+
+During an API outage the storefront still returns **200** for `/` — nginx
+serves the static bundle itself and never consults Node. The visitor gets the
+page shell and then watches every API call fail, rather than seeing the Persian
+maintenance page, which only appears on proxied paths that 502.
+
+Whether that is worth changing is a product decision: serving the maintenance
+page for everything requires nginx to test the upstream before serving static
+content, which adds a failure mode of its own. Left as-is deliberately.
 
 ### If you want real metrics later
 

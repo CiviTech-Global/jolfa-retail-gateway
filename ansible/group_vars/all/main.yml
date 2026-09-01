@@ -166,3 +166,33 @@ semaphore_port: 8888
 semaphore_admin_user: admin
 semaphore_admin_email: "REPLACE_ME_EMAIL"
 semaphore_admin_name: "Jolfa Admin"
+
+# ---- Health monitoring ----------------------------------------------------
+# Installed by roles/monitoring as a systemd timer. Read the scope note first:
+# a checker on the server catches the APPLICATION dying, not the server dying.
+# The external half — the same script run from a laptop or anywhere else — is
+# what catches the box being gone, and is documented in
+# docs/deployment/07-day-2-operations/06-scaling-and-monitoring.md.
+#
+# Both URLs are checked, and they fail for different reasons: the first goes
+# through nginx (so it also catches a broken vhost or a stopped nginx), the
+# second hits Node directly (so a failure there is unambiguously the app).
+health_check_urls: "http://127.0.0.1/health http://127.0.0.1:3001/health"
+health_check_interval: 2min
+health_check_timeout: 10
+# Consecutive failures before alerting. 1 would page on a single dropped
+# packet; 2 at a 2-minute interval means a real outage is reported within ~4
+# minutes, which is the right trade for a store this size.
+health_failure_threshold: 2
+
+# Alert channel. Both optional; with neither set the timer writes to
+# /var/log/jolfa/health.log and nothing else — a record, not a monitor.
+#
+# Telegram is the practical choice for an Iranian deployment and works from a
+# phone, which is what makes this useful to whoever is on call. Get a token
+# from @BotFather, put it in the vault as vault_telegram_bot_token, and put the
+# chat id in vault_telegram_chat_id.
+#
+# health_webhook_url is a generic JSON POST for anything else — Slack, Discord,
+# a custom endpoint, or an external uptime service that accepts heartbeats.
+health_webhook_url: ""

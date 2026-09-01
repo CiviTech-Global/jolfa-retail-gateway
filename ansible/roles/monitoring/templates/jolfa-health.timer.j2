@@ -1,0 +1,13 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Run the Araspro health check every {{ health_check_interval }}
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec={{ health_check_interval }}
+# Without this every server on the same image would fire at the same instant.
+RandomizedDelaySec=15
+Unit=jolfa-health.service
+
+[Install]
+WantedBy=timers.target
