@@ -164,8 +164,11 @@ semaphore_dir: /opt/semaphore
 semaphore_image: "semaphoreui/semaphore:v2.10.34"
 semaphore_port: 8888
 semaphore_admin_user: admin
-semaphore_admin_email: "REPLACE_ME_EMAIL"
-semaphore_admin_name: "Jolfa Admin"
+# Local account identifier only — Semaphore never sends mail from this box.
+# A .local address keeps a real mailbox out of a config file on the customer's
+# server without weakening anything.
+semaphore_admin_email: "admin@araspro.local"
+semaphore_admin_name: "Araspro Admin"
 
 # ---- Health monitoring ----------------------------------------------------
 # Installed by roles/monitoring as a systemd timer. Read the scope note first:
