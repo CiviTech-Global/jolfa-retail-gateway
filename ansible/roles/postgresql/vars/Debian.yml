@@ -1,0 +1,14 @@
+---
+# The Debian packages create and start a cluster on install, so there is no
+# initdb step and the config lives outside the data directory.
+
+postgresql_packages:
+  - "postgresql-{{ postgresql_version }}"
+  - "postgresql-client-{{ postgresql_version }}"
+
+postgresql_client_package: "postgresql-client-{{ postgresql_version }}"
+postgresql_service: postgresql
+postgresql_data_dir: "/var/lib/postgresql/{{ postgresql_version }}/main"
+postgresql_conf: "/etc/postgresql/{{ postgresql_version }}/main/postgresql.conf"
+postgresql_hba: "/etc/postgresql/{{ postgresql_version }}/main/pg_hba.conf"
+postgresql_bin_dir: "/usr/lib/postgresql/{{ postgresql_version }}/bin"

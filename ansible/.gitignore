@@ -1,0 +1,32 @@
+# Anything here that names or unlocks the customer's server stays local.
+#
+# The rule is inverted deliberately: every inventory is ignored EXCEPT the
+# example. A new inventory file added later is ignored by default, which is the
+# safe direction to be wrong in.
+
+# Real inventories: the customer's server IP, SSH user, and (with password auth)
+# the root password itself.
+inventory*.ini
+!inventory.example.ini
+host_vars/
+
+# Decrypted or filled vault files. Only the example is committed.
+group_vars/**/vault.yml
+group_vars/**/vault*.yml
+!group_vars/**/vault.example.yml
+
+# The vault passphrase. Losing this means regenerating every secret; leaking it
+# makes the encrypted vault worthless.
+.vault-pass
+*.vault-pass
+
+# SSH material
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+
+# Ansible run artefacts
+*.retry
+.ansible/
+facts_cache/

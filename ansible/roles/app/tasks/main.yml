@@ -1,0 +1,246 @@
+---
+# Builds a new release directory and flips `current` to it.
+#
+# Ordering here is deliberate and mirrors scripts/deploy.sh:
+#   build first, migrate second, switch last.
+# A TypeScript error must abort while the database is still untouched —
+# migrating first would leave the schema ahead of the code that is running.
+
+- name: Compute the release timestamp
+  ansible.builtin.set_fact:
+    release_ts: "{{ ansible_date_time.iso8601_basic_short | regex_replace('T', '-') }}"
+
+- name: Set release paths
+  ansible.builtin.set_fact:
+    release_path: "{{ app_root }}/releases/{{ release_ts }}"
+    shared_path: "{{ app_root }}/shared"
+    current_path: "{{ app_root }}/current"
+
+- name: Create the directory layout
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: "0755"
+  loop:
+    - "{{ app_root }}"
+    - "{{ app_root }}/releases"
+    - "{{ shared_path }}"
+    - "{{ shared_path }}/Jolfa-Server"
+    - "{{ shared_path }}/Jolfa-web"
+    - "{{ upload_dir }}"
+
+# ---------------------------------------------------------------------------
+# Environment files live in shared/, not in the release. They are rendered
+# before the build because Vite inlines VITE_API_BASE_URL at build time — a
+# frontend built without it points at localhost for every visitor.
+# ---------------------------------------------------------------------------
+
+- name: Render the backend environment file
+  ansible.builtin.template:
+    src: server.env.j2
+    dest: "{{ shared_path }}/Jolfa-Server/.env"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: "0600"
+  no_log: true
+
+- name: Render the frontend build-time environment file
+  ansible.builtin.template:
+    src: web.env.production.j2
+    dest: "{{ shared_path }}/Jolfa-web/.env.production"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: "0644"
+
+# ---------------------------------------------------------------------------
+# Fetch the code
+# ---------------------------------------------------------------------------
+
+- name: Check out the release
+  ansible.builtin.git:
+    repo: "{{ git_repo }}"
+    dest: "{{ release_path }}"
+    version: "{{ git_branch }}"
+    depth: 1
+    single_branch: true
+    accept_hostkey: true
+  become: true
+  become_user: "{{ app_user }}"
+  register: checkout
+
+- name: Record the deployed commit
+  ansible.builtin.copy:
+    dest: "{{ release_path }}/REVISION"
+    content: "{{ checkout.after }}\n"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: "0644"
+
+- name: Link shared files into the release
+  ansible.builtin.file:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    state: link
+    force: true
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+  loop:
+    - src: "{{ shared_path }}/Jolfa-Server/.env"
+      dest: "{{ release_path }}/Jolfa-Server/.env"
+    - src: "{{ shared_path }}/Jolfa-web/.env.production"
+      dest: "{{ release_path }}/Jolfa-web/.env.production"
+    - src: "{{ upload_dir }}"
+      dest: "{{ release_path }}/Jolfa-Server/uploads"
+  loop_control:
+    label: "{{ item.dest }}"
+
+# ---------------------------------------------------------------------------
+# Build
+# ---------------------------------------------------------------------------
+
+- name: Install backend dependencies
+  # `npm ci` and not `npm install`: the lockfile is the contract, and a deploy
+  # that quietly resolves a different dependency tree than CI tested is a
+  # deploy that has not actually been tested.
+  ansible.builtin.command:
+    cmd: npm ci --no-audit --no-fund
+    chdir: "{{ release_path }}/Jolfa-Server"
+  become: true
+  become_user: "{{ app_user }}"
+  changed_when: true
+
+- name: Generate the Prisma client
+  ansible.builtin.command:
+    cmd: npx prisma generate
+    chdir: "{{ release_path }}/Jolfa-Server"
+  become: true
+  become_user: "{{ app_user }}"
+  changed_when: true
+
+- name: Build the backend
+  ansible.builtin.command:
+    cmd: npm run build
+    chdir: "{{ release_path }}/Jolfa-Server"
+  become: true
+  become_user: "{{ app_user }}"
+  changed_when: true
+
+- name: Install frontend dependencies
+  ansible.builtin.command:
+    cmd: npm ci --no-audit --no-fund
+    chdir: "{{ release_path }}/Jolfa-web"
+  become: true
+  become_user: "{{ app_user }}"
+  changed_when: true
+
+- name: Build the frontend
+  ansible.builtin.command:
+    cmd: npm run build
+    chdir: "{{ release_path }}/Jolfa-web"
+  become: true
+  become_user: "{{ app_user }}"
+  changed_when: true
+
+- name: Verify the frontend was built against the right API URL
+  # The single most expensive deploy mistake available here: a bundle whose
+  # baked-in API base is localhost builds cleanly and then fails in every
+  # visitor's browser. Grep the emitted assets for the URL we intended.
+  ansible.builtin.shell:
+    cmd: grep -rlF "{{ frontend_api_base_url }}" {{ release_path }}/Jolfa-web/dist/assets/ >/dev/null
+  become: true
+  become_user: "{{ app_user }}"
+  changed_when: false
+
+# ---------------------------------------------------------------------------
+# Migrate, then switch
+# ---------------------------------------------------------------------------
+
+- name: Apply database migrations
+  # `migrate deploy`, never `migrate dev`: it applies committed migrations and
+  # never generates, prompts, or resets.
+  ansible.builtin.command:
+    cmd: npx prisma migrate deploy
+    chdir: "{{ release_path }}/Jolfa-Server"
+  become: true
+  become_user: "{{ app_user }}"
+  changed_when: true
+
+- name: Render the PM2 ecosystem file
+  ansible.builtin.template:
+    src: ecosystem.config.cjs.j2
+    dest: "{{ shared_path }}/ecosystem.config.cjs"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: "0644"
+
+- name: Relabel the release for SELinux
+  # AlmaLinux runs SELinux enforcing. Files created by git and npm inherit the
+  # parent directory's context, which is usually right — but a mislabelled
+  # dist/ makes nginx return 403 for every asset while index.html loads, which
+  # is a genuinely confusing way to spend an afternoon. Relabelling each new
+  # release costs a second and removes the failure mode.
+  ansible.builtin.command: "restorecon -R {{ release_path }}"
+  when:
+    - ansible_os_family == 'RedHat'
+    - ansible_selinux.status | default('disabled') == 'enabled'
+  changed_when: false
+
+- name: Point `current` at the new release
+  ansible.builtin.file:
+    src: "{{ release_path }}"
+    dest: "{{ current_path }}"
+    state: link
+    force: true
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+
+- name: Reload the API under PM2
+  # `reload` is a rolling restart across cluster workers. The server drains
+  # in-flight requests on SIGTERM (src/index.ts), so a checkout in progress
+  # finishes instead of erroring.
+  ansible.builtin.shell:
+    cmd: >-
+      pm2 describe {{ pm2_app_name }} >/dev/null 2>&1
+      && pm2 reload {{ shared_path }}/ecosystem.config.cjs --update-env
+      || pm2 start {{ shared_path }}/ecosystem.config.cjs
+  become: true
+  become_user: "{{ app_user }}"
+  changed_when: true
+
+- name: Persist the PM2 process list
+  ansible.builtin.command: pm2 save
+  become: true
+  become_user: "{{ app_user }}"
+  changed_when: true
+
+- name: Wait for the API health endpoint
+  # If this fails the new release is live and unhealthy. Recover with:
+  #   ansible-playbook -i inventory.ini rollback.yml
+  ansible.builtin.uri:
+    url: "http://{{ backend_host }}:{{ backend_port }}/health"
+    method: GET
+    status_code: 200
+  register: health
+  until: health.status == 200
+  retries: 20
+  delay: 3
+
+- name: Prune old releases
+  # Keeps the newest {{ releases_to_keep }} so rollback has somewhere to go,
+  # and so node_modules from twenty deploys ago does not fill the disk.
+  ansible.builtin.shell:
+    cmd: >-
+      ls -1dt {{ app_root }}/releases/*/
+      | tail -n +{{ (releases_to_keep | int) + 1 }}
+      | xargs -r rm -rf
+  become: true
+  become_user: "{{ app_user }}"
+  changed_when: true
+
+- name: Report the deployed revision
+  ansible.builtin.debug:
+    msg: >-
+      Deployed {{ checkout.after[:8] }} on branch {{ git_branch }} as release
+      {{ release_ts }} — {{ site_url }}

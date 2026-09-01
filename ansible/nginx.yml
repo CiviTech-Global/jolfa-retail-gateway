@@ -1,0 +1,17 @@
+---
+# Reverse proxy, caching, compression, edge rate limiting and TLS.
+#
+#   ansible-playbook -i inventory.ini nginx.yml
+#
+# Deploy without TLS first if DNS has not propagated yet — certbot fails when
+# the domain does not resolve to this server:
+#   ansible-playbook -i inventory.ini nginx.yml -e enable_ssl=false
+#
+# Then re-run without the flag once DNS is live.
+
+- name: Configure nginx and TLS for Jolfa
+  hosts: jolfa
+  become: true
+
+  roles:
+    - nginx

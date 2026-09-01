@@ -1,0 +1,70 @@
+---
+# Build and release the application. Safe to run repeatedly; each run creates a
+# new release directory and flips the `current` symlink to it.
+#
+#   ansible-playbook -i inventory.ini deploy.yml --ask-vault-pass
+#
+# Deploy a specific branch or tag:
+#   ansible-playbook -i inventory.ini deploy.yml -e git_branch=v1.2.0
+#
+# Check what would change without touching the server:
+#   ansible-playbook -i inventory.ini deploy.yml --check --diff
+
+- name: Deploy Jolfa Retail Gateway
+  hosts: jolfa
+  become: true
+  # One host at a time. With a second server this is what keeps the other one
+  # serving while this one rebuilds.
+  serial: 1
+
+  pre_tasks:
+    - name: Refuse to deploy with an unconfigured repository
+      ansible.builtin.assert:
+        that:
+          - git_repo is defined
+          - not (git_repo | string).startswith('REPLACE_ME')
+        fail_msg: >-
+          git_repo is still a placeholder. Set it in
+          group_vars/all/main.yml to the customer's repository URL.
+
+    - name: Refuse to deploy with a placeholder secret
+      ansible.builtin.assert:
+        that:
+          - vault_jwt_secret is defined
+          - not (vault_jwt_secret | string).startswith('REPLACE_ME')
+          - (vault_jwt_secret | length) >= 32
+          - vault_db_password is defined
+          - not (vault_db_password | string).startswith('REPLACE_ME')
+        fail_msg: >-
+          group_vars/all/vault.yml still contains template values. Generate
+          real ones (openssl rand -hex 32) before deploying — a shipped
+          placeholder JWT secret means anyone who reads this repository can
+          mint an admin token.
+      no_log: true
+
+    - name: Check whether a release is already live
+      ansible.builtin.stat:
+        path: "{{ app_root }}/current/scripts/backup.sh"
+      register: existing_release
+
+    - name: Back up before migrating
+      # Prisma migrations are forward-only. If this deploy's migration drops or
+      # renames a column, rollback.yml can put the old code back but nothing
+      # can put the data back except this dump. Skipped on the first deploy,
+      # when there is nothing to lose yet.
+      ansible.builtin.command:
+        cmd: "{{ app_root }}/current/scripts/backup.sh"
+      environment:
+        BACKUP_DIR: "{{ backup_dir }}"
+        RETENTION_DAYS: "{{ backup_retention_days | string }}"
+        BACKUP_REMOTE: "{{ backup_remote }}"
+        ENV_FILE: "{{ app_root }}/shared/Jolfa-Server/.env"
+      become_user: "{{ app_user }}"
+      changed_when: true
+      when:
+        - existing_release.stat.exists
+        - pre_deploy_backup | default(true) | bool
+
+  roles:
+    - app
+    - backup

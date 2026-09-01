@@ -1,0 +1,89 @@
+---
+- name: Add the NodeSource repository (RedHat)
+  when: ansible_os_family == 'RedHat'
+  block:
+    - name: Check whether the NodeSource repo is already configured
+      ansible.builtin.stat:
+        path: /etc/yum.repos.d/nodesource-nodejs.repo
+      register: nodesource_repo
+
+    - name: Run the NodeSource setup script
+      # NodeSource publishes an RPM repo, but the setup script is what wires up
+      # the GPG key and the correct EL9 path. Guarded so it runs once.
+      ansible.builtin.shell:
+        cmd: "curl -fsSL https://rpm.nodesource.com/setup_{{ node_major_version }}.x | bash -"
+      when: not nodesource_repo.stat.exists
+      changed_when: true
+
+    - name: Exclude nodejs from the AppStream module
+      # EL9 has a nodejs module stream that would otherwise win over
+      # NodeSource, installing Node 18 while the app requires 22.
+      ansible.builtin.command: dnf -qy module disable nodejs
+      register: node_module_disable
+      changed_when: "'Disabling' in node_module_disable.stdout"
+      failed_when:
+        - node_module_disable.rc != 0
+        - "'no matching' not in (node_module_disable.stderr | lower)"
+
+- name: Add the NodeSource repository (Debian)
+  when: ansible_os_family == 'Debian'
+  block:
+    - name: Ensure the keyring directory exists
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: Add the NodeSource signing key
+      ansible.builtin.get_url:
+        url: https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key
+        dest: /etc/apt/keyrings/nodesource.asc
+        mode: "0644"
+
+    - name: Add the NodeSource repository
+      ansible.builtin.apt_repository:
+        repo: >-
+          deb [signed-by=/etc/apt/keyrings/nodesource.asc]
+          https://deb.nodesource.com/node_{{ node_major_version }}.x nodistro main
+        filename: nodesource
+        state: present
+
+- name: Install Node.js
+  ansible.builtin.package:
+    name: nodejs
+    state: present
+
+- name: Read the installed Node version
+  ansible.builtin.command: node --version
+  register: node_version_out
+  changed_when: false
+
+- name: Assert the Node major version matches what the app requires
+  # Jolfa-Server/package.json declares engines.node >= 22. A silent mismatch
+  # surfaces much later as a confusing ESM or native-module failure.
+  #
+  # regex_search rather than regex_replace with a backreference: YAML does not
+  # process backslash escapes in a plain scalar, but Jinja does process them
+  # inside its own string literals, so '\1' reaches the filter as the control
+  # character 0x01 instead of a group reference. The replacement then yields a
+  # non-numeric string, `| int` turns it into 0, and the assertion fails
+  # against a perfectly good Node. Grabbing the first run of digits has no
+  # escaping to get wrong.
+  ansible.builtin.assert:
+    that:
+      - (node_version_out.stdout | regex_search('[0-9]+')) | int >= node_major_version | int
+    fail_msg: >-
+      Node {{ node_version_out.stdout }} is installed but the application needs
+      >= v{{ node_major_version }}. On EL9 this usually means the AppStream
+      nodejs module took precedence over NodeSource.
+
+- name: Install PM2 globally
+  community.general.npm:
+    name: pm2
+    global: true
+    state: present
+
+- name: Configure PM2 to start on boot
+  ansible.builtin.command: "pm2 startup systemd -u {{ app_user }} --hp /home/{{ app_user }}"
+  register: pm2_startup
+  changed_when: "'already' not in pm2_startup.stdout"

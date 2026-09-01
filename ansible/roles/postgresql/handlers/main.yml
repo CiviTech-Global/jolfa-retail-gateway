@@ -1,0 +1,11 @@
+---
+- name: Restart postgresql
+  ansible.builtin.systemd:
+    name: "{{ postgresql_service }}"
+    state: restarted
+
+- name: Reload postgresql
+  # pg_hba.conf changes only need a reload; connections stay up.
+  ansible.builtin.systemd:
+    name: "{{ postgresql_service }}"
+    state: reloaded

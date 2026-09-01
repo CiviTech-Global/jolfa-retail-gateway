@@ -1,0 +1,35 @@
+---
+# AlmaLinux / Rocky / RHEL 9 — the platform this deployment actually runs on.
+
+base_packages:
+  - curl
+  - git
+  - ca-certificates
+  - gnupg2
+  - tar
+  - rsync
+  - logrotate
+  # crontab is not installed by default on a minimal EL9 image; the backup job
+  # needs it.
+  - cronie
+  # Ansible runs its file/become helpers on the target; without acl, becoming
+  # an unprivileged user over SSH fails with a permissions error on the
+  # temporary files.
+  - acl
+  # community.postgresql modules execute on the target and import psycopg2.
+  - python3-psycopg2
+  # semanage / restorecon, used by the SELinux tasks.
+  - policycoreutils-python-utils
+  - python3-libselinux
+  # Unattended security updates.
+  - dnf-automatic
+  # firewalld replaces ufw.
+  - firewalld
+
+# fail2ban is not in AppStream; it comes from EPEL, which is installed first.
+epel_packages:
+  - fail2ban
+  - fail2ban-firewalld
+
+ssh_service_name: sshd
+nginx_user: nginx

@@ -1,0 +1,139 @@
+{{ ansible_managed | comment }}
+# Rendered by Ansible from roles/nginx/templates/jolfa.conf.j2.
+#
+# certbot --nginx edits this file in place to add the TLS listener and the
+# HTTP->HTTPS redirect. Re-running the nginx role rewrites the file and certbot
+# re-applies its changes on the next run, so the two stay compatible.
+
+# Rate limit zones. These sit in front of Node's own @fastify/rate-limit, which
+# counts per worker process and therefore cannot enforce a real global ceiling.
+# nginx sees every request before PM2 splits them across workers, so this is the
+# layer that actually holds.
+limit_req_zone $binary_remote_addr zone=jolfa_api:10m rate={{ nginx_api_rate | default('20r/s') }};
+limit_req_zone $binary_remote_addr zone=jolfa_auth:10m rate={{ nginx_auth_rate | default('1r/s') }};
+limit_conn_zone $binary_remote_addr zone=jolfa_conn:10m;
+
+upstream jolfa_api {
+    server {{ backend_host }}:{{ backend_port }};
+    keepalive 32;
+}
+
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name {{ domain_name }}{% if domain_alias %} {{ domain_alias }}{% endif %};
+
+    root {{ app_root }}/current/Jolfa-web/dist;
+    index index.html;
+
+    # Must be >= the API's MAX_FILE_SIZE ({{ max_file_size }} bytes) or nginx
+    # rejects a legal upload with a 413 before Node ever sees it.
+    client_max_body_size {{ nginx_client_max_body_size }};
+    client_body_timeout 30s;
+
+    # ---- Security headers --------------------------------------------------
+    # HSTS is inert over plain HTTP; it takes effect once certbot adds the TLS
+    # listener to this block.
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+
+    # ---- TLS policy --------------------------------------------------------
+    # Effective once certbot adds `listen 443 ssl`. Kept here as well as in
+    # certbot's own include so the policy survives that include changing.
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+
+    # ---- Compression -------------------------------------------------------
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_proxied any;
+    gzip_types text/plain text/css application/javascript application/json
+               image/svg+xml application/manifest+json;
+
+    # ---- Maintenance page --------------------------------------------------
+    error_page 502 503 504 /maintenance.html;
+    location = /maintenance.html {
+        root /var/www/jolfa-static;
+        internal;
+    }
+
+    # ---- Uploaded media ----------------------------------------------------
+    # Served straight off disk; Node never wakes for an image. Filenames are
+    # random UUIDs that are never rewritten, so they are safe to cache forever.
+    location {{ public_upload_path }}/ {
+        alias {{ upload_dir }}/;
+        access_log off;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    # ---- Hashed frontend bundles -------------------------------------------
+    # Vite fingerprints these; the name changes whenever the content does.
+    location /assets/ {
+        access_log off;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    # ---- index.html --------------------------------------------------------
+    # Never cached, or visitors stay pinned to a stale build and their browser
+    # keeps requesting chunk files the new release no longer has.
+    location = /index.html {
+        add_header Cache-Control "no-cache";
+    }
+
+    # ---- Credential endpoints ----------------------------------------------
+    # Tighter than the rest of the API: these guard passwords, and
+    # /auth/forgot-password spends real money on an SMS for each request it
+    # accepts. burst=5 nodelay tolerates a human retyping a password; a
+    # credential-stuffing run hits the wall immediately.
+    location {{ api_prefix }}/auth/ {
+        limit_req zone=jolfa_auth burst=5 nodelay;
+        limit_conn jolfa_conn 10;
+        proxy_pass http://jolfa_api;
+        include /etc/nginx/jolfa_proxy_params;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+
+    # ---- API ---------------------------------------------------------------
+    location {{ api_prefix }}/ {
+        limit_req zone=jolfa_api burst=40 nodelay;
+        limit_conn jolfa_conn 25;
+        proxy_pass http://jolfa_api;
+        include /etc/nginx/jolfa_proxy_params;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_read_timeout 60s;
+    }
+
+    # Health check for uptime monitoring. Deliberately unlimited — the API
+    # exempts it from its own limiter too, so a monitor is never throttled.
+    location = /health {
+        proxy_pass http://jolfa_api;
+        include /etc/nginx/jolfa_proxy_params;
+        access_log off;
+    }
+
+    # Demo images shipped with the repo, served by the API's static handler.
+    location /demo-assets/ {
+        proxy_pass http://jolfa_api;
+        include /etc/nginx/jolfa_proxy_params;
+        expires 7d;
+    }
+
+    # ---- SPA fallback ------------------------------------------------------
+    # Every other path is a client-side route; hand it index.html and let the
+    # router decide. Must come last.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

@@ -1,0 +1,17 @@
+---
+# Everything, in the order a fresh server needs it.
+#
+#   ansible-playbook -i inventory.ini site.yml --ask-vault-pass
+#
+# Equivalent to running provision.yml, deploy.yml and nginx.yml in sequence.
+# Semaphore is deliberately not included — install it once, separately, with
+# semaphore.yml.
+
+- name: Provision the server
+  ansible.builtin.import_playbook: provision.yml
+
+- name: Deploy the application
+  ansible.builtin.import_playbook: deploy.yml
+
+- name: Configure nginx and TLS
+  ansible.builtin.import_playbook: nginx.yml

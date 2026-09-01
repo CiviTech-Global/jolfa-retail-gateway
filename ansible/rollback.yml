@@ -1,0 +1,96 @@
+---
+# Point `current` back at the previous release and reload PM2.
+#
+#   ansible-playbook -i inventory.ini rollback.yml
+#   ansible-playbook -i inventory.ini rollback.yml -e target_release=20260901-104500
+#
+# WHAT THIS DOES AND DOES NOT UNDO
+#
+# It swaps the code back. It does NOT undo database migrations — Prisma
+# migrations are forward-only and there is no `migrate down`. If the release
+# you are rolling back from added a column, the old code simply ignores it and
+# everything is fine. If it *dropped* or *renamed* one, the old code will fail
+# against the new schema and a code rollback is not enough: restore the
+# database from the backup taken before the deploy (scripts/restore.sh).
+#
+# This is the reason the deploy takes a backup first and the reason
+# destructive migrations should ship in two releases — add the new shape, move
+# the reads, drop the old shape in a later deploy.
+
+- name: Roll back to the previous release
+  hosts: jolfa
+  become: true
+
+  tasks:
+    - name: List releases, newest first
+      ansible.builtin.command:
+        cmd: "ls -1dt {{ app_root }}/releases/*/"
+      register: releases
+      changed_when: false
+
+    - name: Read the release `current` points at
+      ansible.builtin.stat:
+        path: "{{ app_root }}/current"
+      register: current_link
+
+    - name: Choose the rollback target
+      ansible.builtin.set_fact:
+        rollback_path: >-
+          {{ (app_root ~ '/releases/' ~ target_release)
+             if target_release is defined
+             else (releases.stdout_lines
+                   | map('regex_replace', '/$', '')
+                   | reject('equalto', current_link.stat.lnk_source | default(''))
+                   | list | first | default('')) }}
+
+    - name: Fail when there is nothing to roll back to
+      ansible.builtin.assert:
+        that:
+          - rollback_path | length > 0
+        fail_msg: >-
+          No previous release found under {{ app_root }}/releases. There is
+          nothing to roll back to; fix forward or restore from backup.
+
+    - name: Confirm the target release exists and was built
+      ansible.builtin.stat:
+        path: "{{ rollback_path }}/Jolfa-Server/dist/index.js"
+      register: target_build
+
+    - name: Fail when the target release has no compiled build
+      ansible.builtin.assert:
+        that:
+          - target_build.stat.exists
+        fail_msg: >-
+          {{ rollback_path }} has no Jolfa-Server/dist — it never finished
+          building. Pick another release with -e target_release=...
+
+    - name: Point `current` at the rollback target
+      ansible.builtin.file:
+        src: "{{ rollback_path }}"
+        dest: "{{ app_root }}/current"
+        state: link
+        force: true
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+
+    - name: Reload PM2
+      ansible.builtin.command:
+        cmd: "pm2 reload {{ app_root }}/shared/ecosystem.config.cjs --update-env"
+      become_user: "{{ app_user }}"
+      changed_when: true
+
+    - name: Wait for the API to come back healthy
+      ansible.builtin.uri:
+        url: "http://{{ backend_host }}:{{ backend_port }}/health"
+        status_code: 200
+      register: health
+      until: health.status == 200
+      retries: 20
+      delay: 3
+
+    - name: Report
+      ansible.builtin.debug:
+        msg: >-
+          Rolled back to {{ rollback_path | basename }}. If the release you
+          rolled back from changed the database schema destructively, restore
+          the database too — see the header of this playbook.

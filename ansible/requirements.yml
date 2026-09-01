@@ -1,0 +1,17 @@
+---
+# Install with:  ansible-galaxy collection install -r requirements.yml
+#
+# Version floors are set to what ships with the Ubuntu `ansible` package
+# (ansible-core 2.16) and is verified working against AlmaLinux 9, rather than
+# to the newest release — a floor you cannot satisfy from the distro packages
+# is a floor that gets ignored.
+collections:
+  # timezone, npm, ufw (Debian), sefcontext (RedHat SELinux file contexts)
+  - name: community.general
+    version: ">=8.3.0"
+  # postgresql_user / _db / _ext / _query
+  - name: community.postgresql
+    version: ">=3.3.0"
+  # firewalld and seboolean (RedHat), authorized_key, profile_tasks timing
+  - name: ansible.posix
+    version: ">=1.5.0"

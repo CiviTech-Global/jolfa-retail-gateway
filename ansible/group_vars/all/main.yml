@@ -1,0 +1,171 @@
+---
+# ============================================================================
+# Non-secret configuration shared by every host in the [jolfa] group.
+# Secrets live in group_vars/all/vault.yml (Ansible Vault) — see
+# vault.example.yml for the template.
+# ============================================================================
+
+# ---- Where the application lives on the server -----------------------------
+# Capistrano-style layout. Each deploy unpacks a new release directory and
+# flips a symlink, so a rollback is a symlink change rather than a re-clone:
+#
+#   /var/www/jolfa/
+#   ├── current -> releases/20260901-104500
+#   ├── releases/
+#   │   ├── 20260901-104500/
+#   │   └── 20260831-221000/
+#   └── shared/
+#       ├── Jolfa-Server/.env          (rendered by Ansible, never in git)
+#       ├── Jolfa-web/.env.production  (rendered by Ansible, read at build time)
+#       └── uploads/                   (customer media, survives every deploy)
+app_name: jolfa
+app_root: /var/www/jolfa
+app_user: jolfa
+app_group: jolfa
+releases_to_keep: 5
+
+# ---- Source ---------------------------------------------------------------
+# Public repository, so the server clones it anonymously over https and no
+# deploy key is needed. If it is ever made private, generate a read-only deploy
+# key as the `jolfa` user and switch this to the git@ SSH form.
+git_repo: "https://github.com/CiviTech-Global/jolfa-retail-gateway.git"
+
+# NOT `main`, deliberately. As of 2026-09-01 `main` is 12 commits behind
+# `v1-week3` — it predates the customer account panel, the stock-oversell fix,
+# the session lifecycle, bundle splitting, response caching and all 147 tests.
+# Deploying `main` would ship a materially worse store than the one that has
+# been built.
+#
+# Once v1-week3 is merged, change this back to `main` and re-run deploy.yml.
+# Deploying a long-lived feature branch is a temporary state, not a pattern:
+# `main` should be what production runs.
+git_branch: v1-week3
+
+# ---- Runtime --------------------------------------------------------------
+node_major_version: 22
+pm2_app_name: jolfa-api
+# Node binds to loopback only. Nginx is the single public listener; the API
+# port must never be reachable from the internet.
+backend_host: 127.0.0.1
+backend_port: 3001
+api_prefix: /api/v1
+node_env: production
+# PM2 cluster instances. 2 on a 2-vCPU box; "max" to use every core. The app is
+# stateless per request (JWT auth, no in-process session store) so it clusters
+# safely — with one caveat, see rate limiting below.
+pm2_instances: 2
+
+# ---- Database -------------------------------------------------------------
+db_name: jolfa
+db_user: jolfa_app
+db_host: 127.0.0.1
+db_port: 5432
+postgresql_version: 16
+
+# ---- Rate limiting --------------------------------------------------------
+# @fastify/rate-limit keeps its counters in the process's own memory. With
+# pm2_instances > 1 the effective limit is (max × instances) because each
+# worker counts separately. These values are the PER-WORKER budget; divide the
+# limit you actually want by pm2_instances, or move the store to Redis.
+rate_limit_max: 150
+rate_limit_window: "1 minute"
+auth_rate_limit_max: 5
+auth_rate_limit_window: "15 minutes"
+
+# ---- Uploads --------------------------------------------------------------
+# Absolute, and inside shared/ so a new release never orphans customer media.
+upload_dir: "{{ app_root }}/shared/uploads"
+public_upload_path: /uploads
+max_file_size: 5242880
+
+# ---- Payment gateways (SANDBOX / PLACEHOLDER) ------------------------------
+# Deliberately left in sandbox. Going live is a two-line change here plus a
+# real merchant ID in vault — see docs/deployment/08-reference/going-live.md.
+#
+#   zarinpal_sandbox: "false"
+#   zarinpal_merchant_id: <real id, in vault>
+#
+# Nothing else in the stack needs to change.
+payment_gateway: zarinpal          # zarinpal | zibal
+zarinpal_sandbox: "true"
+zarinpal_merchant_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+zibal_merchant_id: ""              # set to enable Zibal instead of ZarinPal
+
+# ---- SMS (PLACEHOLDER) -----------------------------------------------------
+# Both blank => the server logs the password-reset code instead of sending it.
+# That is the correct state until the customer buys a provider line.
+kavenegar_api_key: ""
+sms_ir_api_key: ""
+sms_sender_number: ""
+
+# ---- Nginx / TLS ----------------------------------------------------------
+# Currently FALSE: there is no domain yet, and Let's Encrypt cannot issue a
+# certificate for a bare IP address. The site runs on http://<ip>/ until DNS
+# exists. Set this to true once domain_name in inventory.ini is a real
+# hostname that resolves to the server, then re-run nginx.yml AND deploy.yml —
+# the frontend bundle has its API base URL compiled in and must be rebuilt.
+#
+# Set it HERE, not in inventory.ini. Variables in group_vars/all outrank group
+# variables written into the inventory file, so an enable_ssl there is silently
+# ignored. (domain_name, domain_alias and certbot_email have no entry here, so
+# the inventory is the right place for those.)
+enable_ssl: false
+nginx_client_max_body_size: 10M
+# Must be >= the API's MAX_FILE_SIZE or Nginx rejects a legal upload with a 413
+# before Node ever sees it.
+
+# ---- Backups --------------------------------------------------------------
+backup_enabled: true
+backup_dir: /var/backups/jolfa
+backup_retention_days: 14
+backup_cron_hour: 3
+backup_cron_minute: 30
+# rclone remote for the off-box copy, e.g. "jolfa-backups:jolfa".
+# Empty means backups exist only on the machine they are protecting — the
+# backup role prints a loud warning in that case.
+backup_remote: ""
+
+# ---- Firewall -------------------------------------------------------------
+firewall_enabled: true
+firewall_allowed_tcp_ports: [22, 80, 443]
+
+# ---- SSH ------------------------------------------------------------------
+# false would skip the SSH drop-in entirely. Leave it true — the drop-in also
+# sets MaxAuthTries and disables X11 forwarding, which you want either way.
+ssh_hardening_enabled: true
+
+# TRUE ON THIS DEPLOYMENT, BY REQUEST: `ssh root@<host>` still prompts for a
+# password. The alternative (false) is key-only, which is the stronger setting
+# and what a fresh deployment should default to.
+#
+# What keeping it true means, stated plainly so it is a decision and not an
+# accident:
+#   - Port 22 is exposed to the internet and every bot on it will try root.
+#   - The account is only as strong as its password. Rotate the current one —
+#     it was shared over chat.
+#   - fail2ban below is the compensating control, and it is real: it bans an
+#     address for an hour after 5 failures in 10 minutes.
+#
+# Switching to key-only later is one line here plus `provision.yml`. The key is
+# already installed and verified, so nothing else has to change.
+ssh_permit_password_auth: true
+ssh_max_auth_tries: 3
+
+# ---- fail2ban -------------------------------------------------------------
+# Installing fail2ban is not the same as running it: the EL9 package ships no
+# enabled jail and does not start the service. roles/common configures the
+# sshd jail explicitly.
+fail2ban_max_retry: 5
+fail2ban_find_time: 10m
+fail2ban_ban_time: 1h
+# Addresses fail2ban will never ban. Add your office or home IP so a fat-
+# fingered password three times running cannot lock you out of your own server.
+fail2ban_ignore_ips: []
+
+# ---- Semaphore UI ---------------------------------------------------------
+semaphore_dir: /opt/semaphore
+semaphore_image: "semaphoreui/semaphore:v2.10.34"
+semaphore_port: 8888
+semaphore_admin_user: admin
+semaphore_admin_email: "REPLACE_ME_EMAIL"
+semaphore_admin_name: "Jolfa Admin"

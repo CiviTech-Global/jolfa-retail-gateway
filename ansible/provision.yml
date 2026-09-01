@@ -1,0 +1,17 @@
+---
+# One-time (and safely repeatable) server preparation: packages, firewall,
+# hardened SSH, the application user, PostgreSQL, Node.js and PM2.
+#
+#   ansible-playbook -i inventory.ini provision.yml --ask-vault-pass
+#
+# Run this before deploy.yml. Re-run it whenever you change anything in
+# group_vars that affects the base system.
+
+- name: Provision the Jolfa server
+  hosts: jolfa
+  become: true
+
+  roles:
+    - common
+    - postgresql
+    - nodejs

@@ -1,0 +1,12 @@
+---
+- name: Restart sshd
+  # `sshd` on RHEL, `ssh` on Debian. Restarting does not drop the connection
+  # Ansible is currently using — existing sessions survive.
+  ansible.builtin.systemd:
+    name: "{{ ssh_service_name }}"
+    state: restarted
+
+- name: Restart fail2ban
+  ansible.builtin.systemd:
+    name: fail2ban
+    state: restarted

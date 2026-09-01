@@ -22,7 +22,8 @@ Deliver a production-ready MVP online store in 2–3 weeks.
 
 - [Level One Roadmap](docs/level-one/ROADMAP.md)
 - [Local Setup Guide](docs/level-one/SETUP.md)
-- [Deployment Guide](docs/level-one/DEPLOY.md)
+- [Ansible + Semaphore Deployment Guide](docs/deployment/README.md) — the automated path
+- [Manual Deployment Guide](docs/level-one/DEPLOY.md) — the same steps, by hand
 - [Configuration Reference](docs/level-one/CONFIGURATION.md)
 - [Agent Roster](agents/01-AGENT-ROSTER.md)
 - [Team Workflow](agents/00-TEAM-WORKFLOW.md)
@@ -69,9 +70,27 @@ Frontend runs at `http://localhost:5173`.
 
 ## Deployment
 
-See [docs/level-one/DEPLOY.md](docs/level-one/DEPLOY.md) for VPS/Nginx/PM2/SSL deployment instructions.
+**Recommended:** [`docs/deployment/`](docs/deployment/README.md) — provision,
+deploy, roll back and back up the VPS with Ansible, optionally driven from
+Semaphore UI in a browser. Start with the
+[QUICKSTART](docs/deployment/QUICKSTART.md).
+
+```bash
+cd ansible
+cp inventory.example.ini inventory.ini            # fill in the REPLACE_ME values
+cp group_vars/all/vault.example.yml group_vars/all/vault.yml
+ansible-vault encrypt group_vars/all/vault.yml
+ansible-playbook -i inventory.ini site.yml --ask-vault-pass
+```
+
+The manual equivalent (Nginx/PM2/Certbot typed by hand) is still documented in
+[docs/level-one/DEPLOY.md](docs/level-one/DEPLOY.md).
+
+> Payments run against the **ZarinPal sandbox** and SMS is **log-only** until
+> [going-live.md](docs/deployment/08-reference/going-live.md) is worked through.
 
 ## Scripts
 
 - `scripts/setup-local.sh` — one-command local setup
-- `scripts/deploy.sh` — VPS deployment via SSH
+- `scripts/deploy.sh` — simple in-place VPS deploy via SSH (superseded by `ansible/deploy.yml`)
+- `scripts/backup.sh` / `scripts/restore.sh` — database + uploads backup and restore

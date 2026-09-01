@@ -1,0 +1,46 @@
+---
+# ============================================================================
+# SECRETS TEMPLATE — copy, fill, then encrypt. Never commit the plaintext.
+#
+#   cd ansible
+#   cp group_vars/all/vault.example.yml group_vars/all/vault.yml
+#   # edit the values
+#   ansible-vault encrypt group_vars/all/vault.yml
+#
+# Edit later with:  ansible-vault edit group_vars/all/vault.yml
+# Run with:         ansible-playbook deploy.yml --ask-vault-pass
+#
+# In Semaphore UI these same values go in an "Ansible Vault" key store entry,
+# or the vault password goes in a Login/Password key — see
+# docs/deployment/06-semaphore-ui/04-add-inventory-and-keys.md.
+#
+# Generate strong values:
+#   openssl rand -hex 32      # vault_jwt_secret
+#   openssl rand -base64 24   # vault_db_password
+# ============================================================================
+
+# Postgres role password for db_user.
+vault_db_password: "REPLACE_ME_DB_PASSWORD"
+
+# Signs both access and refresh tokens. Rotating it invalidates every live
+# session at once, which is the intended emergency lever.
+# Minimum 16 characters (the server's env schema rejects shorter); use 64.
+vault_jwt_secret: "REPLACE_ME_AT_LEAST_32_RANDOM_CHARACTERS"
+
+# First admin account, created on server start if the phone is not taken.
+# Change the password from the admin UI after the first login.
+vault_admin_seed_email: "admin@example.com"
+vault_admin_seed_phone: "09120000000"
+vault_admin_seed_password: "REPLACE_ME_ADMIN_PASSWORD"
+
+# Real merchant IDs go here once the customer's gateway contract is signed.
+# Left empty while the deployment stays in sandbox.
+vault_zarinpal_merchant_id: ""
+vault_zibal_merchant_id: ""
+
+# SMS provider key — fill exactly one, or leave both blank to keep logging.
+vault_kavenegar_api_key: ""
+vault_sms_ir_api_key: ""
+
+# Semaphore UI admin password (only used by semaphore.yml).
+vault_semaphore_admin_password: "REPLACE_ME_SEMAPHORE_PASSWORD"

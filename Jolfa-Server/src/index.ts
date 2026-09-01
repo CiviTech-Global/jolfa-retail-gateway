@@ -25,7 +25,8 @@ import uploadRoutes from "./modules/uploads/upload.routes.js";
 import { getUploadDir } from "./modules/uploads/upload.service.js";
 import path from "node:path";
 import { mkdir } from "node:fs/promises";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+import { realpathSync } from "node:fs";
 import auditRoutes from "./modules/audit/audit.routes.js";
 import userRoutes from "./modules/users/user.routes.js";
 import { seedDefaults } from "./shared/seed.js";
@@ -262,7 +263,43 @@ async function bootstrap(): Promise<void> {
   await app.listen({ port: env.PORT, host: env.HOST });
 }
 
-const isMainModule = Boolean(process.argv[1]) && import.meta.url === pathToFileURL(process.argv[1]).href;
+/**
+ * True when this file is the process entrypoint, rather than something a test
+ * imported for `buildApp`.
+ *
+ * Comparing `import.meta.url` to `pathToFileURL(process.argv[1])` looks
+ * correct and fails in production for two independent reasons:
+ *
+ * 1. A process manager launches its own wrapper and loads the application
+ *    inside it, so `argv[1]` is the wrapper's path. PM2's record of what it was
+ *    actually asked to run (`pm_exec_path`) is checked as well.
+ * 2. The deployment runs from a `current` symlink pointing at a timestamped
+ *    release directory. Node resolves the entrypoint to its *real* path, while
+ *    the process manager reports the symlinked one — so two strings that name
+ *    the same file never compare equal. Both sides are resolved with
+ *    `realpathSync` before comparing.
+ *
+ * When this check is wrong the server does not crash, which is what makes it
+ * expensive: the process stays up, the manager reports it healthy, nothing
+ * listens on the port, and the log is empty.
+ */
+function resolveRealPath(candidate: string): string | undefined {
+  try {
+    return realpathSync(candidate);
+  } catch {
+    // argv[1] can name something that no longer exists; that just means it is
+    // not this file.
+    return undefined;
+  }
+}
+
+const thisFile = resolveRealPath(fileURLToPath(import.meta.url));
+const isMainModule =
+  thisFile !== undefined &&
+  [process.argv[1], process.env.pm_exec_path]
+    .filter((candidate): candidate is string => Boolean(candidate))
+    .some((candidate) => resolveRealPath(candidate) === thisFile);
+
 if (isMainModule) {
   bootstrap().catch((error: unknown) => {
     console.error(error);

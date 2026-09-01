@@ -1,4 +1,9 @@
-# Level One — Deployment Guide
+# Level One — Deployment Guide (manual)
+
+> **There is now an automated path.** [`docs/deployment/`](../deployment/README.md)
+> does everything below with Ansible playbooks — plus release directories,
+> rollback, pre-migration backups and a Semaphore UI dashboard. Use this file to
+> understand *what* the server needs; use the playbooks to actually build it.
 
 > **Current Status:** ⚠️ Ready but not yet executed. The deployment scripts and Nginx/PM2/Certbot instructions are documented; the application has only been run locally and via `npm run preview`. See `../PROGRESS.md` for live-site status.
 

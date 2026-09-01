@@ -1,0 +1,209 @@
+---
+- name: Load platform-specific variables
+  ansible.builtin.include_vars: "{{ ansible_os_family }}.yml"
+
+- name: Install nginx
+  ansible.builtin.package:
+    name: "{{ nginx_packages }}"
+    state: present
+
+# ---------------------------------------------------------------------------
+# Remove the stock default site
+#
+# This matters more on EL9 than it looks. Our server_name is currently the bare
+# IP address, and the shipped default block is `listen 80 default_server` with
+# `server_name _`. Whichever block is default_server answers a request whose
+# Host header does not match any server_name — so leaving it in place means
+# every visitor gets the nginx welcome page instead of the store.
+# ---------------------------------------------------------------------------
+
+- name: Remove the default site (Debian)
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  when: ansible_os_family == 'Debian'
+  notify: Reload nginx
+
+- name: Neutralise the default server block (RedHat)
+  # EL9 defines it inside nginx.conf itself, so it cannot simply be deleted.
+  # Replacing nginx.conf with a managed copy that keeps the stock http tuning
+  # but drops the default server is more predictable than editing around it.
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+    mode: "0644"
+    backup: true
+  when: ansible_os_family == 'RedHat'
+  notify: Reload nginx
+
+# ---------------------------------------------------------------------------
+# Shared proxy headers
+# ---------------------------------------------------------------------------
+
+- name: Install the proxy header include
+  # Debian ships /etc/nginx/proxy_params; EL9 does not. Shipping our own means
+  # the vhost template is identical on both, and the headers are visible in
+  # this repository rather than inherited from a distro file.
+  ansible.builtin.copy:
+    dest: /etc/nginx/jolfa_proxy_params
+    mode: "0644"
+    content: |
+      # Managed by Ansible — roles/nginx
+      proxy_set_header Host $http_host;
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto $scheme;
+      proxy_set_header X-Forwarded-Host $host;
+  notify: Reload nginx
+
+# ---------------------------------------------------------------------------
+# Maintenance page and paths
+# ---------------------------------------------------------------------------
+
+- name: Create the maintenance page directory
+  ansible.builtin.file:
+    path: /var/www/jolfa-static
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install the maintenance page
+  # Shown for 502/503/504 — i.e. while PM2 is restarting or the API is down.
+  # A styled Persian page instead of nginx's bare English error.
+  ansible.builtin.template:
+    src: maintenance.html.j2
+    dest: /var/www/jolfa-static/maintenance.html
+    mode: "0644"
+
+- name: Let nginx traverse into the release directory
+  # The static bundle and uploads live under {{ app_root }}, owned by
+  # {{ app_user }}. nginx needs +x on each directory in the path to reach them;
+  # without this every asset 403s while index.html loads fine.
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - /var/www
+    - "{{ app_root }}"
+
+# ---------------------------------------------------------------------------
+# SELinux (RedHat)
+#
+# Enforcing by default on AlmaLinux. Two things break without this, both with
+# unhelpful symptoms: nginx gets "Permission denied" connecting to Node
+# (surfaces as a 502 with no upstream error), and serving files from
+# /var/www/jolfa fails with 403 if the labels are wrong.
+# ---------------------------------------------------------------------------
+
+- name: Configure SELinux for the reverse proxy
+  when:
+    - ansible_os_family == 'RedHat'
+    - ansible_selinux.status | default('disabled') == 'enabled'
+  block:
+    - name: Allow nginx to make network connections
+      # Required for proxy_pass to 127.0.0.1:{{ backend_port }}.
+      ansible.posix.seboolean:
+        name: httpd_can_network_connect
+        state: true
+        persistent: true
+
+    - name: Label the application root as web content
+      community.general.sefcontext:
+        target: "{{ app_root }}(/.*)?"
+        setype: httpd_sys_content_t
+        state: present
+      register: fcontext
+
+    - name: Apply the labels
+      ansible.builtin.command: "restorecon -R {{ app_root }}"
+      when: fcontext.changed
+      changed_when: true
+
+# ---------------------------------------------------------------------------
+# The site
+# ---------------------------------------------------------------------------
+
+- name: Write the site configuration
+  ansible.builtin.template:
+    src: jolfa.conf.j2
+    dest: "{{ nginx_site_path }}"
+    mode: "0644"
+  notify: Reload nginx
+
+- name: Enable the site (Debian)
+  ansible.builtin.file:
+    src: "{{ nginx_site_path }}"
+    dest: /etc/nginx/sites-enabled/jolfa
+    state: link
+  when: nginx_has_sites_enabled | bool
+  notify: Reload nginx
+
+- name: Test the nginx configuration
+  ansible.builtin.command: nginx -t
+  changed_when: false
+
+- name: Ensure nginx is running and enabled
+  ansible.builtin.systemd:
+    name: nginx
+    state: started
+    enabled: true
+
+# ---------------------------------------------------------------------------
+# TLS
+# ---------------------------------------------------------------------------
+
+- name: Set up HTTPS
+  when: enable_ssl | bool
+  block:
+    - name: Refuse to request a certificate for an IP address
+      # Let's Encrypt issues for domain names only. Without this the run fails
+      # deep inside certbot with a validation error that reads like a DNS
+      # problem.
+      ansible.builtin.assert:
+        that:
+          - not (domain_name is match('^[0-9]{1,3}(\.[0-9]{1,3}){3}$'))
+        fail_msg: >-
+          enable_ssl is true but domain_name is {{ domain_name }}, an IP
+          address. Let's Encrypt cannot certify an IP. Point a hostname at this
+          server, set domain_name to it, then re-run — and re-run deploy.yml
+          too, because the frontend bundle has the API URL compiled in.
+
+    - name: Install certbot
+      ansible.builtin.package:
+        name: "{{ certbot_packages }}"
+        state: present
+
+    - name: Apply any pending nginx reload before certbot edits the vhost
+      # certbot rewrites the file on disk. If a reload is still queued, the
+      # handler would later reload a config certbot has already changed.
+      ansible.builtin.meta: flush_handlers
+
+    - name: Obtain or renew the certificate
+      ansible.builtin.command:
+        cmd: >-
+          certbot --nginx
+          -d {{ domain_name }}{% if domain_alias %} -d {{ domain_alias }}{% endif %}
+          --non-interactive --agree-tos --email {{ certbot_email }} --redirect
+      register: certbot_result
+      changed_when: "'Successfully received certificate' in certbot_result.stdout"
+
+    - name: Verify the renewal timer is active
+      # certbot installs a systemd timer. Confirming it here is the difference
+      # between "we have HTTPS" and "we have HTTPS for 90 days and then a
+      # customer-visible outage".
+      ansible.builtin.systemd:
+        name: certbot-renew.timer
+        state: started
+        enabled: true
+      register: renew_timer
+      failed_when: false
+
+    - name: Fall back to the Debian timer name
+      ansible.builtin.systemd:
+        name: certbot.timer
+        state: started
+        enabled: true
+      when: renew_timer is failed or renew_timer.status is not defined
+      failed_when: false

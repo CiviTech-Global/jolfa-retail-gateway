@@ -1,0 +1,46 @@
+# {{ ansible_managed }}
+# Rendered by Ansible from roles/nginx/templates/nginx.conf.j2.
+#
+# This replaces the stock EL9 /etc/nginx/nginx.conf for one reason: the shipped
+# file defines a `listen 80 default_server` block with `server_name _` inside
+# the http context. Any request whose Host header does not match a server_name
+# goes to that block — which, while the site is served from a bare IP address,
+# is every request. There is no separate file to disable, so the whole config
+# is managed here instead.
+#
+# The site itself lives in conf.d/jolfa.conf.
+
+user {{ nginx_user }};
+worker_processes auto;
+error_log /var/log/nginx/error.log notice;
+pid /run/nginx.pid;
+
+include /usr/share/nginx/modules/*.conf;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                    '$status $body_bytes_sent "$http_referer" '
+                    '"$http_user_agent" "$http_x_forwarded_for" '
+                    'rt=$request_time';
+
+    access_log /var/log/nginx/access.log main;
+
+    sendfile            on;
+    tcp_nopush          on;
+    tcp_nodelay         on;
+    keepalive_timeout   65;
+    types_hash_max_size 4096;
+
+    # Do not advertise the exact version in error pages and the Server header.
+    server_tokens off;
+
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    # The site, the rate-limit zones and the upstream all come from here.
+    include /etc/nginx/conf.d/*.conf;
+}

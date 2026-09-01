@@ -1,0 +1,64 @@
+---
+# Installs the nightly backup job. The scripts themselves live in the
+# repository (scripts/backup.sh, scripts/restore.sh) and are exercised end to
+# end; this role wires them into cron and provides the off-box destination.
+
+- name: Load PostgreSQL platform variables
+  # For the client package name and, on EL, the bin directory pg_dump lives in.
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/roles/postgresql/vars/{{ ansible_os_family }}.yml"
+
+- name: Install backup tooling
+  ansible.builtin.package:
+    name:
+      - "{{ postgresql_client_package }}"
+      - rclone      # EPEL on EL9; main archive on Debian
+    state: present
+
+- name: Create the backup directory
+  ansible.builtin.file:
+    path: "{{ backup_dir }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: "0700"
+
+- name: Warn when no off-box destination is configured
+  # A backup on the machine it is protecting is not a backup. This is a warning
+  # rather than a failure so a first deploy is not blocked on the customer
+  # buying object storage — but it must be loud every single run.
+  ansible.builtin.debug:
+    msg: >-
+      WARNING: backup_remote is empty. Backups will exist only on this server.
+      Configure an rclone remote (e.g. an ArvanCloud or S3-compatible bucket)
+      and set backup_remote in group_vars/all/main.yml.
+  when: not backup_remote
+
+- name: Install the nightly backup cron job
+  # PATH is set explicitly: cron runs with a minimal environment, and on EL the
+  # PostgreSQL binaries live in /usr/pgsql-16/bin, which is not on it. Without
+  # this the job fails nightly with "pg_dump: command not found" and nobody
+  # notices until a restore is needed.
+  ansible.builtin.cron:
+    name: "jolfa nightly backup"
+    user: "{{ app_user }}"
+    hour: "{{ backup_cron_hour }}"
+    minute: "{{ backup_cron_minute }}"
+    job: >-
+      PATH={{ postgresql_bin_dir }}:/usr/local/bin:/usr/bin:/bin
+      BACKUP_DIR={{ backup_dir }}
+      RETENTION_DAYS={{ backup_retention_days }}
+      {% if backup_remote %}BACKUP_REMOTE={{ backup_remote }} {% endif %}
+      ENV_FILE={{ app_root }}/shared/Jolfa-Server/.env
+      {{ app_root }}/current/scripts/backup.sh
+      >> /var/log/jolfa/backup.log 2>&1
+    state: "{{ 'present' if backup_enabled | bool else 'absent' }}"
+
+- name: Make the backup and restore scripts executable
+  ansible.builtin.file:
+    path: "{{ app_root }}/current/scripts/{{ item }}"
+    mode: "0750"
+  loop:
+    - backup.sh
+    - restore.sh
+  failed_when: false   # the release may not be checked out yet on first run
