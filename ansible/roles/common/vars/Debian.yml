@@ -20,4 +20,3 @@ base_packages:
 epel_packages: []
 
 ssh_service_name: ssh
-nginx_user: www-data

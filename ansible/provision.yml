@@ -15,3 +15,8 @@
     - common
     - postgresql
     - nodejs
+    # Backup tooling and the nightly cron job are server setup, not deployment.
+    # Running it here means a provisioned server is ready to be backed up
+    # before the first release ever lands — deploy.yml takes a backup before it
+    # migrates, and that must not be the thing that creates the directory.
+    - backup

@@ -17,14 +17,14 @@ export const DEFAULT_SETTINGS: SettingDefault[] = [
   // Branding — name, title and logo of the whole application.
   {
     key: "site_name",
-    value: "بازارچه جلفا",
+    value: "ارس پرو",
     group: "branding",
     isPublic: true,
     description: "Site name shown in header and footer",
   },
   {
     key: "site_title",
-    value: "بازارچه جلفا | فروشگاه محصولات محلی",
+    value: "ارس پرو | فروشگاه محصولات محلی",
     group: "branding",
     isPublic: true,
     description: "Browser tab title and default page title",
@@ -45,7 +45,7 @@ export const DEFAULT_SETTINGS: SettingDefault[] = [
   },
   {
     key: "site_description",
-    value: "فروشگاه محصولات محلی و سنتی بازارچه جلفا",
+    value: "فروشگاه محصولات محلی و سنتی ارس پرو",
     group: "branding",
     isPublic: true,
     description: "Meta description and hero subtitle",
@@ -65,7 +65,7 @@ export const DEFAULT_SETTINGS: SettingDefault[] = [
   { key: "show_footer_social", value: "true", group: "footer", isPublic: true, description: "Show social links in the footer" },
   {
     key: "footer_about",
-    value: "فروشگاه محصولات محلی و سنتی بازارچه جلفا.",
+    value: "فروشگاه محصولات محلی و سنتی ارس پرو.",
     group: "footer",
     isPublic: true,
     description: "Short blurb under the logo in the footer",

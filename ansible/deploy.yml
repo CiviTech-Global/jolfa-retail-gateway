@@ -47,6 +47,21 @@
         path: "{{ app_root }}/current/scripts/backup.sh"
       register: existing_release
 
+    - name: Ensure the backup directory exists before anything writes to it
+      # backup.sh runs as {{ app_user }} and cannot create /var/backups itself:
+      # a minimal EL9 image does not ship that directory (Debian does), and an
+      # unprivileged user cannot mkdir under /var. The backup role creates it,
+      # but that role runs after `app` — so on a server whose first deploy
+      # failed inside `app`, the pre-migration backup would be the first thing
+      # to touch it and would fail with a permissions error. Creating it here
+      # makes the deploy independent of that ordering.
+      ansible.builtin.file:
+        path: "{{ backup_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: "0700"
+
     - name: Back up before migrating
       # Prisma migrations are forward-only. If this deploy's migration drops or
       # renames a column, rollback.yml can put the old code back but nothing

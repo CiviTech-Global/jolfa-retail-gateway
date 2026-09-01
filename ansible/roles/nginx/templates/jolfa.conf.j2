@@ -32,13 +32,12 @@ server {
     client_body_timeout 30s;
 
     # ---- Security headers --------------------------------------------------
-    # HSTS is inert over plain HTTP; it takes effect once certbot adds the TLS
-    # listener to this block.
-    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+    # An include rather than inline directives, and repeated in every location
+    # below that sets a header of its own. nginx inherits `add_header` into a
+    # location ONLY when that location declares none itself — so a block that
+    # sets Cache-Control silently serves no security headers at all. That is
+    # how /uploads/ ended up without nosniff on user-supplied files.
+    include /etc/nginx/jolfa_security_headers;
 
     # ---- TLS policy --------------------------------------------------------
     # Effective once certbot adds `listen 443 ssl`. Kept here as well as in
@@ -69,8 +68,10 @@ server {
     location {{ public_upload_path }}/ {
         alias {{ upload_dir }}/;
         access_log off;
-        expires 1y;
-        add_header Cache-Control "public, immutable";
+        include /etc/nginx/jolfa_security_headers;
+        # `expires` would emit a second, competing Cache-Control header; one
+        # explicit directive is clearer than two that must agree.
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
         try_files $uri =404;
     }
 
@@ -78,8 +79,8 @@ server {
     # Vite fingerprints these; the name changes whenever the content does.
     location /assets/ {
         access_log off;
-        expires 1y;
-        add_header Cache-Control "public, immutable";
+        include /etc/nginx/jolfa_security_headers;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
         try_files $uri =404;
     }
 
@@ -87,7 +88,8 @@ server {
     # Never cached, or visitors stay pinned to a stale build and their browser
     # keeps requesting chunk files the new release no longer has.
     location = /index.html {
-        add_header Cache-Control "no-cache";
+        include /etc/nginx/jolfa_security_headers;
+        add_header Cache-Control "no-cache" always;
     }
 
     # ---- Credential endpoints ----------------------------------------------

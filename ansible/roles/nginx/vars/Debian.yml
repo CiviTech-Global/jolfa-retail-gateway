@@ -5,3 +5,6 @@ nginx_has_sites_enabled: true
 certbot_packages:
   - certbot
   - python3-certbot-nginx
+
+# The account nginx drops privileges to, used by the managed nginx.conf.
+nginx_user: www-data

@@ -1,8 +1,8 @@
 export function HomePage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-12">
-      <h1 className="text-3xl font-bold text-primary">به جلفا خوش آمدید</h1>
-      <p className="mt-4 text-foreground">فروشگاه محصولات محلی و سنتی بازارچه جلفا</p>
+      <h1 className="text-3xl font-bold text-primary">به ارس پرو خوش آمدید</h1>
+      <p className="mt-4 text-foreground">فروشگاه محصولات محلی و سنتی ارس پرو</p>
     </div>
   )
 }

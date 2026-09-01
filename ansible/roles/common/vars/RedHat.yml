@@ -32,4 +32,3 @@ epel_packages:
   - fail2ban-firewalld
 
 ssh_service_name: sshd
-nginx_user: nginx

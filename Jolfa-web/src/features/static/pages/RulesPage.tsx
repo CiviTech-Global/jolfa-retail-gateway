@@ -4,7 +4,7 @@ import { ShieldCheck, RefreshCcw, Truck, CreditCard, AlertCircle } from 'lucide-
 const rules = [
   {
     icon: ShieldCheck,
-    text: 'تمامی محصولات عرضه‌شده در بازارچه جلفا اصلی و دارای مجوزهای لازم هستند.',
+    text: 'تمامی محصولات عرضه‌شده در ارس پرو اصلی و دارای مجوزهای لازم هستند.',
   },
   {
     icon: AlertCircle,

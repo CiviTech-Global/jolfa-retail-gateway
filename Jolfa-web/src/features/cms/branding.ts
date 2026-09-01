@@ -1,6 +1,6 @@
 import { usePublicSettingValue } from './hooks'
 
-export const DEFAULT_SITE_NAME = 'بازارچه جلفا'
+export const DEFAULT_SITE_NAME = 'ارس پرو'
 
 export interface Branding {
   /** Store name, used wherever the brand is written out. */

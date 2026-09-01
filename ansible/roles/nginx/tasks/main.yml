@@ -40,6 +40,26 @@
 # Shared proxy headers
 # ---------------------------------------------------------------------------
 
+- name: Install the security header include
+  # These have to be an include rather than a block of directives, because
+  # nginx inherits `add_header` into a location ONLY when that location sets no
+  # add_header of its own. Every caching location here sets Cache-Control, so
+  # each one silently drops the server-level security headers — including
+  # nosniff on /uploads/, which is the one place user-supplied content is
+  # served. Including the same file everywhere keeps them from drifting apart.
+  ansible.builtin.copy:
+    dest: /etc/nginx/jolfa_security_headers
+    mode: "0644"
+    content: |
+      # Managed by Ansible — roles/nginx
+      # HSTS is inert over plain HTTP; it takes effect once certbot adds TLS.
+      add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header X-Frame-Options "SAMEORIGIN" always;
+      add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+      add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+  notify: Reload nginx
+
 - name: Install the proxy header include
   # Debian ships /etc/nginx/proxy_params; EL9 does not. Shipping our own means
   # the vhost template is identical on both, and the headers are visible in

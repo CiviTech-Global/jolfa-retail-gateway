@@ -30,16 +30,13 @@ releases_to_keep: 5
 # key as the `jolfa` user and switch this to the git@ SSH form.
 git_repo: "https://github.com/CiviTech-Global/jolfa-retail-gateway.git"
 
-# NOT `main`, deliberately. As of 2026-09-01 `main` is 12 commits behind
-# `v1-week3` — it predates the customer account panel, the stock-oversell fix,
-# the session lifecycle, bundle splitting, response caching and all 147 tests.
-# Deploying `main` would ship a materially worse store than the one that has
-# been built.
+# Production runs `main`. v1-week3 was merged on 2026-09-01 (PR #1), so the
+# temporary branch pin is gone.
 #
-# Once v1-week3 is merged, change this back to `main` and re-run deploy.yml.
-# Deploying a long-lived feature branch is a temporary state, not a pattern:
-# `main` should be what production runs.
-git_branch: v1-week3
+# To ship something other than the branch tip — a tag, or a hotfix branch —
+# override per run rather than editing this:
+#   ansible-playbook -i inventory.ini deploy.yml -e git_branch=v1.2.0
+git_branch: main
 
 # ---- Runtime --------------------------------------------------------------
 node_major_version: 22

@@ -32,7 +32,7 @@ const demoProducts = [
     images: [
       { url: demoAsset("product-01.jpg"), altText: "فنجان چای سیاه ارگانیک تازه دم شده" },
       { url: demoAsset("product-02.jpg"), altText: "برگ‌های خشک چای سیاه ارگانیک درجه یک" },
-      { url: demoAsset("product-03.webp"), altText: "بسته‌بندی چای سیاه ارگانیک بازارچه جلفا" },
+      { url: demoAsset("product-03.webp"), altText: "بسته‌بندی چای سیاه ارگانیک ارس پرو" },
     ],
   },
   {
@@ -64,7 +64,7 @@ const demoProducts = [
     images: [
       { url: demoAsset("product-07.jpg"), altText: "رشته‌های زعفران سرگل درجه یک" },
       { url: demoAsset("product-08.webp"), altText: "زعفران سرگل در ظرف بلوری" },
-      { url: demoAsset("product-09.jpg"), altText: "بسته‌بندی زعفران سرگل بازارچه جلفا" },
+      { url: demoAsset("product-09.jpg"), altText: "بسته‌بندی زعفران سرگل ارس پرو" },
     ],
   },
   {
@@ -80,7 +80,7 @@ const demoProducts = [
     images: [
       { url: demoAsset("product-10.jpg"), altText: "مغز گردوی خام و تازه" },
       { url: demoAsset("product-11.jpg"), altText: "گردو و آجیل خشکبار مخلوط" },
-      { url: demoAsset("product-12.jpg"), altText: "بسته‌بندی مغز گردوی خام بازارچه جلفا" },
+      { url: demoAsset("product-12.jpg"), altText: "بسته‌بندی مغز گردوی خام ارس پرو" },
     ],
   },
   {
@@ -96,7 +96,7 @@ const demoProducts = [
     images: [
       { url: demoAsset("product-13.jpg"), altText: "فنجان چای سبز تازه دم" },
       { url: demoAsset("product-14.jpg"), altText: "برگ‌های خشک چای سبز" },
-      { url: demoAsset("product-15.webp"), altText: "بسته‌بندی چای سبز لاغری بازارچه جلفا" },
+      { url: demoAsset("product-15.webp"), altText: "بسته‌بندی چای سبز لاغری ارس پرو" },
     ],
   },
   {
@@ -156,7 +156,7 @@ const demoHomepageSections = [
       autoplayMs: 5000,
       banners: [
         {
-          title: "بازارچه جلفا",
+          title: "ارس پرو",
           subtitle: "محصولات محلی، سنتی و باکیفیت مستقیماً از تولیدکننده به دست شما",
           image: demoAsset("hero-01.jpg"),
           link: "/products",

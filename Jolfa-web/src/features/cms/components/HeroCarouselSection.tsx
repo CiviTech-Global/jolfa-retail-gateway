@@ -20,8 +20,8 @@ interface HeroCarouselSectionProps {
 
 const defaultSlides: Banner[] = [
   {
-    title: 'بازارچه جلفا',
-    subtitle: 'محصولات محلی، سنتی و باکیفیت از بازارچه جلفا مستقیماً به دست شما',
+    title: 'ارس پرو',
+    subtitle: 'محصولات محلی، سنتی و باکیفیت از منطقه آزاد جلفا مستقیماً به دست شما',
     link: '/products',
     buttonText: 'مشاهده محصولات',
   },

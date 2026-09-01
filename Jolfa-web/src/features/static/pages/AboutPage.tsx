@@ -23,9 +23,9 @@ export function AboutPage() {
   return (
     <div className="mx-auto max-w-4xl flex-1 px-4 py-12">
       <ScrollReveal direction="up" className="text-center">
-        <h1 className="text-3xl font-bold text-foreground md:text-4xl">درباره جلفا</h1>
+        <h1 className="text-3xl font-bold text-foreground md:text-4xl">درباره ارس پرو</h1>
         <p className="mx-auto mt-4 max-w-2xl leading-7 text-muted-foreground">
-          بازارچه جلفا فروشگاهی آنلاین برای عرضه محصولات محلی، سنتی و باکیفیت منطقه آزاد جلفا است.
+          ارس پرو فروشگاهی آنلاین برای عرضه محصولات محلی، سنتی و باکیفیت منطقه آزاد جلفا است.
           هدف ما ایجاد بستری ساده و مطمئن برای خرید مستقیم از تولیدکنندگان و عرضه‌کنندگان محلی است.
         </p>
       </ScrollReveal>
@@ -46,7 +46,7 @@ export function AboutPage() {
 
       <ScrollReveal direction="up" delay={0.2} className="mt-10 rounded-2xl border border-border bg-surface p-6">
         <p className="leading-7 text-muted-foreground">
-          در جلفا می‌توانید انواع مواد غذایی، نوشیدنی‌ها، شیرینی‌ها و لوازم خانگی را با قیمت مناسب و
+          در ارس پرو می‌توانید انواع مواد غذایی، نوشیدنی‌ها، شیرینی‌ها و لوازم خانگی را با قیمت مناسب و
           ارسال به سراسر کشور سفارش دهید. ما همواره تلاش می‌کنیم تجربه خریدی دلنشین، امن و سریع را
           برای مشتریان خود فراهم کنیم.
         </p>
