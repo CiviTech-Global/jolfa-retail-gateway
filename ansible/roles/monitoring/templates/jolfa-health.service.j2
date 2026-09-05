@@ -9,7 +9,13 @@ Type=oneshot
 User={{ app_user }}
 Group={{ app_group }}
 
-Environment=HEALTH_URLS={{ health_check_urls }}
+# Quoted: systemd splits an unquoted Environment= value on whitespace and reads
+# each token as a separate NAME=VALUE assignment. HEALTH_URLS is a space
+# separated list, so without the quotes every URL after the first was parsed as
+# its own assignment, failed to match NAME=VALUE, and was dropped with
+# "Invalid environment assignment, ignoring: ..." in the journal — leaving the
+# monitor silently watching only the first URL.
+Environment="HEALTH_URLS={{ health_check_urls }}"
 Environment=HEALTH_TIMEOUT={{ health_check_timeout }}
 Environment=HEALTH_THRESHOLD={{ health_failure_threshold }}
 Environment=HEALTH_STATE_DIR=/var/lib/jolfa-health

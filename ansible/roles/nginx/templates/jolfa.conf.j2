@@ -40,12 +40,20 @@ server {
     include /etc/nginx/jolfa_security_headers;
 
     # ---- TLS policy --------------------------------------------------------
-    # Effective once certbot adds `listen 443 ssl`. Kept here as well as in
-    # certbot's own include so the policy survives that include changing.
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_prefer_server_ciphers off;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 1d;
+    # Deliberately NOT set here. `certbot --nginx` inserts its own
+    # ssl_session_cache and ssl_session_timeout into this server block and adds
+    # `include /etc/letsencrypt/options-ssl-nginx.conf`, which carries the
+    # protocol and cipher policy (TLS 1.2/1.3).
+    #
+    # Declaring them here as well made certbot refuse to install the
+    # certificate — "tried to insert directive ssl_session_cache
+    # shared:le_nginx_SSL:10m but found conflicting shared:SSL:10m" — and had
+    # both been accepted, nginx would then have failed to load on the duplicate.
+    # The certificate is issued before that step, so the failure is silent about
+    # the fact that the only missing piece is installation.
+    #
+    # If the policy ever needs to differ from Let's Encrypt's, override it in
+    # nginx.conf at the http level, not here.
 
     # ---- Compression -------------------------------------------------------
     gzip on;

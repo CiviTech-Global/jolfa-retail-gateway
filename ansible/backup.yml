@@ -1,9 +1,14 @@
 ---
-# Install (or re-install) the nightly backup job, and optionally take a backup
-# right now.
+# Take a backup now, and install (or re-install) the nightly backup job.
 #
 #   ansible-playbook -i inventory.ini backup.yml
-#   ansible-playbook -i inventory.ini backup.yml -e run_now=true
+#   ansible-playbook -i inventory.ini backup.yml -e run_now=false   # wiring only
+#
+# `run_now` defaults to TRUE. It used to default to false, which meant the
+# playbook named `backup.yml` reported success without having backed anything
+# up — the one failure mode you discover while trying to recover. Reinstalling
+# the cron job without taking a backup is the rarer intent, so it is the one
+# that now needs the flag.
 
 - name: Configure backups for Jolfa
   hosts: jolfa
@@ -24,9 +29,34 @@
       become_user: "{{ app_user }}"
       changed_when: true
       register: backup_run
-      when: run_now | default(false) | bool
+      when: run_now | default(true) | bool
 
     - name: Show the backup output
       ansible.builtin.debug:
         var: backup_run.stdout_lines
-      when: run_now | default(false) | bool
+      when: run_now | default(true) | bool
+
+    # A backup that has never been read back is a hypothesis. This asserts the
+    # dump is a well-formed custom-format archive that pg_restore can actually
+    # open, which catches a truncated or empty dump immediately rather than at
+    # the moment it is needed.
+    - name: Verify the backup just taken is readable by pg_restore
+      ansible.builtin.shell:
+        cmd: >-
+          set -o pipefail;
+          latest="$(ls -1d {{ backup_dir }}/*/ | sort | tail -1)";
+          test -f "${latest}manifest.txt" || { echo "no manifest — backup incomplete"; exit 1; };
+          {{ postgresql_bin_dir }}/pg_restore --list "${latest}database.dump" | wc -l
+        executable: /bin/bash
+      become_user: "{{ app_user }}"
+      register: restore_list
+      changed_when: false
+      failed_when: restore_list.rc != 0 or (restore_list.stdout | trim | int) < 1
+      when: run_now | default(true) | bool
+
+    - name: Report the verification
+      ansible.builtin.debug:
+        msg: >-
+          Backup verified: pg_restore can read the dump and lists
+          {{ restore_list.stdout | trim }} objects.
+      when: run_now | default(true) | bool

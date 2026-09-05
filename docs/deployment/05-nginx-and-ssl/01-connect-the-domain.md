@@ -448,3 +448,6 @@ adds another row to rewrite.
 | Site loads, all actions fail | frontend still targets the IP | Re-run `deploy.yml` |
 | Certbot fails validation | DNS not ready, or `www` missing | Wait for step 4's checkpoint |
 | `nslookup` disagrees with reality | ISP intercepting port 53 | Trust `dns-check.py` |
+| certbot: "tried to insert ssl_session_cache … found conflicting" | the vhost declared its own TLS policy | Already fixed — the template leaves TLS policy to certbot's include. The certificate is *issued* before this step, so only installation failed; re-running `nginx.yml` installs it without re-requesting |
+| Health monitor reports DOWN while the site works | certbot rewrote the port-80 block to `return 404` for any host that is not the domain, and the monitor polled `http://127.0.0.1/health` | Already fixed — `health_check_urls` now uses the public hostname. Loopback checks must target the app port directly |
+| `http://<ip>/` returns 404 after the switch | same `return 404`; the IP is no longer a served hostname | Expected. Reach the site by name |

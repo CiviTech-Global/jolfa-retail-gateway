@@ -106,7 +106,7 @@ sms_sender_number: ""
 # variables written into the inventory file, so an enable_ssl there is silently
 # ignored. (domain_name, domain_alias and certbot_email have no entry here, so
 # the inventory is the right place for those.)
-enable_ssl: false
+enable_ssl: true
 nginx_client_max_body_size: 10M
 # Must be >= the API's MAX_FILE_SIZE or Nginx rejects a legal upload with a 413
 # before Node ever sees it.
@@ -178,9 +178,18 @@ semaphore_admin_name: "Araspro Admin"
 # docs/deployment/07-day-2-operations/06-scaling-and-monitoring.md.
 #
 # Both URLs are checked, and they fail for different reasons: the first goes
-# through nginx (so it also catches a broken vhost or a stopped nginx), the
-# second hits Node directly (so a failure there is unambiguously the app).
-health_check_urls: "http://127.0.0.1/health http://127.0.0.1:3001/health"
+# through nginx over TLS (so it also catches a broken vhost, an expired
+# certificate, or a stopped nginx), the second hits Node directly on loopback
+# (so a failure there is unambiguously the app).
+#
+# The first URL is the PUBLIC hostname, not http://127.0.0.1/. Once certbot
+# takes over the port-80 block it rewrites it to redirect the two real
+# hostnames and `return 404` for everything else — so a loopback request, whose
+# Host header is `127.0.0.1`, gets a 404 and the monitor reports the site down
+# while it is serving visitors perfectly. That happened during the araspro.ir
+# switch. Checking the name visitors actually use is also the more honest test:
+# it exercises DNS, TLS and the vhost in one request.
+health_check_urls: "https://{{ domain_name }}/health http://127.0.0.1:{{ backend_port }}/health"
 health_check_interval: 2min
 health_check_timeout: 10
 # Consecutive failures before alerting. 1 would page on a single dropped
