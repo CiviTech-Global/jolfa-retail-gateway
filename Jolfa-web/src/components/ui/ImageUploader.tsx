@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Check, ImagePlus, RefreshCw, Star, Trash2, TriangleAlert, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { uid } from '@/lib/uid'
 import {
   ACCEPT_ATTRIBUTE,
   MAX_UPLOAD_BYTES,
@@ -144,7 +145,10 @@ export function ImageUploader({
         const previewUrl = URL.createObjectURL(file)
         previewUrls.current.add(previewUrl)
         return {
-          id: `${file.name}-${file.size}-${crypto.randomUUID()}`,
+          // `uid()` and not `crypto.randomUUID()`: the latter is undefined
+          // outside a secure context, and this component is reachable over
+          // plain HTTP.
+          id: `${file.name}-${file.size}-${uid()}`,
           file,
           previewUrl,
           progress: 0,

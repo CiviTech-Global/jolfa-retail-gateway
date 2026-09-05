@@ -149,3 +149,18 @@ change that password immediately.
 | certbot: "unauthorized" | DNS not pointing here, or port 80 blocked | `dig +short`; `firewall-cmd --list-all` |
 | Browser shows an old build | `index.html` cached somewhere upstream | The vhost sets `no-cache`; check for a CDN or the customer's own proxy in front |
 | Site loads, every API call fails with CORS | `domain_name` in the inventory does not match the URL people actually use | Fix the inventory and re-run `deploy.yml` — `CORS_ORIGIN` is baked from it |
+
+---
+
+## 5.6 Connecting the domain
+
+Moving the store from the bare IP to `https://araspro.ir` is its own page —
+[5.1 Connecting araspro.ir](01-connect-the-domain.md). Read it before changing
+anything: the DNS layer that fails is not the one most guides point at, and two
+of the steps are order-dependent.
+
+Diagnose the DNS chain with:
+
+```console
+$ python3 scripts/dns-check.py araspro.ir <SERVER_IP>
+```

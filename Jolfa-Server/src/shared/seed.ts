@@ -12,18 +12,33 @@ interface SeedUser {
   role: "ADMIN" | "CUSTOMER";
 }
 
+/**
+ * Creates the seed user if it is missing. If it already exists, its password is
+ * LEFT ALONE.
+ *
+ * This used to rewrite `passwordHash` from the environment on every call, and
+ * `seedDefaults()` runs on every boot. The effect was that an administrator
+ * could change their password in the admin UI, see it succeed, and have it
+ * silently reverted to the seed value by the next restart or deploy — while
+ * believing the old credential was dead. The seed password is written in a
+ * rendered `.env` and in the deployment notes, so that is a real exposure and
+ * not just a papercut.
+ *
+ * The seed exists to make a fresh database usable, not to pin the credential
+ * forever, so it now only ever sets a password at creation time.
+ */
 async function upsertSeedUser(input: SeedUser): Promise<{ created: boolean }> {
   const existing = await prisma.user.findFirst({
     where: { phone: input.phone },
   });
 
-  const passwordHash = await bcrypt.hash(input.password, 12);
-
   if (existing) {
+    // Role and active flag are still reconciled: locking yourself out of the
+    // only admin account is recoverable this way, and neither is a secret.
+    // `passwordHash` is deliberately absent from this update.
     await prisma.user.update({
       where: { id: existing.id },
       data: {
-        passwordHash,
         isActive: true,
         role: input.role,
         ...(input.email ? { email: input.email } : {}),
@@ -36,7 +51,7 @@ async function upsertSeedUser(input: SeedUser): Promise<{ created: boolean }> {
     data: {
       phone: input.phone,
       email: input.email ?? null,
-      passwordHash,
+      passwordHash: await bcrypt.hash(input.password, 12),
       firstName: input.firstName,
       role: input.role,
       isActive: true,
@@ -95,7 +110,9 @@ export async function seedDefaults(): Promise<void> {
     try {
       const { created } = await upsertSeedUser(seed);
       console.log(
-        `[seed] ${created ? "Created" : "Updated"} ${seed.role.toLowerCase()} user: ${seed.phone}`
+        created
+          ? `[seed] Created ${seed.role.toLowerCase()} user: ${seed.phone}`
+          : `[seed] ${seed.role.toLowerCase()} user ${seed.phone} already exists; password left unchanged`
       );
     } catch (error) {
       console.error(`[seed] Failed to seed ${seed.role} user:`, error);

@@ -126,6 +126,15 @@ function ResetPasswordForm({
                     variant="outline"
                     size="icon"
                     onClick={() => {
+                      // `navigator.clipboard` is undefined outside a secure
+                      // context, and the admin panel is reachable over plain
+                      // HTTP. Reading `.writeText` off it would throw
+                      // synchronously, so `.catch` would never run and the
+                      // button would fail silently.
+                      if (!navigator.clipboard?.writeText) {
+                        toast.error('کپی خودکار در این حالت ممکن نیست؛ رمز را دستی کپی کنید')
+                        return
+                      }
                       navigator.clipboard
                         .writeText(password)
                         .then(() => toast.success('رمز عبور کپی شد'))
