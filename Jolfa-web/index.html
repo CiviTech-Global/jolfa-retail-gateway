@@ -5,6 +5,20 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ارس پرو | Araspro</title>
+
+    <!--
+      ENAMAD (اینماد) ownership verification.
+
+      This lives in index.html rather than in the <Seo> component on purpose:
+      ENAMAD's checker fetches the raw HTML and does not execute JavaScript, so
+      a tag rendered by React would be invisible to it no matter how the page
+      looks in a browser. Vite copies this file through the build untouched.
+
+      Do not remove it after verification passes — ENAMAD re-checks
+      periodically and the trust seal is withdrawn if the tag disappears.
+    -->
+    <meta name="enamad" content="71332061" />
+
     <!-- Dark theme temporarily disabled — no pre-hydration dark-class script for now. -->
   </head>
   <body>
