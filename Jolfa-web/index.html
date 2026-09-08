@@ -16,6 +16,12 @@
 
       Do not remove it after verification passes — ENAMAD re-checks
       periodically and the trust seal is withdrawn if the tag disappears.
+
+      The same code is also proved by a companion file, public/71332061.txt,
+      which must stay empty and reachable at https://araspro.ir/71332061.txt.
+      It lives in public/ so the build copies it to the site root on every
+      deploy; a file placed on the server by hand would be erased by the next
+      release. Both methods are registered, so leave both in place.
     -->
     <meta name="enamad" content="71332061" />
 
