@@ -68,16 +68,45 @@ fi
 
 psql_run() { sudo -u postgres "$PSQL_BIN" -d "$DB" -v ON_ERROR_STOP=1 "$@"; }
 
-# Every column that can hold an absolute media URL. Derived from the Prisma
-# schema: ProductImage.url, Category.imageUrl, Banner.imageUrl, Setting.value.
-# `settings` is matched loosely because a setting's value embeds the URL inside
-# a larger string; the others hold the URL alone.
-TABLES=(
-  "product_images:url:prefix"
-  "categories:image_url:prefix"
-  "banners:image_url:prefix"
-  "settings:value:contains"
-)
+# The columns are DISCOVERED, not listed.
+#
+# The first version of this script carried a hand-written list taken from the
+# Prisma schema — product_images.url, categories.image_url, banners.image_url,
+# settings.value. It missed homepage_sections.config, a jsonb column whose
+# document embeds the hero-carousel image URLs, so the slider broke after the
+# cutover while everything on the list was fine. A list of tables someone
+# remembered is exactly the wrong tool here: what matters is which columns
+# actually contain the string, and the database can answer that directly.
+#
+# Every text-ish and json-ish column in the public schema is searched. Audit and
+# webhook payload columns are excluded: they are historical records of what was
+# sent or received at the time, and rewriting them would falsify the log.
+EXCLUDED_TABLES="audit_logs|webhook_deliveries|notifications|payments"
+
+discover() {
+  sudo -u postgres "$PSQL_BIN" -d "$DB" -tAF'|' -c "
+    SELECT table_name, column_name, data_type
+      FROM information_schema.columns
+     WHERE table_schema = 'public'
+       AND data_type IN ('text','character varying','json','jsonb')
+       AND table_name !~ '^($EXCLUDED_TABLES)$'
+     ORDER BY table_name, column_name"
+}
+
+# Builds the WHERE/SET fragments for one column, since a json column has to be
+# cast to text to be searched and cast back to be written.
+expr_for() {
+  case "$1" in
+    json|jsonb) printf '%s::text' "$2" ;;
+    *)          printf '%s' "$2" ;;
+  esac
+}
+cast_back() {
+  case "$1" in
+    json|jsonb) printf '::%s' "$1" ;;
+    *)          printf '' ;;
+  esac
+}
 
 echo "Rewriting media origins in database '$DB'"
 echo "  from : $FROM"
@@ -86,53 +115,44 @@ echo "  mode : $([[ $APPLY -eq 1 ]] && echo 'APPLY (writes)' || echo 'DRY RUN (n
 echo
 
 total=0
-for entry in "${TABLES[@]}"; do
-  IFS=: read -r table column match <<<"$entry"
-  if [[ "$match" == "prefix" ]]; then
-    where="$column LIKE '${FROM}%'"
-  else
-    where="$column LIKE '%${FROM}%'"
-  fi
+HITS=()
+while IFS='|' read -r table column dtype; do
+  [[ -n "$table" ]] || continue
+  expr="$(expr_for "$dtype" "$column")"
+  count=$(psql_run -tAc \
+    "SELECT count(*) FROM \"$table\" WHERE $expr LIKE '%${FROM}%'" 2>/dev/null || echo "ERR")
+  [[ "$count" == "ERR" || "$count" == "0" ]] && continue
 
-  count=$(psql_run -tAc "SELECT count(*) FROM $table WHERE $where" 2>/dev/null || echo "ERR")
-  if [[ "$count" == "ERR" ]]; then
-    echo "  $table.$column — table missing or unreadable, skipping"
-    continue
-  fi
-  printf "  %-16s %-11s %s row(s) to change\n" "$table" "$column" "$count"
+  printf "  %-20s %-14s %-9s %s row(s)\n" "$table" "$column" "$dtype" "$count"
+  psql_run -tAc "SELECT '      ' || substring($expr from '${FROM}[^\"'' ]*') \
+                   FROM \"$table\" WHERE $expr LIKE '%${FROM}%' LIMIT 2"
+  HITS+=("$table|$column|$dtype")
   total=$((total + count))
-
-  if [[ "$count" != "0" ]]; then
-    psql_run -tAc "SELECT '      ' || $column FROM $table WHERE $where LIMIT 3"
-  fi
-done
+done < <(discover)
 
 echo
 if [[ "$total" == "0" ]]; then
-  echo "Nothing matches '$FROM'. Either the switch already ran, or --from is wrong."
+  echo "Nothing anywhere matches '$FROM'. Either the switch already ran, or --from is wrong."
   exit 0
 fi
 
 if [[ $APPLY -eq 0 ]]; then
-  echo "$total row(s) would change. Re-run with --apply to write them."
+  echo "$total row(s) across ${#HITS[@]} column(s) would change. Re-run with --apply."
   echo "Take a backup first:  ansible-playbook -i inventory.ini backup.yml"
   exit 0
 fi
 
-echo "Applying $total change(s) in one transaction..."
+echo "Applying $total change(s) across ${#HITS[@]} column(s) in one transaction..."
 
-# One transaction for all four tables: a partial rewrite would leave the
-# catalogue split across two origins, which is worse than not starting.
+# One transaction for every column: a partial rewrite would leave the site split
+# across two origins, which is worse than not starting.
 {
   echo "BEGIN;"
-  for entry in "${TABLES[@]}"; do
-    IFS=: read -r table column match <<<"$entry"
-    if [[ "$match" == "prefix" ]]; then
-      where="$column LIKE '${FROM}%'"
-    else
-      where="$column LIKE '%${FROM}%'"
-    fi
-    echo "UPDATE $table SET $column = replace($column, '$FROM', '$TO') WHERE $where;"
+  for hit in "${HITS[@]}"; do
+    IFS='|' read -r table column dtype <<<"$hit"
+    expr="$(expr_for "$dtype" "$column")"
+    back="$(cast_back "$dtype")"
+    echo "UPDATE \"$table\" SET \"$column\" = replace($expr, '$FROM', '$TO')$back WHERE $expr LIKE '%${FROM}%';"
   done
   echo "COMMIT;"
 } | psql_run -q
