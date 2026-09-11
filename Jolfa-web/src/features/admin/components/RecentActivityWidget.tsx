@@ -1,4 +1,5 @@
 import type { DashboardRecentActivity } from '../types'
+import { formatDate } from '@/lib/utils'
 
 interface RecentActivityWidgetProps {
   activity: DashboardRecentActivity[]
@@ -47,7 +48,7 @@ export function RecentActivityWidget({ activity }: RecentActivityWidgetProps) {
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     توسط {item.user ? `${item.user.firstName ?? ''} ${item.user.lastName ?? ''}`.trim() || item.user.phone : 'سیستم'}
                     {' • '}
-                    {new Date(item.createdAt).toLocaleString('fa-IR')}
+                    {formatDate(item.createdAt, true)}
                   </p>
                 </div>
               </li>

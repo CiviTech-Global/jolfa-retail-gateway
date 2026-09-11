@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Check, ImagePlus, RefreshCw, Star, Trash2, TriangleAlert, X } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, formatNumber } from '@/lib/utils'
 import { uid } from '@/lib/uid'
 import {
   ACCEPT_ATTRIBUTE,
@@ -10,7 +10,6 @@ import {
   validateImageFile,
 } from '@/features/uploads/api'
 
-const faNumber = new Intl.NumberFormat('fa-IR')
 
 export interface UploadedImage {
   url: string
@@ -133,7 +132,7 @@ export function ImageUploader({
         if (validationError) {
           problems.push(`${file.name}: ${validationError}`)
         } else if (accepted.length >= remainingSlots) {
-          problems.push(`${file.name}: حداکثر ${faNumber.format(maxFiles)} تصویر مجاز است`)
+          problems.push(`${file.name}: حداکثر ${formatNumber(maxFiles)} تصویر مجاز است`)
         } else {
           accepted.push(file)
         }
@@ -248,7 +247,7 @@ export function ImageUploader({
               >
                 <img
                   src={image.url}
-                  alt={image.altText || `تصویر ${faNumber.format(index + 1)}`}
+                  alt={image.altText || `تصویر ${formatNumber(index + 1)}`}
                   className="h-full w-full object-cover"
                 />
 
@@ -297,14 +296,14 @@ export function ImageUploader({
             >
               <ImagePlus className="h-6 w-6" />
               <span className="text-xs font-medium">افزودن تصویر</span>
-              <span className="text-[10px]">{faNumber.format(remainingSlots)} جای خالی</span>
+              <span className="text-[10px]">{formatNumber(remainingSlots)} جای خالی</span>
             </motion.button>
           )}
         </div>
 
         <p className="relative mt-3 text-xs text-muted-foreground">
           تصاویر را بکشید و اینجا رها کنید — JPG، PNG، WebP یا GIF، حداکثر{' '}
-          {faNumber.format(Math.round(MAX_UPLOAD_BYTES / (1024 * 1024)))} مگابایت.
+          {formatNumber(Math.round(MAX_UPLOAD_BYTES / (1024 * 1024)))} مگابایت.
         </p>
 
         <input
@@ -433,7 +432,7 @@ function UploadTile({
               {item.progress >= 100 ? (
                 <Check className="h-4 w-4" />
               ) : (
-                `${faNumber.format(item.progress)}٪`
+                `${formatNumber(item.progress)}٪`
               )}
             </span>
           </>

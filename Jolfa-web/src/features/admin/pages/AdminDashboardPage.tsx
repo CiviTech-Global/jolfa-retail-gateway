@@ -9,6 +9,7 @@ import { RecentOrdersTable } from '../components/RecentOrdersTable'
 import { TopProductsList } from '../components/TopProductsList'
 import { QuickActionsWidget } from '../components/QuickActionsWidget'
 import { RecentActivityWidget } from '../components/RecentActivityWidget'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
 
@@ -36,10 +37,10 @@ export function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       <ScrollReveal>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground md:text-3xl">داشبورد مدیریت</h1>
-          <p className="mt-1 text-muted-foreground">خلاصه‌ای از عملکرد فروشگاه در یک نگاه.</p>
-        </div>
+        <PageHeader
+        title="داشبورد مدیریت"
+        description="خلاصه‌ای از عملکرد فروشگاه در یک نگاه."
+      />
       </ScrollReveal>
 
       <KpiBentoGrid stats={stats!} />

@@ -11,7 +11,7 @@ import {
   Wallet,
   Clock,
 } from 'lucide-react'
-import { formatPrice } from '@/lib/utils'
+import { formatDate, formatNumber, formatPrice } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -91,7 +91,6 @@ function summarise(orders: OrderDto[]): CustomerStats {
   )
 }
 
-const faNumber = new Intl.NumberFormat('fa-IR')
 
 export function UserDashboardPage() {
   const { user } = useAuth()
@@ -104,7 +103,7 @@ export function UserDashboardPage() {
   const stats = summarise(orders)
 
   const displayName = user?.firstName || user?.phone || 'کاربر'
-  const joinDate = user?.createdAt ? new Date(user.createdAt).toLocaleDateString('fa-IR') : '-'
+  const joinDate = user?.createdAt ? formatDate(user.createdAt) : '-'
 
   return (
     <div>
@@ -125,18 +124,18 @@ export function UserDashboardPage() {
           <StatTile
             icon={ShoppingBag}
             label="کل سفارش‌ها"
-            value={`${faNumber.format(stats.total)} سفارش`}
+            value={`${formatNumber(stats.total)} سفارش`}
           />
           <StatTile
             icon={Truck}
             label="در جریان"
-            value={`${faNumber.format(stats.inProgress)} سفارش`}
+            value={`${formatNumber(stats.inProgress)} سفارش`}
             hint="در انتظار پرداخت، پردازش یا ارسال"
           />
           <StatTile
             icon={Package}
             label="تحویل شده"
-            value={`${faNumber.format(stats.delivered)} سفارش`}
+            value={`${formatNumber(stats.delivered)} سفارش`}
           />
           <StatTile icon={Wallet} label="مجموع خرید" value={formatPrice(stats.spent)} />
         </ScrollReveal>
@@ -258,7 +257,7 @@ export function UserDashboardPage() {
                     <CardTitle className="text-base">سفارش {order.orderNumber}</CardTitle>
                     <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
                       <Clock className="h-3.5 w-3.5" />
-                      {new Date(order.createdAt).toLocaleDateString('fa-IR')}
+                      {formatDate(order.createdAt)}
                     </p>
                   </div>
                   <Badge variant={statusVariants[order.status] ?? 'default'}>

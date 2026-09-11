@@ -3,10 +3,9 @@ import { Link, useParams } from 'react-router'
 import { ProductGrid } from '../components/ProductGrid'
 import { getCategoryBySlug, getProducts } from '../api'
 import { BackButton, Breadcrumbs } from '@/components/layout/Breadcrumbs'
-import { FALLBACK_IMAGE_URL } from '@/lib/utils'
+import { FALLBACK_IMAGE_URL, formatNumber } from '@/lib/utils'
 import type { CategoryTreeDto } from '../types'
 
-const faNumber = new Intl.NumberFormat('fa-IR')
 
 /**
  * One page serves both levels of the catalogue, because the URL shape is the
@@ -83,7 +82,7 @@ export function CategoryPage() {
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h1 className="text-2xl font-bold text-foreground">{category.name}</h1>
         <span className="text-sm text-muted-foreground">
-          {faNumber.format(category.productCount)} محصول
+          {formatNumber(category.productCount)} محصول
         </span>
       </div>
       {category.description && <p className="mt-2 text-muted-foreground">{category.description}</p>}
@@ -138,7 +137,7 @@ function SubcategoryCard({ subcategory }: { subcategory: CategoryTreeDto }) {
           {subcategory.name}
         </h3>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {faNumber.format(subcategory.productCount)} محصول
+          {formatNumber(subcategory.productCount)} محصول
         </p>
       </div>
     </Link>

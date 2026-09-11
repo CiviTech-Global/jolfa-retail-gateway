@@ -1,6 +1,6 @@
 import { Link } from 'react-router'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
-import { FALLBACK_IMAGE_URL } from '@/lib/utils'
+import { FALLBACK_IMAGE_URL, formatNumber } from '@/lib/utils'
 import type { CategoryDto, CategoryTreeDto } from '../types'
 
 interface CategoryListProps {
@@ -9,7 +9,6 @@ interface CategoryListProps {
   maxSubcategoryChips?: number
 }
 
-const faNumber = new Intl.NumberFormat('fa-IR')
 
 function hasChildren(category: CategoryDto | CategoryTreeDto): category is CategoryTreeDto {
   return 'children' in category && Array.isArray(category.children)
@@ -54,7 +53,7 @@ export function CategoryList({ categories, maxSubcategoryChips = 4 }: CategoryLi
                     {category.name}
                   </h3>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    {faNumber.format(category.productCount)} محصول
+                    {formatNumber(category.productCount)} محصول
                   </p>
                   {category.description && (
                     <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
@@ -84,7 +83,7 @@ export function CategoryList({ categories, maxSubcategoryChips = 4 }: CategoryLi
                           to={`/categories/${category.slug}`}
                           className="inline-block rounded-full px-2.5 py-1 text-xs text-primary hover:underline"
                         >
-                          + {faNumber.format(overflow)} مورد دیگر
+                          + {formatNumber(overflow)} مورد دیگر
                         </Link>
                       </li>
                     )}

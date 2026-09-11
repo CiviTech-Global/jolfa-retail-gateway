@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
 import { ChevronLeft, CreditCard, Package, ShoppingBag, Truck } from 'lucide-react'
 import { toast } from 'sonner'
-import { cn, formatPrice } from '@/lib/utils'
+import { cn, formatDate, formatNumber, formatPrice } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent } from '@/components/ui/Card'
@@ -21,7 +21,6 @@ import {
 } from '../status'
 import type { OrderDto } from '../types'
 
-const faNumber = new Intl.NumberFormat('fa-IR')
 
 function OrderCard({ order }: { order: OrderDto }) {
   const [isPaying, setIsPaying] = useState(false)
@@ -51,8 +50,8 @@ function OrderCard({ order }: { order: OrderDto }) {
               سفارش {order.orderNumber}
             </Link>
             <p className="mt-1 text-sm text-muted-foreground">
-              {new Date(order.createdAt).toLocaleDateString('fa-IR')} ·{' '}
-              {faNumber.format(itemCount)} کالا
+              {formatDate(order.createdAt)} ·{' '}
+              {formatNumber(itemCount)} کالا
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -69,7 +68,7 @@ function OrderCard({ order }: { order: OrderDto }) {
           {order.items.slice(0, 3).map((item) => (
             <div key={item.id} className="flex items-center justify-between gap-3 text-sm">
               <span className="min-w-0 truncate text-foreground">
-                {item.productTitle} × {faNumber.format(item.quantity)}
+                {item.productTitle} × {formatNumber(item.quantity)}
               </span>
               <span className="shrink-0 tabular-nums text-muted-foreground">
                 {formatPrice(item.totalPrice)}
@@ -78,7 +77,7 @@ function OrderCard({ order }: { order: OrderDto }) {
           ))}
           {order.items.length > 3 && (
             <p className="text-sm text-muted-foreground">
-              و {faNumber.format(order.items.length - 3)} کالای دیگر
+              و {formatNumber(order.items.length - 3)} کالای دیگر
             </p>
           )}
         </div>
@@ -221,7 +220,7 @@ export function OrdersPage() {
             قبلی
           </Button>
           <span className="text-sm text-foreground">
-            صفحه {faNumber.format(page)} از {faNumber.format(totalPages)}
+            صفحه {formatNumber(page)} از {formatNumber(totalPages)}
           </span>
           <Button
             variant="outline"

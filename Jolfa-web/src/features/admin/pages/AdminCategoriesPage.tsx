@@ -3,12 +3,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Pencil, Trash2, CornerDownLeft } from 'lucide-react'
+import { Plus, Pencil, Trash2, CornerDownLeft, FolderTree } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
 import { Input, Textarea } from '@/components/ui/Input'
 import { Switch } from '@/components/ui/Switch'
 import { Badge } from '@/components/ui/Badge'
+import { DataTable } from '@/components/ui/DataTable'
+import { formatNumber } from '@/lib/utils'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogForm, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/Dialog'
 import { FormField } from '@/components/ui/FormField'
@@ -221,91 +224,118 @@ export function AdminCategoriesPage() {
 
   return (
     <ScrollReveal className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground md:text-3xl">مدیریت دسته‌بندی‌ها</h1>
-          <p className="mt-2 text-muted-foreground">دسته‌بندی‌ها را ایجاد، ویرایش یا حذف کنید.</p>
-        </div>
-        <Button onClick={openCreate} className="inline-flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          دسته‌بندی جدید
-        </Button>
-      </div>
+      <PageHeader
+        title="مدیریت دسته‌بندی‌ها"
+        description="دسته‌بندی‌ها را ایجاد، ویرایش یا حذف کنید."
+        action={
+          <Button onClick={openCreate} className="inline-flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            دسته‌بندی جدید
+          </Button>
+        }
+      />
 
       <Card>
         <CardHeader>
           <CardTitle>لیست دسته‌بندی‌ها</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted">
-                <tr>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">نام</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">اسلاگ</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">وضعیت</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">ترتیب</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">عملیات</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">در حال بارگذاری ...</td>
-                  </tr>
-                ) : rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">دسته‌بندی یافت نشد.</td>
-                  </tr>
-                ) : (
-                  rows.map(({ category, depth, parentName }) => (
-                    <tr key={category.id} className={depth === 1 ? 'bg-muted/30' : undefined}>
-                      <td className="px-4 py-3 font-medium text-foreground">
-                        <span className={depth === 1 ? 'flex items-center gap-1.5 ps-6' : undefined}>
-                          {depth === 1 && (
-                            <CornerDownLeft
-                              className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-                              aria-hidden="true"
-                            />
-                          )}
-                          <span>{category.name}</span>
-                          <span className="text-xs font-normal text-muted-foreground">
-                            {depth === 0
-                              ? `دسته‌بندی · ${category.productCount} محصول`
-                              : `زیردسته «${parentName}» · ${category.productCount} محصول`}
-                          </span>
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">{category.slug}</td>
-                      <td className="px-4 py-3">
-                        <Badge variant={category.isActive ? 'success' : 'danger'}>
-                          {category.isActive ? 'فعال' : 'غیرفعال'}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-foreground">{category.displayOrder}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-2">
-                          <Button size="sm" variant="outline" onClick={() => openEdit(category)}>
-                            <Pencil className="h-4 w-4" />
-                            <span className="sr-only">ویرایش</span>
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="danger"
-                            loading={deleteMutation.isPending}
-                            onClick={() => handleDelete(category.slug)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            <span className="sr-only">حذف</span>
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+        <CardContent>
+          {/* No sorting here on purpose. The rows are a flattened tree — each
+              parent immediately followed by its children — and reordering them
+              by any column would interleave subcategories with unrelated
+              parents, destroying the only thing the layout communicates. The
+              list is also short enough that paging it would hide structure
+              rather than reveal it. */}
+          <DataTable
+            caption="دسته‌بندی‌ها و زیردسته‌ها"
+            rows={rows}
+            getRowId={(row) => row.category.id}
+            isLoading={isLoading}
+            emptyMessage="هنوز دسته‌بندی‌ای ثبت نشده است."
+            emptyIcon={<FolderTree className="h-6 w-6" aria-hidden="true" />}
+            disableInternalPagination
+            rowClassName={({ depth }) => (depth === 1 ? 'bg-muted/20' : undefined)}
+            columns={[
+              {
+                id: 'name',
+                header: 'نام',
+                cell: ({ category, depth, parentName }) => (
+                  <div className={depth === 1 ? 'flex items-start gap-2 ps-6' : undefined}>
+                    {depth === 1 && (
+                      <CornerDownLeft
+                        className="mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                        aria-hidden="true"
+                      />
+                    )}
+                    <div className="flex flex-col">
+                      <span className="font-medium text-foreground">{category.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {depth === 0 ? 'دسته‌بندی اصلی' : `زیردسته «${parentName}»`}
+                      </span>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                id: 'slug',
+                header: 'اسلاگ',
+                hideBelow: 'md',
+                cell: ({ category }) => (
+                  <span className="ltr-text text-xs text-muted-foreground">{category.slug}</span>
+                ),
+              },
+              {
+                id: 'products',
+                header: 'محصولات',
+                numeric: true,
+                cell: ({ category }) => formatNumber(category.productCount),
+              },
+              {
+                id: 'order',
+                header: 'ترتیب',
+                numeric: true,
+                hideBelow: 'sm',
+                cell: ({ category }) => formatNumber(category.displayOrder),
+              },
+              {
+                id: 'status',
+                header: 'وضعیت',
+                align: 'center',
+                cell: ({ category }) => (
+                  <Badge variant={category.isActive ? 'success' : 'danger'}>
+                    {category.isActive ? 'فعال' : 'غیرفعال'}
+                  </Badge>
+                ),
+              },
+              {
+                id: 'actions',
+                header: 'عملیات',
+                align: 'end',
+                width: '7rem',
+                cell: ({ category }) => (
+                  <div className="flex justify-end gap-1.5">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openEdit(category)}
+                      aria-label={`ویرایش ${category.name}`}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      loading={deleteMutation.isPending}
+                      onClick={() => handleDelete(category.slug)}
+                      aria-label={`حذف ${category.name}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ),
+              },
+            ]}
+          />
         </CardContent>
       </Card>
 

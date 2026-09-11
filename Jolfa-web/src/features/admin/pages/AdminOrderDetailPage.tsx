@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useParams } from 'react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { formatPrice } from '@/lib/utils'
+import { formatDate, formatNumber, formatPrice } from '@/lib/utils'
+import { DataTable } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -158,29 +159,41 @@ export function AdminOrderDetailPage() {
         <CardHeader>
           <CardTitle>اقلام سفارش</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted">
-                <tr>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">محصول</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">تعداد</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">قیمت واحد</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">جمع</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {order.items.map((item) => (
-                  <tr key={item.id}>
-                    <td className="px-4 py-3 font-medium text-foreground">{item.productTitle}</td>
-                    <td className="px-4 py-3 text-foreground">{item.quantity}</td>
-                    <td className="px-4 py-3 tabular-nums text-foreground">{formatPrice(item.unitPrice)}</td>
-                    <td className="px-4 py-3 tabular-nums text-foreground">{formatPrice(item.totalPrice)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <CardContent>
+          <DataTable
+            caption="اقلام سفارش"
+            rows={order.items}
+            getRowId={(item) => item.id}
+            emptyMessage="این سفارش قلمی ندارد."
+            disableInternalPagination
+            columns={[
+              {
+                id: 'product',
+                header: 'محصول',
+                cell: (item) => (
+                  <span className="font-medium text-foreground">{item.productTitle}</span>
+                ),
+              },
+              {
+                id: 'quantity',
+                header: 'تعداد',
+                numeric: true,
+                cell: (item) => formatNumber(item.quantity),
+              },
+              {
+                id: 'unitPrice',
+                header: 'قیمت واحد',
+                numeric: true,
+                cell: (item) => formatPrice(item.unitPrice),
+              },
+              {
+                id: 'totalPrice',
+                header: 'جمع',
+                numeric: true,
+                cell: (item) => formatPrice(item.totalPrice),
+              },
+            ]}
+          />
         </CardContent>
       </Card>
 
@@ -222,39 +235,56 @@ export function AdminOrderDetailPage() {
         <CardHeader>
           <CardTitle>تاریخچه وضعیت</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted">
-                <tr>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">تاریخ</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">از</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">به</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">توسط</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">یادداشت</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {order.statusHistory?.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">تاریخچه‌ای ثبت نشده است.</td>
-                  </tr>
-                ) : (
-                  order.statusHistory?.map((history) => (
-                    <tr key={history.id}>
-                      <td className="px-4 py-3 text-muted-foreground">{new Date(history.createdAt).toLocaleString('fa-IR')}</td>
-                      <td className="px-4 py-3 text-foreground">{history.previousStatus ? statusLabels[history.previousStatus] ?? history.previousStatus : '—'}</td>
-                      <td className="px-4 py-3 text-foreground">{statusLabels[history.newStatus] ?? history.newStatus}</td>
-                      <td className="px-4 py-3 text-foreground">
-                        {history.changedBy ? `${history.changedBy.firstName ?? ''} ${history.changedBy.lastName ?? ''}`.trim() || history.changedBy.phone : '—'}
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">{history.note ?? '—'}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+        <CardContent>
+          <DataTable
+            caption="تاریخچه وضعیت سفارش"
+            rows={order.statusHistory ?? []}
+            getRowId={(entry) => entry.id}
+            emptyMessage="تاریخچه‌ای ثبت نشده است."
+            disableInternalPagination
+            columns={[
+              {
+                id: 'createdAt',
+                header: 'تاریخ',
+                numeric: true,
+                cell: (entry) => formatDate(entry.createdAt, true),
+              },
+              {
+                id: 'from',
+                header: 'از',
+                cell: (entry) =>
+                  entry.previousStatus
+                    ? statusLabels[entry.previousStatus] ?? entry.previousStatus
+                    : '—',
+              },
+              {
+                id: 'to',
+                header: 'به',
+                cell: (entry) => (
+                  <span className="font-medium text-foreground">
+                    {statusLabels[entry.newStatus] ?? entry.newStatus}
+                  </span>
+                ),
+              },
+              {
+                id: 'by',
+                header: 'توسط',
+                hideBelow: 'sm',
+                cell: (entry) =>
+                  entry.changedBy
+                    ? `${entry.changedBy.firstName ?? ''} ${entry.changedBy.lastName ?? ''}`.trim() ||
+                      entry.changedBy.phone
+                    : '—',
+              },
+              {
+                id: 'note',
+                header: 'یادداشت',
+                hideBelow: 'md',
+                cellClassName: 'wrap-anywhere text-muted-foreground',
+                cell: (entry) => entry.note ?? '—',
+              },
+            ]}
+          />
         </CardContent>
       </Card>
 
@@ -262,35 +292,30 @@ export function AdminOrderDetailPage() {
         <CardHeader>
           <CardTitle>تراکنش‌ها</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted">
-                <tr>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">نوع</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">مبلغ</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">وضعیت</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">تاریخ</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {order.transactions?.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">تراکنشی ثبت نشده است.</td>
-                  </tr>
-                ) : (
-                  order.transactions?.map((tx) => (
-                    <tr key={tx.id}>
-                      <td className="px-4 py-3 text-foreground">{tx.type}</td>
-                      <td className="px-4 py-3 tabular-nums text-foreground">{formatPrice(tx.amount)}</td>
-                      <td className="px-4 py-3 text-foreground">{tx.status}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{new Date(tx.createdAt).toLocaleDateString('fa-IR')}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+        <CardContent>
+          <DataTable
+            caption="تراکنش‌های این سفارش"
+            rows={order.transactions ?? []}
+            getRowId={(tx) => tx.id}
+            emptyMessage="تراکنشی ثبت نشده است."
+            disableInternalPagination
+            columns={[
+              { id: 'type', header: 'نوع', cell: (tx) => tx.type },
+              {
+                id: 'amount',
+                header: 'مبلغ',
+                numeric: true,
+                cell: (tx) => formatPrice(tx.amount),
+              },
+              { id: 'status', header: 'وضعیت', align: 'center', cell: (tx) => tx.status },
+              {
+                id: 'createdAt',
+                header: 'تاریخ',
+                numeric: true,
+                cell: (tx) => formatDate(tx.createdAt),
+              },
+            ]}
+          />
         </CardContent>
       </Card>
 

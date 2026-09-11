@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { History as HistoryIcon } from 'lucide-react'
+import { formatDate } from '@/lib/utils'
 import { Badge } from '@/components/ui/Badge'
-import { Button } from '@/components/ui/Button'
+import { DataTable } from '@/components/ui/DataTable'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
 import { getAuditLogs } from '@/features/admin/api'
@@ -31,6 +34,8 @@ const entityMap: Record<string, string> = {
   Upload: 'آپلود',
 }
 
+const PAGE_SIZE = 20
+
 export function AdminActivityLogPage() {
   const [page, setPage] = useState(1)
   const { data, isLoading } = useQuery({
@@ -42,64 +47,89 @@ export function AdminActivityLogPage() {
 
   return (
     <ScrollReveal className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground md:text-3xl">گزارش فعالیت</h1>
-        <p className="mt-2 text-muted-foreground">تاریخچه عملیات انجام‌شده در پنل مدیریت.</p>
-      </div>
+      <PageHeader
+        title="گزارش فعالیت"
+        description="تاریخچه عملیات انجام‌شده در پنل مدیریت."
+      />
 
       <Card>
         <CardHeader>
           <CardTitle>رویدادها</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted">
-                <tr>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">زمان</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">کاربر</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">عملیات</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">موجودیت</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">شناسه</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">در حال بارگذاری ...</td>
-                  </tr>
-                ) : items.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">رویدادی یافت نشد.</td>
-                  </tr>
-                ) : (
-                  items.map((log) => (
-                    <tr key={log.id}>
-                      <td className="px-4 py-3 text-muted-foreground">{new Date(log.createdAt).toLocaleString('fa-IR')}</td>
-                      <td className="px-4 py-3 text-foreground">
-                        {log.user ? `${log.user.firstName ?? ''} ${log.user.lastName ?? ''}`.trim() || log.user.phone : 'سیستم'}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge variant={log.action === 'DELETE' ? 'danger' : log.action === 'CREATE' ? 'success' : 'secondary'}>
-                          {actionMap[log.action] ?? log.action}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-foreground">{entityMap[log.entityType] ?? log.entityType}</td>
-                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{log.entityId.slice(0, 8)}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {data && data.meta.totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 border-t border-border p-4">
-              <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>قبلی</Button>
-              <span className="text-sm text-foreground">صفحه {page} از {data.meta.totalPages}</span>
-              <Button size="sm" variant="outline" disabled={page >= data.meta.totalPages} onClick={() => setPage((p) => p + 1)}>بعدی</Button>
-            </div>
-          )}
+        <CardContent>
+          <DataTable
+            caption="گزارش فعالیت مدیران"
+            rows={items}
+            getRowId={(log) => log.id}
+            isLoading={isLoading}
+            emptyMessage="رویدادی یافت نشد."
+            emptyIcon={<HistoryIcon className="h-6 w-6" aria-hidden="true" />}
+            pagination={{
+              page,
+              pageSize: PAGE_SIZE,
+              total: data?.meta.total,
+              totalPages: data?.meta.totalPages,
+              onPageChange: setPage,
+            }}
+            columns={[
+              {
+                id: 'createdAt',
+                header: 'زمان',
+                numeric: true,
+                cell: (log) => formatDate(log.createdAt, true),
+              },
+              {
+                id: 'user',
+                header: 'کاربر',
+                cell: (log) => (
+                  <span className="text-foreground">
+                    {log.user
+                      ? `${log.user.firstName ?? ''} ${log.user.lastName ?? ''}`.trim() ||
+                        log.user.phone
+                      : 'سیستم'}
+                  </span>
+                ),
+              },
+              {
+                id: 'action',
+                header: 'عملیات',
+                align: 'center',
+                cell: (log) => (
+                  <Badge
+                    variant={
+                      log.action === 'DELETE'
+                        ? 'danger'
+                        : log.action === 'CREATE'
+                          ? 'success'
+                          : 'secondary'
+                    }
+                  >
+                    {actionMap[log.action] ?? log.action}
+                  </Badge>
+                ),
+              },
+              {
+                id: 'entity',
+                header: 'موجودیت',
+                hideBelow: 'sm',
+                cell: (log) => (
+                  <span className="text-foreground">
+                    {entityMap[log.entityType] ?? log.entityType}
+                  </span>
+                ),
+              },
+              {
+                id: 'entityId',
+                header: 'شناسه',
+                hideBelow: 'md',
+                cell: (log) => (
+                  <span className="ltr-text font-mono text-xs text-muted-foreground">
+                    {log.entityId.slice(0, 8)}
+                  </span>
+                ),
+              },
+            ]}
+          />
         </CardContent>
       </Card>
     </ScrollReveal>

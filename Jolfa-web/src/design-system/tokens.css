@@ -167,3 +167,73 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* ===========================================================================
+   Typography
+   ===========================================================================
+
+   Persian set in Vazirmatn needs different defaults from the Latin ones
+   Tailwind ships with. Two adjustments matter more than anything else here:
+
+   1. LINE HEIGHT. Persian script has tall ascenders, deep descenders and no
+      capital/x-height distinction to rest on, so Latin's 1.5 sets solid blocks
+      of text that are noticeably harder to scan. Body copy gets 1.8, headings
+      1.4 — headings are short enough that generous leading only looks loose.
+
+   2. TABULAR FIGURES. Proportional digits make every number in a column a
+      different width, so prices and quantities fail to line up on their
+      decimal places and the eye cannot compare them down the column. This is
+      the single biggest reason a data table reads as amateur. `.tabular-nums`
+      below is applied to every numeric cell.
+
+   Letter spacing is left alone. Persian is a connected script: tracking pulls
+   joined letterforms apart and damages legibility, which is why the Latin habit
+   of tightening large headings must not be copied here.
+   =========================================================================== */
+
+:root {
+  --leading-body: 1.8;
+  --leading-heading: 1.4;
+  --leading-tight: 1.25;
+}
+
+body {
+  line-height: var(--leading-body);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  line-height: var(--leading-heading);
+  /* Vazirmatn's 600 reads as the weight Latin 700 does; 700 is heavy enough at
+     display sizes to close the counters on small screens. */
+  font-weight: 600;
+  text-wrap: balance;
+}
+
+/* Numbers that belong to a set — table cells, prices, counts, IDs.
+   `font-variant-numeric` handles the alignment; `font-feature-settings` is the
+   fallback for engines that have not implemented the former for variable
+   fonts. */
+.tabular-nums,
+table td.is-numeric,
+table th.is-numeric {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* Latin strings inside an RTL document — SKUs, slugs, order references, emails,
+   phone numbers. Without an explicit direction these reorder visually around
+   neighbouring Persian text and a reference like "ORD-1024" can render as
+   "1024-ORD". `unicode-bidi: isolate` fences each one off from its
+   surroundings. */
+.ltr-text {
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: start;
+}
+
+/* Long free text in a card or cell: stop a single unbroken token — a URL, a
+   slug — from forcing horizontal scroll on the whole layout. */
+.wrap-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}

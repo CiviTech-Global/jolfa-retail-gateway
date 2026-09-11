@@ -3,12 +3,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Image as ImageIcon } from 'lucide-react'
+import { formatNumber } from '@/lib/utils'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Switch } from '@/components/ui/Switch'
 import { Badge } from '@/components/ui/Badge'
+import { DataTable } from '@/components/ui/DataTable'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogForm, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/Dialog'
 import { FormField } from '@/components/ui/FormField'
@@ -196,91 +199,108 @@ export function AdminBannersPage() {
 
   return (
     <ScrollReveal className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground md:text-3xl">مدیریت بنرها</h1>
-          <p className="mt-2 text-muted-foreground">بنرهای صفحه اصلی را مدیریت کنید.</p>
-        </div>
-        <Button
-          onClick={() => {
-            setEditing(null)
-            setIsOpen(true)
-          }}
-          className="inline-flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          بنر جدید
-        </Button>
-      </div>
+      <PageHeader
+        title="مدیریت بنرها"
+        description="بنرهای صفحه اصلی را مدیریت کنید."
+        action={
+          <Button
+            onClick={() => {
+              setEditing(null)
+              setIsOpen(true)
+            }}
+            className="inline-flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            بنر جدید
+          </Button>
+        }
+      />
 
       <Card>
         <CardHeader>
           <CardTitle>لیست بنرها</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted">
-                <tr>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">عنوان</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">موقعیت</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">وضعیت</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">ترتیب</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">عملیات</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">در حال بارگذاری ...</td>
-                  </tr>
-                ) : banners.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">بنری یافت نشد.</td>
-                  </tr>
-                ) : (
-                  banners.map((banner) => (
-                    <tr key={banner.id}>
-                      <td className="px-4 py-3 font-medium text-foreground">{banner.title}</td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {POSITIONS.find((p) => p.value === banner.position)?.label ?? banner.position}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge variant={banner.isActive ? 'success' : 'danger'}>
-                          {banner.isActive ? 'فعال' : 'غیرفعال'}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-foreground">{banner.displayOrder}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setEditing(banner)
-                              setIsOpen(true)
-                            }}
-                          >
-                            <Pencil className="h-4 w-4" />
-                            <span className="sr-only">ویرایش</span>
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="danger"
-                            loading={deleteMutation.isPending}
-                            onClick={() => handleDelete(banner.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            <span className="sr-only">حذف</span>
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+        <CardContent>
+          <DataTable
+            caption="بنرهای فروشگاه"
+            rows={banners}
+            getRowId={(banner) => banner.id}
+            isLoading={isLoading}
+            emptyMessage="بنری یافت نشد."
+            emptyIcon={<ImageIcon className="h-6 w-6" aria-hidden="true" />}
+            columns={[
+              {
+                id: 'title',
+                header: 'عنوان',
+                sortable: true,
+                sortValue: (banner) => banner.title,
+                cell: (banner) => (
+                  <span className="font-medium text-foreground">{banner.title}</span>
+                ),
+              },
+              {
+                id: 'position',
+                header: 'موقعیت',
+                sortable: true,
+                sortValue: (banner) => banner.position,
+                cell: (banner) => (
+                  <span className="text-muted-foreground">
+                    {POSITIONS.find((p) => p.value === banner.position)?.label ?? banner.position}
+                  </span>
+                ),
+              },
+              {
+                id: 'order',
+                header: 'ترتیب',
+                numeric: true,
+                sortable: true,
+                sortValue: (banner) => banner.displayOrder,
+                cell: (banner) => formatNumber(banner.displayOrder),
+              },
+              {
+                id: 'status',
+                header: 'وضعیت',
+                align: 'center',
+                sortable: true,
+                sortValue: (banner) => banner.isActive,
+                cell: (banner) => (
+                  <Badge variant={banner.isActive ? 'success' : 'danger'}>
+                    {banner.isActive ? 'فعال' : 'غیرفعال'}
+                  </Badge>
+                ),
+              },
+              {
+                id: 'actions',
+                header: 'عملیات',
+                align: 'end',
+                width: '7rem',
+                cell: (banner) => (
+                  <div className="flex justify-end gap-1.5">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditing(banner)
+                        setIsOpen(true)
+                      }}
+                      aria-label={`ویرایش ${banner.title}`}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      loading={deleteMutation.isPending}
+                      onClick={() => handleDelete(banner.id)}
+                      aria-label={`حذف ${banner.title}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ),
+              },
+            ]}
+          />
         </CardContent>
       </Card>
 

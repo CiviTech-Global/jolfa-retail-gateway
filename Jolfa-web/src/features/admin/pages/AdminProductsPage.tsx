@@ -3,17 +3,33 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import { Plus, Package, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { formatPrice } from '@/lib/utils'
+import { formatDate, formatNumber, formatPrice } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
+import { DataTable, type SortState } from '@/components/ui/DataTable'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import { getProducts, deleteProduct } from '@/features/catalog/api'
+import type { ProductFilters } from '@/features/catalog/types'
 import { ProductFormDialog } from '../components/ProductFormDialog'
+
+const PAGE_SIZE = 20
+
+/** Maps the table's sort state onto the values the products API accepts. */
+function toApiSort(sort: SortState | null): ProductFilters['sort'] {
+  if (!sort) return undefined
+  if (sort.columnId === 'price') return sort.direction === 'asc' ? 'price:asc' : 'price:desc'
+  if (sort.columnId === 'createdAt') {
+    return sort.direction === 'asc' ? 'createdAt:asc' : 'createdAt:desc'
+  }
+  return undefined
+}
 
 export function AdminProductsPage() {
   const [page, setPage] = useState(1)
+  const [sort, setSort] = useState<SortState | null>(null)
   const queryClient = useQueryClient()
   const { confirm, Dialog } = useConfirmDialog()
 
@@ -33,8 +49,10 @@ export function AdminProductsPage() {
   const closeEditor = () => navigate('/admin/products', { replace: true })
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin', 'products', page],
-    queryFn: () => getProducts({ page, limit: 20 }),
+    // `sort` belongs in the key: without it a re-sort would serve the previous
+    // ordering from cache and the table would appear not to respond.
+    queryKey: ['admin', 'products', page, sort],
+    queryFn: () => getProducts({ page, limit: PAGE_SIZE, sort: toApiSort(sort) }),
   })
 
   const deleteMutation = useMutation({
@@ -59,113 +77,138 @@ export function AdminProductsPage() {
 
   return (
     <ScrollReveal className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground md:text-3xl">مدیریت محصولات</h1>
-          <p className="mt-2 text-muted-foreground">مشاهده، ویرایش و مدیریت موجودی محصولات.</p>
-        </div>
-        <Button onClick={() => navigate('/admin/products/new')} className="gap-2">
-          <Plus className="h-4 w-4" />
-          محصول جدید
-        </Button>
-      </div>
+      <PageHeader
+        title="مدیریت محصولات"
+        description="مشاهده، ویرایش و مدیریت موجودی محصولات."
+        action={
+          <Button onClick={() => navigate('/admin/products/new')} className="gap-2">
+            <Plus className="h-4 w-4" />
+            محصول جدید
+          </Button>
+        }
+      />
 
       <Card>
         <CardHeader>
           <CardTitle>لیست محصولات</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted">
-                <tr>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">محصول</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">دسته‌بندی</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">قیمت</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">موجودی</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">وضعیت</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">عملیات</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
-                      در حال بارگذاری ...
-                    </td>
-                  </tr>
-                ) : data?.products.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
-                      <div className="flex flex-col items-center justify-center gap-3">
-                        <Package className="h-10 w-10 text-muted-foreground/60" />
-                        <span>محصولی یافت نشد.</span>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  data?.products.map((product) => (
-                    <tr key={product.id}>
-                      <td className="px-4 py-3 font-medium text-foreground">{product.title}</td>
-                      <td className="px-4 py-3 text-foreground">{product.category.name}</td>
-                      <td className="px-4 py-3 tabular-nums text-foreground">{formatPrice(product.price)}</td>
-                      <td className="px-4 py-3 text-foreground">{product.stockQuantity}</td>
-                      <td className="px-4 py-3">
-                        <Badge variant={product.isActive ? 'success' : 'danger'}>
-                          {product.isActive ? 'فعال' : 'غیرفعال'}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => navigate(`/admin/products/${product.slug}/edit`)}
-                            aria-label={`ویرایش ${product.title}`}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="danger"
-                            loading={deleteMutation.isPending}
-                            onClick={() => handleDelete(product.slug)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            <span className="sr-only">حذف</span>
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {data && data.meta.totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 border-t border-border p-4">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                قبلی
-              </Button>
-              <span className="text-sm text-foreground">
-                صفحه {page} از {data.meta.totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= data.meta.totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                بعدی
-              </Button>
-            </div>
-          )}
+        <CardContent>
+          <DataTable
+            caption="فهرست محصولات فروشگاه"
+            rows={data?.products ?? []}
+            getRowId={(product) => product.id}
+            isLoading={isLoading}
+            emptyMessage="محصولی یافت نشد."
+            emptyIcon={<Package className="h-6 w-6" aria-hidden="true" />}
+            // Controlled: the server sorts and paginates. Only the two columns
+            // the API can actually order by are marked sortable — offering to
+            // sort by title would silently reorder the current page alone.
+            sort={sort}
+            onSortChange={(next) => {
+              setSort(next)
+              setPage(1)
+            }}
+            pagination={{
+              page,
+              pageSize: PAGE_SIZE,
+              total: data?.meta.total,
+              totalPages: data?.meta.totalPages,
+              onPageChange: setPage,
+            }}
+            columns={[
+              {
+                id: 'title',
+                header: 'محصول',
+                cell: (product) => (
+                  <div className="flex flex-col">
+                    <span className="font-medium text-foreground">{product.title}</span>
+                    {product.sku && (
+                      <span className="ltr-text text-xs text-muted-foreground">{product.sku}</span>
+                    )}
+                  </div>
+                ),
+              },
+              {
+                id: 'category',
+                header: 'زیردسته',
+                hideBelow: 'md',
+                cell: (product) => (
+                  <span className="text-muted-foreground">{product.category.name}</span>
+                ),
+              },
+              {
+                id: 'price',
+                header: 'قیمت',
+                numeric: true,
+                sortable: true,
+                cell: (product) => formatPrice(product.price),
+              },
+              {
+                id: 'stock',
+                header: 'موجودی',
+                numeric: true,
+                hideBelow: 'sm',
+                cell: (product) => (
+                  <span
+                    className={
+                      product.stockQuantity === 0
+                        ? 'text-danger'
+                        : product.stockQuantity <= 5
+                          ? 'text-warning'
+                          : undefined
+                    }
+                  >
+                    {formatNumber(product.stockQuantity)}
+                  </span>
+                ),
+              },
+              {
+                id: 'createdAt',
+                header: 'تاریخ ثبت',
+                numeric: true,
+                sortable: true,
+                hideBelow: 'lg',
+                cell: (product) => formatDate(product.createdAt),
+              },
+              {
+                id: 'status',
+                header: 'وضعیت',
+                align: 'center',
+                cell: (product) => (
+                  <Badge variant={product.isActive ? 'success' : 'danger'}>
+                    {product.isActive ? 'فعال' : 'غیرفعال'}
+                  </Badge>
+                ),
+              },
+              {
+                id: 'actions',
+                header: 'عملیات',
+                align: 'end',
+                width: '7rem',
+                cell: (product) => (
+                  <div className="flex justify-end gap-1.5">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => navigate(`/admin/products/${product.slug}/edit`)}
+                      aria-label={`ویرایش ${product.title}`}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      loading={deleteMutation.isPending}
+                      onClick={() => handleDelete(product.slug)}
+                      aria-label={`حذف ${product.title}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ),
+              },
+            ]}
+          />
         </CardContent>
       </Card>
 
