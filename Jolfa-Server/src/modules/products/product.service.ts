@@ -1,5 +1,5 @@
 import { prisma } from "../../shared/prisma.js";
-import { ConflictError, NotFoundError } from "../../shared/app-error.js";
+import { AppError, ConflictError, NotFoundError } from "../../shared/app-error.js";
 import { Prisma } from "@prisma/client";
 import { logAudit, buildChangeMetadata } from "../../shared/audit/audit.service.js";
 import { uniqueSlug } from "../../shared/slugify.js";
@@ -53,6 +53,38 @@ const publicProductSelect = {
   },
 } satisfies Prisma.ProductSelect;
 
+/**
+ * A product belongs to a subcategory, never to a top-level category.
+ *
+ * Top-level categories exist to group subcategories, and the storefront relies
+ * on that: a category page lists its subcategories and aggregates their
+ * products. A product hung directly off a top-level category would be counted
+ * in the aggregate but reachable through no subcategory, so it would appear in
+ * listings and vanish from the drill-down — present and unfindable.
+ *
+ * Enforced here rather than only in the admin UI because the API is the real
+ * boundary: the same rule has to hold for a direct API call, a Semaphore job,
+ * or an import script.
+ */
+async function assertCategoryAcceptsProducts(categoryId: string): Promise<void> {
+  const category = await prisma.category.findUnique({
+    where: { id: categoryId },
+    select: { id: true, name: true, parentId: true },
+  });
+
+  if (!category) {
+    throw new NotFoundError("Category");
+  }
+
+  if (category.parentId === null) {
+    throw new AppError(
+      `«${category.name}» یک دسته‌بندی اصلی است. محصول باید در یکی از زیردسته‌های آن ثبت شود.`,
+      400,
+      "PRODUCT_REQUIRES_SUBCATEGORY",
+    );
+  }
+}
+
 export async function listProducts(filters: ProductListFilters) {
   const { page, limit, categorySlug, q, sort, minPrice, maxPrice, featured } = filters;
   const skip = (page - 1) * limit;
@@ -62,7 +94,24 @@ export async function listProducts(filters: ProductListFilters) {
   };
 
   if (categorySlug) {
-    where.category = { slug: categorySlug, isActive: true };
+    // The slug may name either level, and the two mean different things:
+    //
+    //   subcategory  -> the products filed directly under it
+    //   category     -> everything under all of its subcategories
+    //
+    // Matching the slug alone (which is what this did) returns nothing at all
+    // for a top-level category, because products only ever hang off
+    // subcategories. The storefront's category pages would render an empty grid
+    // with no error anywhere.
+    //
+    // Expressed as one OR rather than "look up the category, then query its
+    // children" so it stays a single round trip, and stays correct for a
+    // subcategory slug without a special case. The two-level cap is what makes
+    // one level of `parent` sufficient.
+    where.category = {
+      isActive: true,
+      OR: [{ slug: categorySlug }, { parent: { slug: categorySlug, isActive: true } }],
+    };
   }
 
   if (q) {
@@ -173,13 +222,7 @@ export async function createProduct(data: ProductCreateBody) {
     }
   }
 
-  const category = await prisma.category.findUnique({
-    where: { id: data.categoryId },
-    select: { id: true },
-  });
-  if (!category) {
-    throw new NotFoundError("Category");
-  }
+  await assertCategoryAcceptsProducts(data.categoryId);
 
   const images = normalizeImages(data.images);
 
@@ -242,13 +285,7 @@ export async function updateProduct(slug: string, data: ProductUpdateBody) {
   }
 
   if (data.categoryId) {
-    const category = await prisma.category.findUnique({
-      where: { id: data.categoryId },
-      select: { id: true },
-    });
-    if (!category) {
-      throw new NotFoundError("Category");
-    }
+    await assertCategoryAcceptsProducts(data.categoryId);
   }
 
   const { images: inputImages, ...restData } = data;

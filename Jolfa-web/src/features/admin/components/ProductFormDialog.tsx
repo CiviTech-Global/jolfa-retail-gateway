@@ -29,7 +29,13 @@ import {
   requiredUuid,
 } from '@/lib/validation'
 import { createProduct, getCategories, getProductBySlug, updateProduct } from '@/features/catalog/api'
-import type { CategoryDto, ProductCreateBody, ProductDto } from '@/features/catalog/types'
+import type { CategoryTreeDto, ProductCreateBody, ProductDto } from '@/features/catalog/types'
+
+/** One selectable subcategory, labelled with its parent for disambiguation. */
+interface SubcategoryOption {
+  id: string
+  label: string
+}
 
 const productSchema = z
   .object({
@@ -183,9 +189,12 @@ interface ProductFormDialogProps {
 export function ProductFormDialog({ open, onOpenChange, slug }: ProductFormDialogProps) {
   const isEdit = Boolean(slug)
 
+  // The tree, not the flat list. `getCategories(false)` returns only top-level
+  // categories — which are precisely the ones a product may NOT belong to, so
+  // the flat call would offer nothing but invalid choices.
   const { data: categoriesData } = useQuery({
-    queryKey: ['categories'],
-    queryFn: () => getCategories(false),
+    queryKey: ['categories', 'tree'],
+    queryFn: () => getCategories(true),
     enabled: open,
   })
 
@@ -195,7 +204,19 @@ export function ProductFormDialog({ open, onOpenChange, slug }: ProductFormDialo
     enabled: open && isEdit,
   })
 
-  const categories = (categoriesData?.categories ?? []) as CategoryDto[]
+  // Products belong to subcategories only, so the picker lists the leaves and
+  // labels each with its parent — "بهداشت بدن › مراقبت مو". Two subcategories
+  // under different parents can reasonably share a name, and the bare name
+  // alone would make them indistinguishable in the list.
+  const subcategoryOptions: SubcategoryOption[] = (
+    (categoriesData?.categories ?? []) as CategoryTreeDto[]
+  ).flatMap((parent) =>
+    (parent.children ?? []).map((child) => ({
+      id: child.id,
+      label: `${parent.name} › ${child.name}`,
+    })),
+  )
+
   const product = productData?.product
 
   return (
@@ -219,7 +240,7 @@ export function ProductFormDialog({ open, onOpenChange, slug }: ProductFormDialo
             key={slug ?? 'new'}
             slug={slug}
             initialProduct={product}
-            categories={categories}
+            subcategoryOptions={subcategoryOptions}
             onDone={() => onOpenChange(false)}
           />
         )}
@@ -231,11 +252,11 @@ export function ProductFormDialog({ open, onOpenChange, slug }: ProductFormDialo
 interface ProductEditorProps {
   slug?: string
   initialProduct?: ProductDto
-  categories: CategoryDto[]
+  subcategoryOptions: SubcategoryOption[]
   onDone: () => void
 }
 
-function ProductEditor({ slug, initialProduct, categories, onDone }: ProductEditorProps) {
+function ProductEditor({ slug, initialProduct, subcategoryOptions, onDone }: ProductEditorProps) {
   const queryClient = useQueryClient()
   const isEdit = Boolean(slug)
 
@@ -317,7 +338,19 @@ function ProductEditor({ slug, initialProduct, categories, onDone }: ProductEdit
               {(field) => <Input {...field} dir="ltr" placeholder="my-product" {...register('slug')} />}
             </FormField>
 
-            <FormField label="دسته‌بندی" required error={errors.categoryId?.message}>
+            <FormField
+              label="زیردسته"
+              required
+              error={
+                errors.categoryId?.message ??
+                // Without this the picker is simply empty and the admin has no
+                // way to tell a loading list from a catalogue that has no
+                // subcategories yet — the state every new shop starts in.
+                (subcategoryOptions.length === 0
+                  ? 'هنوز هیچ زیردسته‌ای تعریف نشده است. ابتدا از بخش دسته‌بندی‌ها یک زیردسته بسازید.'
+                  : undefined)
+              }
+            >
               {(field) => (
                 <Controller
                   control={control}
@@ -325,12 +358,12 @@ function ProductEditor({ slug, initialProduct, categories, onDone }: ProductEdit
                   render={({ field: select }) => (
                     <Select value={select.value} onValueChange={select.onChange}>
                       <SelectTrigger id={field.id} aria-invalid={field['aria-invalid']}>
-                        <SelectValue placeholder="انتخاب دسته‌بندی" />
+                        <SelectValue placeholder="انتخاب زیردسته" />
                       </SelectTrigger>
                       <SelectContent>
-                        {categories.map((cat) => (
-                          <SelectItem key={cat.id} value={cat.id}>
-                            {cat.name}
+                        {subcategoryOptions.map((option) => (
+                          <SelectItem key={option.id} value={option.id}>
+                            {option.label}
                           </SelectItem>
                         ))}
                       </SelectContent>

@@ -63,16 +63,39 @@ export interface CreateTestCategoryOptions {
   name?: string;
   slug?: string;
   isActive?: boolean;
+  /** Set to make this a subcategory. The parent must itself be top-level. */
+  parentId?: string | null;
 }
 
+/**
+ * Creates a top-level category by default, or a subcategory when `parentId` is
+ * given. Note that a product cannot be attached to whatever this returns unless
+ * it is a subcategory — see `createTestSubcategory`.
+ */
 export async function createTestCategory(options: CreateTestCategoryOptions = {}): Promise<Category> {
   return prisma.category.create({
     data: {
       name: options.name ?? "دسته آزمایشی",
       slug: options.slug ?? uniqueSlug("cat"),
       isActive: options.isActive ?? true,
+      parentId: options.parentId ?? null,
     },
   });
+}
+
+/**
+ * A subcategory, creating its parent if one is not supplied.
+ *
+ * Products belong to subcategories only — enforced by the service layer and by
+ * a database trigger — so this, not `createTestCategory`, is what a product
+ * needs. Kept as its own helper so a test that wants the two-level shape says
+ * so, rather than passing a `parentId` whose significance is easy to miss.
+ */
+export async function createTestSubcategory(
+  options: Omit<CreateTestCategoryOptions, "parentId"> & { parentId?: string } = {},
+): Promise<Category> {
+  const parentId = options.parentId ?? (await createTestCategory()).id;
+  return createTestCategory({ ...options, parentId });
 }
 
 export interface CreateTestProductOptions {
@@ -86,7 +109,9 @@ export interface CreateTestProductOptions {
 }
 
 export async function createTestProduct(options: CreateTestProductOptions = {}): Promise<Product> {
-  const categoryId = options.categoryId ?? (await createTestCategory()).id;
+  // A subcategory, not a bare category: the products table rejects a top-level
+  // category outright.
+  const categoryId = options.categoryId ?? (await createTestSubcategory()).id;
   return prisma.product.create({
     data: {
       title: options.title ?? "محصول آزمایشی",

@@ -1,3 +1,11 @@
+/**
+ * The catalogue is two levels deep: Category -> Subcategory -> Product.
+ *
+ * `parentId === null` marks a top-level category. It groups subcategories and
+ * never holds products itself — a product always belongs to a subcategory. Both
+ * rules are enforced by the API and by database triggers, so the UI can rely on
+ * them rather than defending against a third level.
+ */
 export interface CategoryDto {
   id: string
   name: string
@@ -9,10 +17,26 @@ export interface CategoryDto {
   isActive: boolean
   createdAt: string
   updatedAt: string
+  /**
+   * Active products reachable from here — its own for a subcategory, the sum
+   * across its subcategories for a top-level category. Supplied by the server
+   * so a card can show it without loading the products.
+   */
+  productCount: number
 }
 
 export interface CategoryTreeDto extends CategoryDto {
   children: CategoryTreeDto[]
+}
+
+/** Detail response: adds the parent so breadcrumbs need no second request. */
+export interface CategoryDetailDto extends CategoryTreeDto {
+  parent: { id: string; name: string; slug: string } | null
+}
+
+/** True for a top-level category — the grouping level, which holds no products. */
+export function isTopLevel(category: Pick<CategoryDto, 'parentId'>): boolean {
+  return category.parentId === null
 }
 
 export interface ProductImageDto {
@@ -131,7 +155,7 @@ export interface ProductUpdateBody {
 }
 
 export interface CategoryDetailResponse {
-  category: CategoryTreeDto
+  category: CategoryDetailDto
 }
 
 export interface ProductDetailResponse {

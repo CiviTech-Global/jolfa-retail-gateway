@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, CornerDownLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
 import { Input, Textarea } from '@/components/ui/Input'
@@ -26,7 +26,14 @@ import {
   requiredText,
 } from '@/lib/validation'
 import { getCategories, createCategory, updateCategory, deleteCategory } from '@/features/catalog/api'
-import type { CategoryDto, CategoryCreateBody, CategoryUpdateBody } from '@/features/catalog/types'
+import type { CategoryDto, CategoryTreeDto, CategoryCreateBody, CategoryUpdateBody } from '@/features/catalog/types'
+
+/** A flattened tree row: a top-level category, or one of its subcategories. */
+interface CategoryRow {
+  category: CategoryTreeDto
+  depth: 0 | 1
+  parentName: string | null
+}
 
 const NO_PARENT = '__none__'
 
@@ -85,9 +92,12 @@ export function AdminCategoriesPage() {
   const [isOpen, setIsOpen] = useState(false)
   const [editing, setEditing] = useState<CategoryDto | null>(null)
 
+  // The tree. The flat call returns top-level categories only, which left
+  // subcategories unmanageable from the admin — invisible in the list, so they
+  // could not be renamed, reordered, hidden or deleted once created.
   const { data, isLoading } = useQuery({
-    queryKey: ['categories'],
-    queryFn: () => getCategories(false),
+    queryKey: ['categories', 'tree'],
+    queryFn: () => getCategories(true),
   })
 
   const {
@@ -190,9 +200,24 @@ export function AdminCategoriesPage() {
     if (ok) deleteMutation.mutate(slug)
   }
 
-  const categories = (data?.categories as CategoryDto[]) ?? []
-  // A category cannot be its own parent, nor can the list offer a cycle.
-  const parentOptions = categories.filter((cat) => cat.id !== editing?.id)
+  const tree = (data?.categories as CategoryTreeDto[]) ?? []
+
+  // Flattened for the table, each parent immediately followed by its children,
+  // so the two levels read as one ordered list instead of nested tables.
+  const rows: CategoryRow[] = tree.flatMap((parent) => [
+    { category: parent, depth: 0 as const, parentName: null },
+    ...(parent.children ?? []).map((child) => ({
+      category: child,
+      depth: 1 as const,
+      parentName: parent.name,
+    })),
+  ])
+
+  // Only top-level categories may be a parent — the catalogue is two levels
+  // deep. Offering a subcategory here would build a request the API and the
+  // database both reject, so the invalid option is never shown rather than
+  // explained after the fact. A category cannot be its own parent either.
+  const parentOptions = tree.filter((cat) => cat.id !== editing?.id)
 
   return (
     <ScrollReveal className="space-y-6">
@@ -228,14 +253,29 @@ export function AdminCategoriesPage() {
                   <tr>
                     <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">در حال بارگذاری ...</td>
                   </tr>
-                ) : categories.length === 0 ? (
+                ) : rows.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">دسته‌بندی یافت نشد.</td>
                   </tr>
                 ) : (
-                  categories.map((category) => (
-                    <tr key={category.id}>
-                      <td className="px-4 py-3 font-medium text-foreground">{category.name}</td>
+                  rows.map(({ category, depth, parentName }) => (
+                    <tr key={category.id} className={depth === 1 ? 'bg-muted/30' : undefined}>
+                      <td className="px-4 py-3 font-medium text-foreground">
+                        <span className={depth === 1 ? 'flex items-center gap-1.5 ps-6' : undefined}>
+                          {depth === 1 && (
+                            <CornerDownLeft
+                              className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                              aria-hidden="true"
+                            />
+                          )}
+                          <span>{category.name}</span>
+                          <span className="text-xs font-normal text-muted-foreground">
+                            {depth === 0
+                              ? `دسته‌بندی · ${category.productCount} محصول`
+                              : `زیردسته «${parentName}» · ${category.productCount} محصول`}
+                          </span>
+                        </span>
+                      </td>
                       <td className="px-4 py-3 text-muted-foreground">{category.slug}</td>
                       <td className="px-4 py-3">
                         <Badge variant={category.isActive ? 'success' : 'danger'}>

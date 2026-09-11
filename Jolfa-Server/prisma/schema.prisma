@@ -87,6 +87,12 @@ model Category {
   @@index([parentId])
   @@index([isActive])
   @@index([displayOrder])
+  // Listing a top-level category expands it into its visible subcategories;
+  // this covers that filter. See migration 20260911120000_two_level_catalogue,
+  // which also installs the triggers enforcing the two-level shape — the depth
+  // rules are statements about a different row than the one being written, so
+  // they cannot be expressed as CHECK constraints or in this schema.
+  @@index([parentId, isActive], map: "categories_parent_id_is_active_idx")
   @@map("categories")
 }
 

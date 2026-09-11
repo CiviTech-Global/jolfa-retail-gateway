@@ -11,11 +11,45 @@ function demoAsset(filename: string): string {
   return `${env.APP_URL}/demo-assets/${filename}`;
 }
 
+/**
+ * The catalogue is two levels deep — Category -> Subcategory -> Product — and
+ * products may only belong to a subcategory. Demo data has to model that, not
+ * just avoid tripping over it: this is what an admin sees when they click
+ * "load demo data" to find out how the shop is meant to be organised.
+ *
+ * Two parents rather than one, so the structure is legible as a hierarchy
+ * rather than looking like a single redundant wrapper.
+ */
+const demoParentCategories = [
+  { name: "نوشیدنی‌ها", slug: "demo-nooshidani", imageUrl: demoAsset("category-01.jpg") },
+  { name: "خواربار", slug: "demo-kharbar", imageUrl: demoAsset("category-04.webp") },
+];
+
 const demoCategories = [
-  { name: "چای و دمنوش", slug: "demo-chai", imageUrl: demoAsset("category-01.jpg") },
-  { name: "عسل و مربا", slug: "demo-asal", imageUrl: demoAsset("category-02.webp") },
-  { name: "ادویه و چاشنی", slug: "demo-adviye", imageUrl: demoAsset("category-03.webp") },
-  { name: "خشکبار و آجیل", slug: "demo-khoshkbar", imageUrl: demoAsset("category-04.webp") },
+  {
+    name: "چای و دمنوش",
+    slug: "demo-chai",
+    imageUrl: demoAsset("category-01.jpg"),
+    parentSlug: "demo-nooshidani",
+  },
+  {
+    name: "عسل و مربا",
+    slug: "demo-asal",
+    imageUrl: demoAsset("category-02.webp"),
+    parentSlug: "demo-kharbar",
+  },
+  {
+    name: "ادویه و چاشنی",
+    slug: "demo-adviye",
+    imageUrl: demoAsset("category-03.webp"),
+    parentSlug: "demo-kharbar",
+  },
+  {
+    name: "خشکبار و آجیل",
+    slug: "demo-khoshkbar",
+    imageUrl: demoAsset("category-04.webp"),
+    parentSlug: "demo-kharbar",
+  },
 ];
 
 const demoProducts = [
@@ -282,11 +316,30 @@ async function snapshotEntity(entityType: string, entityId: string) {
 }
 
 async function seedDemoCategories() {
+  // Parents first: a subcategory cannot be created before the category it
+  // hangs from, and the database trigger enforces that the parent exists and is
+  // itself top-level.
+  const parentIds = new Map<string, string>();
+
+  for (const parent of demoParentCategories) {
+    const created = await prisma.category.upsert({
+      where: { slug: parent.slug },
+      update: {},
+      create: parent,
+    });
+    parentIds.set(parent.slug, created.id);
+    await snapshotEntity("CATEGORY", created.id);
+  }
+
   for (const cat of demoCategories) {
+    const { parentSlug, ...categoryData } = cat;
+    const parentId = parentIds.get(parentSlug);
+    if (!parentId) continue;
+
     const created = await prisma.category.upsert({
       where: { slug: cat.slug },
       update: {},
-      create: cat,
+      create: { ...categoryData, parentId },
     });
     await snapshotEntity("CATEGORY", created.id);
   }
