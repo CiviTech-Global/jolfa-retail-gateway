@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
 import type { User } from "@prisma/client";
 import { createTestApp } from "../../../test/helpers/build-app.js";
@@ -11,9 +11,82 @@ import {
 import { prisma } from "../../shared/prisma.js";
 
 /**
- * The payments module moves money and had no test coverage at all. These drive
- * the real routes end to end against the database.
+ * The payments module moves money. These drive the real routes end to end
+ * against the database, with the gateway itself stubbed at `fetch`.
+ *
+ * Stubbing fetch rather than the Zibal client module is deliberate: it keeps the
+ * client's own logic — result-code interpretation, the Toman-to-Rial
+ * conversion, the amount cross-check — inside what is under test. Mocking the
+ * client would assert only that the service calls a function.
+ *
+ * It also stops the suite reaching the real gateway. Zibal's documented test
+ * merchant works over the public internet, so an unstubbed run quietly depended
+ * on their uptime and took a network round trip per test.
  */
+
+const TRACK_ID = "15966442233311";
+
+/**
+ * The amount Zibal was last asked for, in Rial.
+ *
+ * Module-level rather than per-stub because tests re-stub mid-test to change
+ * what verify reports, and that must not make the gateway forget the session it
+ * already opened — which would fail the service's amount cross-check for the
+ * wrong reason and make the test look like a product bug.
+ */
+let lastRequestedAmountRial = 0;
+
+interface ZibalStub {
+  /** Result code for /v1/request. 100 is success. */
+  requestResult?: number;
+  /** Result code for /v1/verify. 100 success, 201 already verified. */
+  verifyResult?: number;
+  /** Payment-session status. 1 = paid+verified, 2 = paid+unverified, 3 = cancelled. */
+  verifyStatus?: number;
+  /** What Zibal says was paid, in RIAL. Defaults to whatever was requested. */
+  verifyAmountRial?: number;
+  trackId?: string;
+}
+
+/** Installs a fake Zibal and returns a record of what was sent to it. */
+function stubZibal(options: ZibalStub = {}) {
+  const calls: { url: string; body: Record<string, unknown> }[] = [];
+
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string, init: { body: string }) => {
+      const body = JSON.parse(init.body) as Record<string, unknown>;
+      calls.push({ url: String(url), body });
+
+      if (String(url).endsWith("/v1/request")) {
+        lastRequestedAmountRial = Number(body.amount);
+        return new Response(
+          JSON.stringify({
+            result: options.requestResult ?? 100,
+            trackId: Number(options.trackId ?? TRACK_ID),
+            message: "success",
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          result: options.verifyResult ?? 100,
+          status: options.verifyStatus ?? 1,
+          amount: options.verifyAmountRial ?? lastRequestedAmountRial,
+          refNumber: 987654,
+          cardNumber: "62741****44",
+          paidAt: "2026-09-13T10:00:00.000000",
+          message: "success",
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }),
+  );
+
+  return { calls };
+}
 
 interface Fixture {
   app: FastifyInstance;
@@ -52,9 +125,15 @@ async function requestPayment(f: Fixture) {
   });
 }
 
+afterEach(() => {
+  vi.unstubAllGlobals();
+  lastRequestedAmountRial = 0;
+});
+
 describe("POST /api/v1/payments/request", () => {
   let fixture: Fixture;
   beforeEach(async () => {
+    stubZibal();
     fixture = await placeOrder();
   });
 
@@ -156,6 +235,7 @@ describe("POST /api/v1/payments/verify", () => {
   let authority: string;
 
   beforeEach(async () => {
+    stubZibal();
     fixture = await placeOrder();
     authority = (await requestPayment(fixture)).json().data.authority;
   });
@@ -218,11 +298,14 @@ describe("POST /api/v1/payments/verify", () => {
     ).toBe(1);
   });
 
-  it("marks the payment failed on a NOK callback and leaves the order pending", async () => {
+  it("marks the payment failed when the gateway reports a cancelled session", async () => {
+    // Zibal status 3 = cancelled by the customer.
+    stubZibal({ verifyResult: 202, verifyStatus: 3 });
+
     const res = await fixture.app.inject({
       method: "POST",
       url: "/api/v1/payments/verify",
-      payload: { authority, status: "NOK" },
+      payload: { authority, status: "OK" },
     });
 
     expect(res.statusCode).toBe(200);
@@ -234,6 +317,64 @@ describe("POST /api/v1/payments/verify", () => {
     const order = await prisma.order.findUniqueOrThrow({ where: { id: fixture.orderId } });
     expect(order.paymentStatus).toBe("PENDING");
     expect(order.status).toBe("PENDING");
+  });
+
+  // The regression this whole rewrite exists for.
+  //
+  // Verification used to read `status` from the request body: anything that was
+  // not "NOK" marked the order paid. The endpoint needs no authentication and
+  // the customer is handed their own authority by /payments/request, so this
+  // was a free-order button for anyone who opened the network tab.
+  it("does not trust the caller's claim of success when the gateway disagrees", async () => {
+    stubZibal({ verifyResult: 202, verifyStatus: 3 });
+
+    const res = await fixture.app.inject({
+      method: "POST",
+      url: "/api/v1/payments/verify",
+      payload: { authority, status: "OK" },
+    });
+
+    expect(res.json().data.success).toBe(false);
+
+    const order = await prisma.order.findUniqueOrThrow({ where: { id: fixture.orderId } });
+    expect(order.paymentStatus).toBe("PENDING");
+  });
+
+  it("refuses to settle when the gateway reports a different amount", async () => {
+    // A mismatch means something is wrong that must not be papered over by
+    // shipping goods: a mixed-up trackId, a tampered session, or our own
+    // Toman/Rial conversion drifting.
+    stubZibal({ verifyAmountRial: 10_000 });
+
+    const res = await fixture.app.inject({
+      method: "POST",
+      url: "/api/v1/payments/verify",
+      payload: { authority, status: "OK" },
+    });
+
+    expect(res.json().data.success).toBe(false);
+
+    const payment = await prisma.payment.findFirstOrThrow({ where: { authority } });
+    expect(payment.status).toBe("FAILED");
+
+    const order = await prisma.order.findUniqueOrThrow({ where: { id: fixture.orderId } });
+    expect(order.paymentStatus).toBe("PENDING");
+  });
+
+  it("treats 'already verified' as success, so a retried callback still settles", async () => {
+    // Result 201. A retry, a refreshed return page, or our own timeout retry
+    // all produce it; treating it as a failure would mark a paid order failed.
+    stubZibal({ verifyResult: 201, verifyStatus: 1 });
+
+    const res = await fixture.app.inject({
+      method: "POST",
+      url: "/api/v1/payments/verify",
+      payload: { authority },
+    });
+
+    expect(res.json().data.success).toBe(true);
+    const order = await prisma.order.findUniqueOrThrow({ where: { id: fixture.orderId } });
+    expect(order.paymentStatus).toBe("COMPLETED");
   });
 
   it("404s for an authority nobody issued", async () => {

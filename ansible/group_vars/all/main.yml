@@ -83,10 +83,14 @@ max_file_size: 5242880
 #   zarinpal_merchant_id: <real id, in vault>
 #
 # Nothing else in the stack needs to change.
-payment_gateway: zarinpal          # zarinpal | zibal
+payment_gateway: zibal             # zarinpal | zibal
 zarinpal_sandbox: "true"
 zarinpal_merchant_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-zibal_merchant_id: ""              # set to enable Zibal instead of ZarinPal
+zibal_merchant_id: ""              # real id lives in vault as vault_zibal_merchant_id
+# "true" until the customer has tested a full purchase and is ready to take real
+# money. Flipping this to "false" is the act that starts charging cards, so it
+# is deliberately a separate, visible decision from deploying the code.
+zibal_sandbox: "true"
 
 # ---- SMS (PLACEHOLDER) -----------------------------------------------------
 # Both blank => the server logs the password-reset code instead of sending it.

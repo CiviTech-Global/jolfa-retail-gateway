@@ -100,6 +100,23 @@ const HIDE_BELOW: Record<NonNullable<DataTableColumn<unknown>['hideBelow']>, str
 
 const DEFAULT_PAGE_SIZES = [10, 25, 50, 100]
 
+/**
+ * The vertical grid line between cells.
+ *
+ * Horizontal rules alone let the eye drift across a wide row and read a value
+ * against the wrong column — the wider the table, the worse it gets. A vertical
+ * rule at every cell boundary keeps each column visually enclosed.
+ *
+ * It is deliberately fainter than the row rule: columns are a weaker division
+ * than rows in a table that is read row by row, and matching their weight makes
+ * the grid fight the data for attention.
+ *
+ * `border-e` is the logical inline-end, so this lands on the correct side in an
+ * RTL document with no separate rule; `last:border-e-0` keeps a line off the
+ * table's own rounded edge.
+ */
+const CELL_DIVIDER = 'border-e border-border/40 last:border-e-0'
+
 function alignmentClass(column: DataTableColumn<unknown>): string {
   const align = column.align ?? (column.numeric ? 'end' : 'start')
   if (align === 'center') return 'text-center'
@@ -228,7 +245,7 @@ export function DataTable<Row>({
           {caption && <caption className="sr-only">{caption}</caption>}
 
           <thead>
-            <tr className="border-b border-border bg-muted/60">
+            <tr className="border-b-2 border-border bg-muted/60">
               {columns.map((column) => {
                 const isSorted = activeSort?.columnId === column.id
                 const canSort = Boolean(column.sortable) && (sortsInternally || isSortControlled)
@@ -251,6 +268,7 @@ export function DataTable<Row>({
                     }
                     className={cn(
                       'px-4 py-3 text-xs font-semibold tracking-normal text-muted-foreground',
+                      CELL_DIVIDER,
                       'whitespace-nowrap uppercase',
                       alignmentClass(column as DataTableColumn<unknown>),
                       column.numeric && 'tabular-nums',
@@ -302,6 +320,7 @@ export function DataTable<Row>({
                       key={column.id}
                       className={cn(
                         'px-4 py-3.5',
+                        CELL_DIVIDER,
                         column.hideBelow && HIDE_BELOW[column.hideBelow],
                       )}
                     >
@@ -340,6 +359,7 @@ export function DataTable<Row>({
                         // 14px vertical: enough to separate rows without the
                         // airy look that makes a dense list hard to scan.
                         'px-4 py-3.5 align-middle text-foreground',
+                        CELL_DIVIDER,
                         alignmentClass(column as DataTableColumn<unknown>),
                         column.numeric && 'tabular-nums',
                         column.hideBelow && HIDE_BELOW[column.hideBelow],

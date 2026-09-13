@@ -4,6 +4,34 @@ import { env } from "../../config/env.js";
 import type { PaymentGateway, PaymentStatus } from "@prisma/client";
 import type { PaymentRequestBody, PaymentVerifyBody } from "./payment.types.js";
 import { createTransaction } from "./transaction.service.js";
+import {
+  buildZibalStartUrl,
+  createZibalPayment,
+  describeZibalStatus,
+  isPaidStatus,
+  isSandbox,
+  verifyZibalPayment,
+} from "./zibal.client.js";
+import { logger } from "../../shared/logger.js";
+
+/**
+ * Order amounts are stored in TOMAN — that is what `formatPrice` renders and
+ * what the admin types in. Zibal's API is denominated in RIAL.
+ *
+ * Getting this wrong does not fail; it charges the customer ten times too much
+ * or a tenth of the price, and both look like a working checkout. The
+ * conversion is therefore a named function used at exactly one call site, not
+ * a `* 10` buried in a request payload.
+ */
+const RIAL_PER_TOMAN = 10;
+
+export function tomanToRial(toman: number): number {
+  return toman * RIAL_PER_TOMAN;
+}
+
+export function rialToToman(rial: number): number {
+  return Math.round(rial / RIAL_PER_TOMAN);
+}
 
 export interface GatewayConfig {
   gateway: PaymentGateway;
@@ -23,7 +51,12 @@ export function getGatewayConfig(): GatewayConfig {
       merchantId: env.ZIBAL_MERCHANT_ID!,
       apiBase: "https://gateway.zibal.ir/v1",
       startPayBase: "https://gateway.zibal.ir/start",
-      callbackUrl: env.ZIBAL_CALLBACK_URL ?? `${env.API_PREFIX}/payments/verify/zibal`,
+      // Zibal requires an absolute URL starting http(s) (result code 106),
+      // and it must reach THIS server rather than the SPA: the browser arrives
+      // holding only a claim, and the server has to settle it with Zibal before
+      // anyone is told the order is paid.
+      callbackUrl:
+        env.ZIBAL_CALLBACK_URL ?? `${env.APP_URL}${env.API_PREFIX}/payments/callback/zibal`,
     };
   }
 
@@ -69,7 +102,23 @@ export async function requestPayment(userId: string, data: PaymentRequestBody) {
     };
   }
 
-  const authority = `auth-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+  // Ask Zibal for a payment session BEFORE writing anything: a trackId we did
+  // not receive is a payment row pointing at a session that does not exist, and
+  // the customer would be redirected to a dead page.
+  const customer = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { phone: true },
+  });
+
+  const session = await createZibalPayment({
+    amountRial: tomanToRial(order.finalAmount),
+    callbackUrl: config.callbackUrl,
+    orderId: order.orderNumber,
+    description: `سفارش ${order.orderNumber}`,
+    mobile: customer?.phone,
+  });
+
+  const authority = session.trackId;
 
   const payment = await prisma.payment.upsert({
     where: { orderId: order.id },
@@ -113,15 +162,37 @@ export async function verifyPayment(data: PaymentVerifyBody) {
     throw new NotFoundError("Payment");
   }
 
+  // Already settled. Zibal would answer 201 here anyway, but there is no reason
+  // to spend a round trip re-asking about a closed session.
   if (payment.status === "COMPLETED") {
     return { success: true, orderId: payment.orderId, refId: payment.refId };
   }
 
-  if (data.status === "NOK") {
+  // The decision is Zibal's, not the caller's.
+  //
+  // This used to trust the `status` field in the request body: anything other
+  // than "NOK" marked the order paid. Since the customer is handed their own
+  // authority by /payments/request and this endpoint needs no authentication,
+  // that was a free-order button for anyone who read the network tab. The
+  // callback's query string is a claim from an untrusted browser; only a verify
+  // response from Zibal settles a payment.
+  const result = await verifyZibalPayment(payment.authority!);
+
+  if (!result.verified || !isPaidStatus(result.status)) {
+    const reason = result.verified ? describeZibalStatus(result.status) : result.message;
+
     await prisma.payment.update({
       where: { id: payment.id },
-      data: { status: "FAILED", gatewayResponse: { status: "NOK" } },
+      data: {
+        status: "FAILED",
+        gatewayResponse: {
+          result: result.result,
+          status: result.status,
+          message: result.message,
+        },
+      },
     });
+
     await createTransaction({
       orderId: payment.orderId,
       paymentId: payment.id,
@@ -130,12 +201,51 @@ export async function verifyPayment(data: PaymentVerifyBody) {
       status: "FAILED",
       gateway: payment.gateway,
       authority: payment.authority ?? undefined,
-      metadata: { reason: "NOK callback" },
+      metadata: { reason, result: result.result, status: result.status },
     });
-    return { success: false, orderId: payment.orderId };
+
+    return { success: false, orderId: payment.orderId, reason };
   }
 
-  const refId = `ref-${Date.now()}`;
+  // Zibal says paid — now check it paid for THIS order at THIS price.
+  //
+  // The amount is echoed back in Rial. If it does not match what we asked for,
+  // something is wrong that we must not paper over by shipping goods: a mixed
+  // up trackId, a tampered session, or our own Toman/Rial conversion drifting.
+  const expectedRial = tomanToRial(payment.amount);
+  if (result.amountRial !== null && result.amountRial !== expectedRial) {
+    logger.error(
+      {
+        paymentId: payment.id,
+        orderId: payment.orderId,
+        expectedRial,
+        reportedRial: result.amountRial,
+      },
+      "zibal verified an amount that does not match the order",
+    );
+
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: {
+        status: "FAILED",
+        gatewayResponse: {
+          result: result.result,
+          status: result.status,
+          message: "amount mismatch",
+          expectedRial,
+          reportedRial: result.amountRial,
+        },
+      },
+    });
+
+    return {
+      success: false,
+      orderId: payment.orderId,
+      reason: "مبلغ پرداخت‌شده با مبلغ سفارش مطابقت ندارد. لطفاً با پشتیبانی تماس بگیرید.",
+    };
+  }
+
+  const refId = result.refNumber ?? payment.authority!;
 
   await prisma.$transaction([
     prisma.payment.update({
@@ -143,8 +253,15 @@ export async function verifyPayment(data: PaymentVerifyBody) {
       data: {
         status: "COMPLETED",
         refId,
-        paidAt: new Date(),
-        gatewayResponse: { status: "OK", refId },
+        paidAt: result.paidAt ? new Date(result.paidAt) : new Date(),
+        gatewayResponse: {
+          result: result.result,
+          status: result.status,
+          refNumber: result.refNumber,
+          cardNumber: result.cardNumber,
+          paidAt: result.paidAt,
+          sandbox: isSandbox(),
+        },
       },
     }),
     prisma.order.update({
@@ -161,7 +278,11 @@ export async function verifyPayment(data: PaymentVerifyBody) {
         gateway: payment.gateway,
         authority: payment.authority ?? undefined,
         refId,
-        metadata: { reason: "Payment verified" },
+        metadata: {
+          reason: "Verified with Zibal",
+          cardNumber: result.cardNumber,
+          sandbox: isSandbox(),
+        },
       },
     }),
   ]);
@@ -187,5 +308,8 @@ export async function getPaymentByAuthority(authority: string) {
  * drift from the API base it was minted against.
  */
 export function buildPaymentUrl(config: GatewayConfig, authority: string): string {
+  if (config.gateway === "ZIBAL") {
+    return buildZibalStartUrl(authority);
+  }
   return `${config.startPayBase}/${authority}`;
 }

@@ -6,6 +6,7 @@ import {
   paymentParamsSchema,
   paymentRequestBodySchema,
   paymentVerifyBodySchema,
+  zibalCallbackQuerySchema,
 } from "./payment.types.js";
 
 export default async function paymentRoutes(
@@ -22,6 +23,17 @@ export default async function paymentRoutes(
     "/verify",
     { preHandler: [validateRequest({ body: paymentVerifyBodySchema })] },
     paymentController.verifyPayment
+  );
+
+  // Zibal returns the customer here with a GET query string, so this cannot be
+  // the POST /verify route. Unauthenticated by necessity: the browser arrives
+  // from the gateway carrying no session cookie for us, and the trackId is the
+  // only thing identifying the payment. That is safe because the endpoint
+  // decides nothing — it asks Zibal what happened and redirects.
+  app.get(
+    "/callback/zibal",
+    { preHandler: [validateRequest({ query: zibalCallbackQuerySchema })] },
+    paymentController.zibalCallback
   );
 
   app.get(

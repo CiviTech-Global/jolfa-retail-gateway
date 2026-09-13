@@ -28,6 +28,19 @@ const envSchema = z.object({
   ZARINPAL_CALLBACK_URL: z.string().optional(),
   ZIBAL_MERCHANT_ID: z.string().optional(),
   ZIBAL_CALLBACK_URL: z.string().optional(),
+  /**
+   * Sandbox is the default, and "not set" must mean sandbox. Zibal serves both
+   * modes from one hostname and decides real-vs-test purely from the merchant
+   * value, so a missing flag on a machine that happens to hold a live merchant
+   * id would otherwise start charging real cards with nothing to notice.
+   */
+  ZIBAL_SANDBOX: z.enum(["true", "false"]).default("true"),
+  /**
+   * Zibal's IPG authenticates with `merchant` in the request body, not a bearer
+   * token. This key belongs to their other products (platform, ebank) and is
+   * declared only so a populated .env still validates.
+   */
+  ZIBAL_API_KEY: z.string().optional(),
   KAVENEGAR_API_KEY: z.string().optional(),
   SMS_IR_API_KEY: z.string().optional(),
   SMS_SENDER_NUMBER: z.string().optional(),
