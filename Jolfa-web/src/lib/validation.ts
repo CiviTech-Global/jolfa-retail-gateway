@@ -54,17 +54,22 @@ export const requiredEmailSchema = z
   .min(1, 'ایمیل الزامی است')
   .email('ایمیل معتبر نیست')
 
-/** Iranian postal code: exactly 10 digits. Optional. */
-export const optionalPostalCodeSchema = z.preprocess(
+/**
+ * Iranian postal code: required, exactly 10 digits.
+ *
+ * Persian digits, spaces and hyphens are normalised away first, so
+ * "۱۲۳۴۵-۶۷۸۹۰" is accepted as 1234567890. The server applies the same rule,
+ * which matters because a saved address is re-checked there at checkout.
+ */
+export const postalCodeSchema = z.preprocess(
   (value) => {
     const normalized = digits(value)
-    if (typeof normalized === 'string') {
-      const stripped = normalized.replace(/[\s-]/g, '')
-      return stripped === '' ? undefined : stripped
-    }
-    return normalized
+    return typeof normalized === 'string' ? normalized.replace(/[\s-]/g, '') : normalized
   },
-  z.string().regex(/^\d{10}$/, 'کد پستی باید دقیقاً ۱۰ رقم باشد').optional(),
+  z
+    .string({ required_error: 'کد پستی الزامی است', invalid_type_error: 'کد پستی الزامی است' })
+    .min(1, 'کد پستی الزامی است')
+    .regex(/^\d{10}$/, 'کد پستی باید دقیقاً ۱۰ رقم باشد'),
 )
 
 export function requiredText(field: string, max = 200) {

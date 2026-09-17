@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { postalCodeSchema } from "../../shared/zod-helpers.js";
 
 export const addressCreateSchema = z.object({
   title: z.string().trim().max(100).optional(),
@@ -7,7 +8,9 @@ export const addressCreateSchema = z.object({
   province: z.string().trim().min(1, "استان الزامی است").max(100),
   city: z.string().trim().min(1, "شهر الزامی است").max(100),
   district: z.string().trim().max(100).optional(),
-  postalCode: z.string().trim().max(20).optional(),
+  // Required: a courier cannot deliver without it, and a missing one was only
+  // discovered when the parcel came back.
+  postalCode: postalCodeSchema(),
   addressLine: z.string().trim().min(1, "آدرس الزامی است"),
   /** First address saved becomes the default regardless of this flag. */
   isDefault: z.boolean().optional(),

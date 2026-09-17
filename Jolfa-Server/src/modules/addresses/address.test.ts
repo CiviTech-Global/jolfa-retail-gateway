@@ -89,6 +89,51 @@ describe("POST /api/v1/addresses", () => {
     await app.close();
   });
 
+  it("rejects an address with no postal code", async () => {
+    const app = await buildTestApp();
+    const { user } = await createTestUser();
+    const token = getAuthToken(app, user);
+
+    const { postalCode: _omitted, ...withoutPostalCode } = validShippingAddress();
+    const missing = await createAddress(app, token, { postalCode: undefined });
+    const blank = await app.inject({
+      method: "POST",
+      url: "/api/v1/addresses",
+      headers: auth(token),
+      payload: { ...withoutPostalCode, postalCode: "" },
+    });
+
+    expect(missing.statusCode).toBe(422);
+    expect(blank.statusCode).toBe(422);
+    await app.close();
+  });
+
+  it("rejects a postal code that is not ten digits", async () => {
+    const app = await buildTestApp();
+    const { user } = await createTestUser();
+    const token = getAuthToken(app, user);
+
+    for (const postalCode of ["123456789", "12345678901", "12345abcde"]) {
+      const res = await createAddress(app, token, { postalCode });
+      expect(res.statusCode).toBe(422);
+    }
+    await app.close();
+  });
+
+  // A Persian keyboard types these digits. An ASCII-only check would tell the
+  // customer a correct code is "not ten digits".
+  it("accepts a postal code typed in Persian digits, and stores it in ASCII", async () => {
+    const app = await buildTestApp();
+    const { user } = await createTestUser();
+    const token = getAuthToken(app, user);
+
+    const res = await createAddress(app, token, { postalCode: "۱۲۳۴۵-۶۷۸۹۰" });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.json().data.address.postalCode).toBe("1234567890");
+    await app.close();
+  });
+
   it("requires authentication", async () => {
     const app = await buildTestApp();
 
@@ -203,6 +248,33 @@ describe("ordering from a saved address", () => {
     // Stock must not move for an order that was never created.
     const reloaded = await prisma.product.findUnique({ where: { id: product.id } });
     expect(reloaded?.stockQuantity).toBe(5);
+    await app.close();
+  });
+
+  // The live database held saved addresses from before the postal code was
+  // required. They must be stopped at checkout with a message the customer can
+  // act on, not turned into orders a courier cannot deliver.
+  it("refuses a saved address that has no postal code", async () => {
+    const app = await buildTestApp();
+    const { user } = await createTestUser();
+    const token = getAuthToken(app, user);
+    const product = await createTestProduct({ price: 10_000, stockQuantity: 5 });
+    const address = (await createAddress(app, token)).json().data.address;
+
+    await prisma.address.update({ where: { id: address.id }, data: { postalCode: null } });
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/orders",
+      headers: auth(token),
+      payload: {
+        items: [{ productId: product.id, quantity: 1 }],
+        shippingAddressId: address.id,
+      },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.message).toContain("کد پستی");
     await app.close();
   });
 

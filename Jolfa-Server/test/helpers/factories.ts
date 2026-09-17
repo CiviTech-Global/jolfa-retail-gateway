@@ -132,6 +132,7 @@ export function validShippingAddress(overrides: Record<string, unknown> = {}): R
     province: "تهران",
     city: "تهران",
     addressLine: "خیابان ولیعصر، پلاک ۱",
+    postalCode: "1234567890",
     ...overrides,
   };
 }

@@ -135,8 +135,14 @@ export const SETTING_META: Record<string, SettingMeta> = {
   },
   footer_copyright: {
     label: 'متن کپی‌رایت',
-    help: 'خط پایانی پاورقی. اگر خالی باشد، سال جاری و نام فروشگاه نمایش داده می‌شود.',
+    help: 'خط پایانی پاورقی. اگر خالی باشد، «© 2026 رایان تمدن جهان گستر. تمامی حقوق محفوظ است.» نمایش داده می‌شود.',
     kind: 'text',
+  },
+  enamad_trust_seal: {
+    label: 'نماد اعتماد الکترونیکی (اینماد)',
+    help: 'کد نمادی که پنل اینماد در اختیارتان می‌گذارد را کامل در اینجا بچسبانید (یا فقط لینک آن را). نماد در پایین پاورقی نمایش داده می‌شود. خالی بگذارید تا نمایش داده نشود.',
+    kind: 'textarea',
+    placeholder: "<a referrerpolicy='origin' target='_blank' href='https://trustseal.enamad.ir/?id=...&Code=...'>...</a>",
   },
   show_about: {
     label: 'صفحه «درباره ما»',

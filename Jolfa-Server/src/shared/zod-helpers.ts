@@ -86,5 +86,34 @@ export function imageUrl(requiredMessage = "آدرس تصویر الزامی ا�
     );
 }
 
+/**
+ * Iranian postal code: required, exactly ten digits.
+ *
+ * Persian and Arabic-Indic digits are converted first. A customer on a Persian
+ * keyboard types "۱۲۳۴۵۶۷۸۹۰", and an ASCII-only `\d` would reject a perfectly
+ * valid code with a message telling them it is not ten digits. The web form
+ * already normalises; this has to as well, because the API is also reachable
+ * directly and a saved address is re-validated here at checkout.
+ *
+ * Spaces and hyphens are stripped for the same reason — "12345-67890" is how
+ * the code is often written on a bill.
+ */
+export function postalCodeSchema() {
+  const message = "کد پستی باید دقیقاً ۱۰ رقم باشد";
+  return z.preprocess(
+    (value) =>
+      typeof value === "string"
+        ? value
+            .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06f0))
+            .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+            .replace(/[\s-]/g, "")
+        : value,
+    z
+      .string({ required_error: "کد پستی الزامی است", invalid_type_error: "کد پستی الزامی است" })
+      .min(1, "کد پستی الزامی است")
+      .regex(/^\d{10}$/, message),
+  );
+}
+
 export const uuidSchema = (field: string) =>
   z.string({ required_error: `${field} الزامی است` }).uuid(`${field} معتبر نیست`);

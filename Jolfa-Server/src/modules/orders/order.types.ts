@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { postalCodeSchema } from "../../shared/zod-helpers.js";
 
 export const shippingAddressSchema = z.object({
   title: z.string().max(100).optional(),
@@ -7,7 +8,9 @@ export const shippingAddressSchema = z.object({
   province: z.string().min(1, "استان الزامی است").max(100),
   city: z.string().min(1, "شهر الزامی است").max(100),
   district: z.string().max(100).optional(),
-  postalCode: z.string().max(20).optional(),
+  // Same rule as the address book, so a saved address that predates it is
+  // caught when order.service re-validates it rather than shipped half-filled.
+  postalCode: postalCodeSchema(),
   addressLine: z.string().min(1, "آدرس الزامی است"),
 });
 

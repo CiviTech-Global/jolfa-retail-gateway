@@ -139,7 +139,7 @@ export function AddressFormDialog({ open, onOpenChange, address }: AddressFormDi
                 {(field) => <Input {...field} {...register('district')} />}
               </FormField>
 
-              <FormField label="کد پستی" error={errors.postalCode?.message} hint="۱۰ رقم">
+              <FormField label="کد پستی" required error={errors.postalCode?.message} hint="۱۰ رقم">
                 {(field) => (
                   <Input
                     {...field}

@@ -339,7 +339,7 @@ export function CheckoutPage() {
                   )}
                 </FormField>
 
-                <FormField label="کد پستی" error={errors.postalCode?.message} hint="۱۰ رقم">
+                <FormField label="کد پستی" required error={errors.postalCode?.message} hint="۱۰ رقم">
                   {(field) => (
                     <Input
                       {...field}

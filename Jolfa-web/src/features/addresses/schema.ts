@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import {
   iranMobileSchema,
-  optionalPostalCodeSchema,
+  postalCodeSchema,
   optionalText,
   requiredText,
 } from '@/lib/validation'
@@ -17,9 +17,10 @@ export const addressFieldsSchema = z.object({
   province: requiredText('استان', 100),
   city: requiredText('شهر', 100),
   district: optionalText('محله', 100),
-  // Optional, but must be a real 10-digit code when provided — a malformed one
-  // silently breaks delivery.
-  postalCode: optionalPostalCodeSchema,
+  // Required. A courier cannot deliver without it, and because this schema is
+  // shared with checkout, a saved address missing one is flagged there with a
+  // link to complete it instead of failing at the payment step.
+  postalCode: postalCodeSchema,
   addressLine: requiredText('آدرس', 500).refine(
     (value) => value.trim().length >= 10,
     'آدرس را کامل‌تر وارد کنید (حداقل ۱۰ کاراکتر)',

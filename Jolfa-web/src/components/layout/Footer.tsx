@@ -11,8 +11,18 @@ import {
   Headphones,
 } from 'lucide-react'
 import { usePublicSettingBoolean, usePublicSettingValue } from '@/features/cms/hooks'
-import { useBranding } from '@/features/cms/branding'
 import { SiteLogo } from './SiteLogo'
+import { EnamadSeal } from './EnamadSeal'
+import { parseEnamadSeal } from '@/lib/enamad'
+
+/**
+ * Default copyright holder and build credit. The shop is built and maintained
+ * by Rayan Tamadon Jahan Gostar, so the credit is fixed in code rather than a
+ * setting: it states who made the software, which is not the shop owner's to
+ * edit. The copyright line itself can still be overridden in settings.
+ */
+const DEFAULT_COPYRIGHT = '© 2026 رایان تمدن جهان گستر. تمامی حقوق محفوظ است.'
+const BUILD_CREDIT = 'طراحی و پیاده‌سازی توسط محمد خلیل‌زاده از رایان تمدن جهان گستر'
 
 const trustBadges = [
   { icon: ShieldCheck, label: 'ضمانت اصالت کالا' },
@@ -88,7 +98,6 @@ function FooterLinkItem({ link }: { link: FooterLink }) {
 }
 
 export function Footer() {
-  const { name: siteName } = useBranding()
 
   const showTrustBadges = usePublicSettingBoolean('show_trust_badges')
   const showFooterLinks = usePublicSettingBoolean('show_footer_links')
@@ -103,6 +112,7 @@ export function Footer() {
   const telegram = usePublicSettingValue('footer_telegram')?.trim()
   const whatsapp = usePublicSettingValue('footer_whatsapp')?.trim()
   const copyright = usePublicSettingValue('footer_copyright')?.trim()
+  const enamadSeal = parseEnamadSeal(usePublicSettingValue('enamad_trust_seal'))
 
   const columns = parseColumns(usePublicSettingValue('footer_link_columns'))
 
@@ -205,8 +215,15 @@ export function Footer() {
           )}
         </div>
 
-        <div className="mt-10 border-t border-border pt-6 text-center text-sm text-muted-foreground">
-          {copyright || `© ${new Date().getFullYear()} ${siteName}. تمامی حقوق محفوظ است.`}
+        <div className="mt-10 flex flex-col-reverse items-center gap-5 border-t border-border pt-6 text-center sm:flex-row sm:justify-between sm:text-start">
+          <div className="space-y-1.5">
+            <p className="text-sm text-muted-foreground">{copyright || DEFAULT_COPYRIGHT}</p>
+            <p className="text-xs text-muted-foreground/80">{BUILD_CREDIT}</p>
+          </div>
+
+          {/* Only once the ENAMAD seal code has been entered in settings — an
+              empty setting renders nothing rather than a broken seal. */}
+          {enamadSeal && <EnamadSeal seal={enamadSeal} />}
         </div>
       </div>
     </footer>

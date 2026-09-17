@@ -77,6 +77,16 @@ export const DEFAULT_SETTINGS: SettingDefault[] = [
   { key: "footer_telegram", value: "", group: "footer", isPublic: true, description: "Telegram channel URL" },
   { key: "footer_whatsapp", value: "", group: "footer", isPublic: true, description: "WhatsApp contact URL" },
   {
+    // The trust-seal snippet ENAMAD issues once the domain is approved. Stored
+    // as pasted; the storefront extracts only the numeric id and the code from
+    // it and builds the link itself, so the setting can never inject markup.
+    key: "enamad_trust_seal",
+    value: "",
+    group: "footer",
+    isPublic: true,
+    description: "ENAMAD trust-seal embed code (or its link) from the ENAMAD panel",
+  },
+  {
     key: "footer_copyright",
     value: "",
     group: "footer",
