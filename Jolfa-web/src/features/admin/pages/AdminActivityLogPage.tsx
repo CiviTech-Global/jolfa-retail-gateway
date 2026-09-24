@@ -28,6 +28,7 @@ const entityMap: Record<string, string> = {
   Banner: 'بنر',
   Setting: 'تنظیم',
   HomepageSection: 'بخش صفحه اصلی',
+  ContentPage: 'صفحه سایت',
   User: 'کاربر',
   Payment: 'پرداخت',
   Transaction: 'تراکنش',

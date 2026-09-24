@@ -17,6 +17,7 @@ import adminRoutes from "./modules/admin/admin.routes.js";
 import { authRoutes } from "./modules/auth/auth.routes.js";
 import settingsRoutes from "./modules/settings/settings.routes.js";
 import homepageSectionRoutes from "./modules/homepage-sections/homepage-section.routes.js";
+import contentPageRoutes from "./modules/content-pages/content-page.routes.js";
 import demoRoutes from "./modules/demo/demo.routes.js";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 import bannerRoutes from "./modules/banners/banner.routes.js";
@@ -206,6 +207,7 @@ export async function buildApp(app: FastifyInstance): Promise<FastifyInstance> {
   await app.register(orderAdminRoutes, { prefix: `${env.API_PREFIX}/admin` });
   await app.register(settingsRoutes, { prefix: `${env.API_PREFIX}/settings` });
   await app.register(homepageSectionRoutes, { prefix: `${env.API_PREFIX}/homepage-sections` });
+  await app.register(contentPageRoutes, { prefix: `${env.API_PREFIX}/content-pages` });
   await app.register(demoRoutes, { prefix: `${env.API_PREFIX}/demo` });
   await app.register(dashboardRoutes, { prefix: `${env.API_PREFIX}/dashboard` });
   await app.register(bannerRoutes, { prefix: `${env.API_PREFIX}/banners` });

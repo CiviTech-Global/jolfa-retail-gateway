@@ -19,6 +19,7 @@ export type AuditEntityType =
   | "Banner"
   | "Setting"
   | "HomepageSection"
+  | "ContentPage"
   | "User"
   | "Payment"
   | "Transaction"

@@ -7,6 +7,7 @@ import {
   ShoppingBag,
   Settings,
   LayoutTemplate,
+  FileText,
   Database,
   LogOut,
   Menu,
@@ -62,6 +63,7 @@ const navGroups: NavGroup[] = [
     items: [
       { to: '/admin/banners', label: 'بنرها', icon: LayoutTemplate },
       { to: '/admin/homepage-sections', label: 'بخش‌های صفحه اصلی', icon: LayoutTemplate },
+      { to: '/admin/pages', label: 'صفحات سایت', icon: FileText },
     ],
   },
   {

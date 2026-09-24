@@ -320,6 +320,35 @@ model HomepageSection {
   @@map("homepage_sections")
 }
 
+/**
+ * An editable content page: /about, and later /contact and /rules.
+ *
+ * Kept separate from HomepageSection on purpose. The homepage is a
+ * merchandising surface whose sections pull live catalogue data (carousels,
+ * flash deals, category grids); these are prose pages whose blocks are the
+ * words themselves. Forcing them through the same table would mean every
+ * section type answering "what does this mean on /about?", and the two would
+ * drift apart anyway.
+ *
+ * `blocks` is a JSON array rather than a child table: blocks are always read
+ * and written as a whole page, are ordered, and have per-type shapes. A table
+ * would buy nothing and cost a join plus a reordering dance. Every shape is
+ * validated by zod on write, so nothing reaches the column unchecked.
+ */
+model ContentPage {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /** Route segment: "about", "contact", "rules". */
+  slug            String   @unique @db.VarChar(50)
+  title           String   @db.VarChar(200)
+  metaTitle       String?  @map("meta_title") @db.VarChar(200)
+  metaDescription String?  @map("meta_description") @db.VarChar(500)
+  blocks          Json     @default("[]") @db.JsonB
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("content_pages")
+}
+
 model AuditLog {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId     String?  @map("user_id") @db.Uuid

@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import { prisma } from "./prisma.js";
 import { env } from "../config/env.js";
 import { ensureDefaultSettings } from "../modules/settings/settings.service.js";
+import { ensureDefaultContentPages } from "../modules/content-pages/content-page.service.js";
 import { pruneRetiredSections } from "../modules/homepage-sections/homepage-section.service.js";
 
 interface SeedUser {
@@ -64,6 +65,9 @@ export async function seedDefaults(): Promise<void> {
   // Branding and storefront toggles must exist before an admin can edit them.
   try {
     await ensureDefaultSettings();
+    // Create-only, like the settings above: a deploy must never overwrite
+    // copy an admin has edited.
+    await ensureDefaultContentPages();
   } catch (error) {
     console.error("[seed] Failed to seed default settings:", error);
   }

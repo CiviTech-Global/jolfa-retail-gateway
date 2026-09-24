@@ -286,6 +286,22 @@ const rootChildren: RouteObject[] = [
             ),
           },
           {
+            // Two paths, one screen: /admin/pages opens «درباره ما», and the
+            // tabs inside switch the slug.
+            path: 'pages',
+            ...lazyRoute(
+              () => import('@/features/content-pages/AdminContentPagesPage'),
+              'AdminContentPagesPage',
+            ),
+          },
+          {
+            path: 'pages/:slug',
+            ...lazyRoute(
+              () => import('@/features/content-pages/AdminContentPagesPage'),
+              'AdminContentPagesPage',
+            ),
+          },
+          {
             path: 'settings',
             ...lazyRoute(() => import('@/features/cms/pages/AdminSettingsPage'), 'AdminSettingsPage'),
           },
