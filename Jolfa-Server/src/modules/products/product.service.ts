@@ -10,6 +10,16 @@ export interface ProductListFilters {
   limit: number;
   categorySlug?: string;
   isActive?: "true" | "false";
+  /**
+   * Set only by the admin route. Without it the `isActive` filter is
+   * ignored and the listing stays active-only.
+   *
+   * `GET /products` is unauthenticated — it serves the storefront — so a
+   * filter that can switch off the active-only default is a way for anyone
+   * to enumerate unpublished products by asking for them. Hidden products
+   * are drafts, discontinued lines and mistakes; they are hidden on purpose.
+   */
+  adminView?: boolean;
   maxStock?: number;
   onSale?: boolean;
   q?: string;
@@ -98,7 +108,7 @@ async function assertCategoryAcceptsProducts(categoryId: string): Promise<void> 
 
 export async function listProducts(filters: ProductListFilters) {
   const { page, limit, categorySlug, q, sort, minPrice, maxPrice, featured } = filters;
-  const { isActive, maxStock, onSale } = filters;
+  const { isActive, maxStock, onSale, adminView } = filters;
   const skip = (page - 1) * limit;
 
   const where: Prisma.ProductWhereInput = {
@@ -147,7 +157,11 @@ export async function listProducts(filters: ProductListFilters) {
   // The storefront only ever shows active products. The admin list needs to
   // reach hidden ones, which is what `isActive` overrides — it is the only way
   // to find a product that was switched off and forgotten.
-  if (isActive !== undefined) {
+  //
+  // Honoured for the admin route alone. On the public route the parameter is
+  // ignored rather than rejected: the storefront has no reason to send it, and
+  // a 422 would turn a probe into a signal that the filter exists.
+  if (adminView && isActive !== undefined) {
     where.isActive = isActive === "true";
   }
 

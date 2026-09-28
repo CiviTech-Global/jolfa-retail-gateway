@@ -15,7 +15,8 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
-import { getProducts, deleteProduct } from '@/features/catalog/api'
+import { deleteProduct } from '@/features/catalog/api'
+import { getAdminProducts } from '@/features/admin/api'
 import type { ProductFilters } from '@/features/catalog/types'
 import { ProductFormDialog } from '../components/ProductFormDialog'
 
@@ -89,7 +90,7 @@ export function AdminProductsPage() {
     // ordering from cache and the table would appear not to respond.
     queryKey: ['admin', 'products', page, sort, q, categorySlug, status, stockFilter],
     queryFn: () =>
-      getProducts({
+      getAdminProducts({
         page,
         limit: PAGE_SIZE,
         sort: toApiSort(sort),

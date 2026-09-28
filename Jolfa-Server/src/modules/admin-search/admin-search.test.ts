@@ -374,3 +374,54 @@ describe("bulk price adjustment", () => {
     expect(entries[0].metadata).toMatchObject({ bulkPriceAdjustment: true, changed: 2 });
   });
 });
+
+describe("hidden products are not publicly enumerable", () => {
+  let app: FastifyInstance;
+
+  beforeEach(async () => {
+    app = await createTestApp();
+  });
+
+  // Regression. The admin list needs to reach switched-off products, and the
+  // filter that allows it was briefly added to the PUBLIC /products route,
+  // where it overrode the active-only default — so anyone could enumerate
+  // drafts and discontinued lines by asking for isActive=false.
+  it("ignores isActive on the public route", async () => {
+    await createTestProduct({ title: "محصول پنهان", isActive: false });
+
+    const res = await app.inject({ method: "GET", url: "/api/v1/products?isActive=false&limit=50" });
+
+    expect(res.statusCode).toBe(200);
+    const titles = res.json().data.products.map((p: { title: string }) => p.title);
+    expect(titles).not.toContain("محصول پنهان");
+  });
+
+  it("still hides inactive products when no filter is sent", async () => {
+    await createTestProduct({ title: "محصول پنهان دوم", isActive: false });
+
+    const res = await app.inject({ method: "GET", url: "/api/v1/products?limit=50" });
+
+    const titles = res.json().data.products.map((p: { title: string }) => p.title);
+    expect(titles).not.toContain("محصول پنهان دوم");
+  });
+
+  it("lets an admin find them through the guarded route", async () => {
+    await createTestProduct({ title: "محصول پنهان سوم", isActive: false });
+    const { user } = await createTestAdmin();
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v1/admin/products?isActive=false&limit=50",
+      headers: { authorization: `Bearer ${getAuthToken(app, user)}` },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const titles = res.json().data.products.map((p: { title: string }) => p.title);
+    expect(titles).toContain("محصول پنهان سوم");
+  });
+
+  it("refuses the admin route without a token", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/v1/admin/products?isActive=false" });
+    expect(res.statusCode).toBe(401);
+  });
+});

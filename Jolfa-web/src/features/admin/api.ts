@@ -127,3 +127,29 @@ export function getAuditLogs(page = 1, limit = 20, filters?: { entityType?: stri
   if (filters?.action) params.set('action', filters.action)
   return apiRequest<AuditLogListResponse>(`/admin/audit-logs?${params.toString()}`)
 }
+
+/**
+ * The catalogue listing for the admin panel.
+ *
+ * A different endpoint from the storefront's `getProducts`, not just different
+ * arguments: reaching switched-off products has to require passing the admin
+ * guard rather than passing a parameter, or anyone could enumerate unpublished
+ * products by asking for them.
+ */
+export function getAdminProducts(
+  filters: import('@/features/catalog/types').ProductFilters = {},
+): Promise<import('@/features/catalog/types').ProductListResponse> {
+  const params = new URLSearchParams()
+  if (filters.page) params.set('page', String(filters.page))
+  if (filters.limit) params.set('limit', String(filters.limit))
+  if (filters.categorySlug) params.set('categorySlug', filters.categorySlug)
+  if (filters.q) params.set('q', filters.q)
+  if (filters.sort) params.set('sort', filters.sort)
+  if (filters.isActive) params.set('isActive', filters.isActive)
+  if (filters.maxStock !== undefined) params.set('maxStock', String(filters.maxStock))
+  if (filters.onSale) params.set('onSale', 'true')
+  const query = params.toString()
+  return apiRequest<import('@/features/catalog/types').ProductListResponse>(
+    `/admin/products${query ? `?${query}` : ''}`,
+  )
+}

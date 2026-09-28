@@ -9,6 +9,22 @@ import type {
   ProductUpdateBody,
 } from "./product.types.js";
 
+/**
+ * The admin catalogue listing.
+ *
+ * A separate entry point from the public one so that reaching hidden products
+ * requires passing through the admin guard, rather than passing a parameter.
+ */
+export const listAdminProducts = asyncHandler(
+  async (
+    request: FastifyRequest<{ Querystring: ProductListQuery }>,
+    reply: FastifyReply
+  ): Promise<void> => {
+    const result = await productService.listProducts({ ...request.query, adminView: true });
+    sendSuccess(reply, result);
+  }
+);
+
 export const listProducts = asyncHandler(
   async (
     req: FastifyRequest<{ Querystring: ProductListQuery }>,

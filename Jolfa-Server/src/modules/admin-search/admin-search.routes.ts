@@ -4,6 +4,8 @@ import { validateRequest } from "../../shared/middleware/validate-request.js";
 import { sendSuccess } from "../../shared/reply.js";
 import { asyncHandler } from "../../shared/async-handler.js";
 import { searchAdmin } from "./admin-search.service.js";
+import * as productController from "../products/product.controller.js";
+import { productListQuerySchema } from "../products/product.types.js";
 import { bulkAdjustPrices } from "./bulk-price.service.js";
 import { adminSearchQuerySchema, bulkPriceBodySchema } from "./admin-search.types.js";
 import type { AdminSearchQuery, BulkPriceBody } from "./admin-search.types.js";
@@ -36,6 +38,14 @@ export default async function adminSearchRoutes(
     "/search",
     { preHandler: [...adminPreHandler, validateRequest({ query: adminSearchQuerySchema })] },
     search
+  );
+
+  // The catalogue listing for the admin panel. Same filters as the public
+  // route plus `isActive`, which only has effect behind this guard.
+  app.get(
+    "/products",
+    { preHandler: [...adminPreHandler, validateRequest({ query: productListQuerySchema })] },
+    productController.listAdminProducts
   );
 
   app.post(
