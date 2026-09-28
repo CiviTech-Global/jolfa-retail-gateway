@@ -66,6 +66,23 @@ export interface BulkPriceResult {
   totalAfter: number
 }
 
+export interface LastBulkPriceRun {
+  at: string
+  /** Hours since the run, measured server-side to avoid client clock skew. */
+  ageHours: number
+  by: string | null
+  scopeKind: string | null
+  mode: string | null
+  direction: string | null
+  value: number | null
+  matched: number | null
+  changed: number | null
+}
+
+export function getLastBulkPriceRun(): Promise<{ lastRun: LastBulkPriceRun | null }> {
+  return apiRequest<{ lastRun: LastBulkPriceRun | null }>('/admin/products/bulk-price/last')
+}
+
 export function bulkAdjustPrices(body: BulkPriceBody): Promise<BulkPriceResult> {
   return apiRequest<BulkPriceResult>('/admin/products/bulk-price', { method: 'POST', body })
 }

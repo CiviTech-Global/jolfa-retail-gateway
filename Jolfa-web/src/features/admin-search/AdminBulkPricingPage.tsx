@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { AlertTriangle, Calculator, Check } from 'lucide-react'
+import { AlertTriangle, Calculator, Check, History } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -12,12 +12,34 @@ import { DataTable } from '@/components/ui/DataTable'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
-import { formatNumber, formatPrice } from '@/lib/utils'
+import { formatDate, formatNumber, formatPrice } from '@/lib/utils'
 import { getCategories } from '@/features/catalog/api'
 import type { CategoryTreeDto } from '@/features/catalog/types'
-import { bulkAdjustPrices, type BulkPriceBody, type BulkPriceResult } from './api'
+import {
+  bulkAdjustPrices,
+  getLastBulkPriceRun,
+  type BulkPriceBody,
+  type BulkPriceResult,
+  type LastBulkPriceRun,
+} from './api'
 
 const ALL_PRODUCTS = '__all__'
+
+/**
+ * Below this age, the previous run is shown as a warning rather than a note.
+ *
+ * Bulk changes compound silently — two 20% discounts leave 64% of the original
+ * price, not 80% — and nothing about the catalogue afterwards reveals that it
+ * happened twice. A run from this morning is the case where an admin is about
+ * to repeat a colleague's work; one from last month is just history.
+ */
+const RECENT_RUN_HOURS = 24
+
+const SCOPE_LABELS: Record<string, string> = {
+  all: 'همه محصولات',
+  category: 'یک دسته‌بندی',
+  products: 'محصولات انتخاب‌شده',
+}
 
 /**
  * Bulk price changes.
@@ -39,6 +61,12 @@ export function AdminBulkPricingPage() {
   const [roundTo, setRoundTo] = useState('1000')
   const [setCompareAtPrice, setSetCompareAtPrice] = useState(true)
   const [preview, setPreview] = useState<BulkPriceResult | null>(null)
+
+  const { data: lastRunData } = useQuery({
+    queryKey: ['admin', 'bulk-price', 'last'],
+    queryFn: getLastBulkPriceRun,
+  })
+  const lastRun = lastRunData?.lastRun ?? null
 
   const { data: categoryData } = useQuery({
     queryKey: ['categories', 'tree'],
@@ -76,6 +104,9 @@ export function AdminBulkPricingPage() {
       setPreview(null)
       void queryClient.invalidateQueries({ queryKey: ['admin', 'products'] })
       void queryClient.invalidateQueries({ queryKey: ['products'] })
+      // Without this the banner would still describe the previous run, which is
+      // exactly the information someone is about to act on.
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'bulk-price', 'last'] })
       toast.success(`قیمت ${formatNumber(result.changed)} محصول به‌روزرسانی شد`)
     },
     onError: (error) =>
@@ -112,6 +143,8 @@ export function AdminBulkPricingPage() {
         title="تغییر گروهی قیمت"
         description="اعمال تخفیف یا افزایش قیمت روی یک دسته‌بندی یا کل فروشگاه، با پیش‌نمایش پیش از ثبت."
       />
+
+      {lastRun && <LastRunBanner run={lastRun} />}
 
       <Card>
         <CardHeader>
@@ -314,6 +347,56 @@ export function AdminBulkPricingPage() {
 
       <Dialog />
     </ScrollReveal>
+  )
+}
+
+function LastRunBanner({ run }: { run: LastBulkPriceRun }) {
+  const isRecent = run.ageHours < RECENT_RUN_HOURS
+
+  const summary = [
+    run.direction === 'decrease' ? 'کاهش' : 'افزایش',
+    run.value !== null
+      ? run.mode === 'percent'
+        ? `${formatNumber(run.value)}٪`
+        : formatPrice(run.value)
+      : null,
+    run.scopeKind ? `روی ${SCOPE_LABELS[run.scopeKind] ?? run.scopeKind}` : null,
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  return (
+    <div
+      className={
+        isRecent
+          ? 'flex items-start gap-3 rounded-2xl border border-warning/40 bg-warning-soft p-4'
+          : 'flex items-start gap-3 rounded-2xl border border-border bg-muted/40 p-4'
+      }
+    >
+      {isRecent ? (
+        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden="true" />
+      ) : (
+        <History className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+      )}
+      <div className="min-w-0 text-sm">
+        <p className={isRecent ? 'font-medium text-warning' : 'font-medium text-foreground'}>
+          {isRecent
+            ? 'در ۲۴ ساعت گذشته یک تغییر گروهی قیمت انجام شده است.'
+            : 'آخرین تغییر گروهی قیمت'}
+        </p>
+        <p className="mt-1 text-muted-foreground">
+          {summary} — {formatDate(run.at, true)}
+          {run.by ? ` توسط ${run.by}` : ''}
+          {run.changed !== null ? ` · ${formatNumber(run.changed)} محصول` : ''}
+        </p>
+        {isRecent && (
+          <p className="mt-1 text-muted-foreground">
+            تغییرها روی هم اثر می‌گذارند: دو تخفیف ۲۰ درصدی، قیمت را به ۶۴ درصد می‌رساند نه ۸۰
+            درصد. اگر این تغییر قبلاً اعمال شده، دوباره اعمال نکنید.
+          </p>
+        )}
+      </div>
+    </div>
   )
 }
 

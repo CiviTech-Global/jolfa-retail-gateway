@@ -6,7 +6,7 @@ import { asyncHandler } from "../../shared/async-handler.js";
 import { searchAdmin } from "./admin-search.service.js";
 import * as productController from "../products/product.controller.js";
 import { productListQuerySchema } from "../products/product.types.js";
-import { bulkAdjustPrices } from "./bulk-price.service.js";
+import { bulkAdjustPrices, getLastBulkPriceRun } from "./bulk-price.service.js";
 import { adminSearchQuerySchema, bulkPriceBodySchema } from "./admin-search.types.js";
 import type { AdminSearchQuery, BulkPriceBody } from "./admin-search.types.js";
 
@@ -18,6 +18,12 @@ const search = asyncHandler(
     reply: FastifyReply
   ): Promise<void> => {
     sendSuccess(reply, await searchAdmin(request.query.q));
+  }
+);
+
+const lastBulkPrice = asyncHandler(
+  async (_request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    sendSuccess(reply, { lastRun: await getLastBulkPriceRun() });
   }
 );
 
@@ -47,6 +53,10 @@ export default async function adminSearchRoutes(
     { preHandler: [...adminPreHandler, validateRequest({ query: productListQuerySchema })] },
     productController.listAdminProducts
   );
+
+  // Registered before the POST so the two are easy to read together; Fastify
+  // routes on method as well as path, so the order is not significant.
+  app.get("/products/bulk-price/last", { preHandler: adminPreHandler }, lastBulkPrice);
 
   app.post(
     "/products/bulk-price",

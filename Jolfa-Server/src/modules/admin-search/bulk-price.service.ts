@@ -190,3 +190,76 @@ export async function bulkAdjustPrices(
 
   return result;
 }
+
+export interface LastBulkPriceRun {
+  at: Date;
+  /**
+   * Hours since the run, measured on the server.
+   *
+   * Computed here rather than in the browser because the same clock wrote the
+   * audit row, so the figure cannot be thrown off by a skewed client clock —
+   * and a "recent run" warning that misfires is one an admin learns to ignore.
+   */
+  ageHours: number;
+  by: string | null;
+  scopeKind: string | null;
+  mode: string | null;
+  direction: string | null;
+  value: number | null;
+  matched: number | null;
+  changed: number | null;
+}
+
+/**
+ * The most recent bulk price change, for the warning on the pricing screen.
+ *
+ * Bulk changes compound silently: two 20% discounts leave 64% of the original
+ * price, not 80%, and nothing about the catalogue afterwards says it happened
+ * twice. Showing when the last one ran — and by whom — is what lets an admin
+ * notice that a colleague already applied today's sale before applying it again.
+ *
+ * Read from the audit log rather than a new column: the log is already the
+ * record of what happened, and a second source of truth could disagree with it.
+ */
+export async function getLastBulkPriceRun(): Promise<LastBulkPriceRun | null> {
+  const entry = await prisma.auditLog.findFirst({
+    where: {
+      entityType: "Product",
+      action: "UPDATE",
+      // Ordinary product edits share this entityType, so the flag is what
+      // distinguishes a bulk run from someone renaming one product.
+      metadata: { path: ["bulkPriceAdjustment"], equals: true },
+    },
+    orderBy: { createdAt: "desc" },
+    select: {
+      createdAt: true,
+      metadata: true,
+      user: { select: { firstName: true, lastName: true, phone: true } },
+    },
+  });
+
+  if (!entry) return null;
+
+  const metadata = (entry.metadata ?? {}) as Record<string, unknown>;
+  const scope = metadata.scope as { kind?: string } | undefined;
+  const asNumber = (value: unknown): number | null =>
+    typeof value === "number" ? value : null;
+  const asString = (value: unknown): string | null =>
+    typeof value === "string" ? value : null;
+
+  const name = entry.user
+    ? `${entry.user.firstName ?? ""} ${entry.user.lastName ?? ""}`.trim() || entry.user.phone
+    : null;
+
+  return {
+    at: entry.createdAt,
+    ageHours: (Date.now() - entry.createdAt.getTime()) / 36e5,
+    by: name,
+    scopeKind: scope?.kind ?? null,
+    mode: asString(metadata.mode),
+    direction: asString(metadata.direction),
+    value: asNumber(metadata.value),
+    matched: asNumber(metadata.matched),
+    changed: asNumber(metadata.changed),
+  };
+}

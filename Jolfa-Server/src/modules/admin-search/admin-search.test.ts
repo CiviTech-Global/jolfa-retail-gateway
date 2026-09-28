@@ -425,3 +425,121 @@ describe("hidden products are not publicly enumerable", () => {
     expect(res.statusCode).toBe(401);
   });
 });
+
+describe("last bulk price run", () => {
+  let app: FastifyInstance;
+
+  beforeEach(async () => {
+    app = await createTestApp();
+  });
+
+  const adminAuth = async () => {
+    const { user } = await createTestAdmin();
+    return { authorization: `Bearer ${getAuthToken(app, user)}` };
+  };
+
+  it("reports nothing before any bulk change has been made", async () => {
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v1/admin/products/bulk-price/last",
+      headers: await adminAuth(),
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.lastRun).toBeNull();
+  });
+
+  it("describes the run, so a repeat is a visible decision", async () => {
+    const { user } = await createTestAdmin({ firstName: "نرگس", lastName: "کریمی" });
+    const headers = { authorization: `Bearer ${getAuthToken(app, user)}` };
+    const product = await createTestProduct({ price: 100_000 });
+
+    await app.inject({
+      method: "POST",
+      url: BULK,
+      headers,
+      payload: {
+        scope: { kind: "products", productIds: [product.id] },
+        mode: "percent",
+        direction: "decrease",
+        value: 20,
+        dryRun: false,
+      },
+    });
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v1/admin/products/bulk-price/last",
+      headers,
+    });
+
+    expect(res.json().data.lastRun).toMatchObject({
+      by: "نرگس کریمی",
+      mode: "percent",
+      direction: "decrease",
+      value: 20,
+      changed: 1,
+      scopeKind: "products",
+    });
+    // Measured server-side, so a skewed client clock cannot misfire the warning.
+    expect(res.json().data.lastRun.ageHours).toBeLessThan(1);
+  });
+
+  it("ignores a dry run, which changed nothing", async () => {
+    const headers = await adminAuth();
+    const product = await createTestProduct();
+
+    await app.inject({
+      method: "POST",
+      url: BULK,
+      headers,
+      payload: {
+        scope: { kind: "products", productIds: [product.id] },
+        mode: "percent",
+        direction: "decrease",
+        value: 10,
+      },
+    });
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v1/admin/products/bulk-price/last",
+      headers,
+    });
+
+    expect(res.json().data.lastRun).toBeNull();
+  });
+
+  it("is not confused by an ordinary single-product edit", async () => {
+    const headers = await adminAuth();
+    const product = await createTestProduct();
+
+    // Same entityType and action in the audit log; only the bulk flag separates
+    // them, which is why the query filters on it.
+    await app.inject({
+      method: "PATCH",
+      url: `/api/v1/products/${product.slug}`,
+      headers,
+      payload: { title: "عنوان تازه" },
+    });
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v1/admin/products/bulk-price/last",
+      headers,
+    });
+
+    expect(res.json().data.lastRun).toBeNull();
+  });
+
+  it("requires an admin", async () => {
+    const { user } = await createTestUser();
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v1/admin/products/bulk-price/last",
+      headers: { authorization: `Bearer ${getAuthToken(app, user)}` },
+    });
+
+    expect(res.statusCode).toBe(403);
+  });
+});
