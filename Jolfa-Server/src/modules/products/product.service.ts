@@ -9,8 +9,19 @@ export interface ProductListFilters {
   page: number;
   limit: number;
   categorySlug?: string;
+  isActive?: "true" | "false";
+  maxStock?: number;
+  onSale?: boolean;
   q?: string;
-  sort: "price:asc" | "price:desc" | "createdAt:desc" | "createdAt:asc";
+  sort:
+    | "price:asc"
+    | "price:desc"
+    | "createdAt:desc"
+    | "createdAt:asc"
+    | "title:asc"
+    | "title:desc"
+    | "stock:asc"
+    | "stock:desc";
   minPrice?: number;
   maxPrice?: number;
   featured?: boolean;
@@ -87,6 +98,7 @@ async function assertCategoryAcceptsProducts(categoryId: string): Promise<void> 
 
 export async function listProducts(filters: ProductListFilters) {
   const { page, limit, categorySlug, q, sort, minPrice, maxPrice, featured } = filters;
+  const { isActive, maxStock, onSale } = filters;
   const skip = (page - 1) * limit;
 
   const where: Prisma.ProductWhereInput = {
@@ -132,10 +144,35 @@ export async function listProducts(filters: ProductListFilters) {
     where.isFeatured = true;
   }
 
+  // The storefront only ever shows active products. The admin list needs to
+  // reach hidden ones, which is what `isActive` overrides — it is the only way
+  // to find a product that was switched off and forgotten.
+  if (isActive !== undefined) {
+    where.isActive = isActive === "true";
+  }
+
+  if (maxStock !== undefined) {
+    where.stockQuantity = { lte: maxStock };
+  }
+
+  if (onSale) {
+    // "Discounted" means a struck-through price above the current one. A
+    // compareAtPrice equal to or below the price is stale, not a sale.
+    where.compareAtPrice = { not: null };
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
+      { compareAtPrice: { gt: prisma.product.fields.price } },
+    ];
+  }
+
   const orderBy: Prisma.ProductOrderByWithRelationInput = {};
   if (sort === "price:asc") orderBy.price = "asc";
   else if (sort === "price:desc") orderBy.price = "desc";
   else if (sort === "createdAt:asc") orderBy.createdAt = "asc";
+  else if (sort === "title:asc") orderBy.title = "asc";
+  else if (sort === "title:desc") orderBy.title = "desc";
+  else if (sort === "stock:asc") orderBy.stockQuantity = "asc";
+  else if (sort === "stock:desc") orderBy.stockQuantity = "desc";
   else orderBy.createdAt = "desc";
 
   const [products, total] = await Promise.all([

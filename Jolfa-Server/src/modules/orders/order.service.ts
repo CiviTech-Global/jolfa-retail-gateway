@@ -1,3 +1,5 @@
+import { Prisma } from "@prisma/client";
+import { containsAnyVariant } from "../../shared/search-text.js";
 import { prisma } from "../../shared/prisma.js";
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from "../../shared/app-error.js";
 import { STOCK_NON_NEGATIVE_CONSTRAINT } from "./order.constants.js";
@@ -229,15 +231,61 @@ export async function getOrderById(orderId: string, userId: string, userRole: st
 }
 
 export async function listAdminOrders(query: OrderListQuery) {
-  const { page, limit, status } = query;
+  const { page, limit, status, paymentStatus, q, from, to, sort } = query;
   const skip = (page - 1) * limit;
 
-  const where = status ? { status } : {};
+  const where: Prisma.OrderWhereInput = {};
+  if (status) where.status = status;
+  if (paymentStatus) where.paymentStatus = paymentStatus;
+
+  if (q) {
+    // The admin is usually holding one of three things: the order number, a
+    // tracking code, or a customer on the phone giving their name or mobile.
+    where.OR = [
+      ...containsAnyVariant("orderNumber", q),
+      ...containsAnyVariant("trackingNumber", q),
+      {
+        user: {
+          OR: [
+            ...containsAnyVariant("firstName", q),
+            ...containsAnyVariant("lastName", q),
+            ...containsAnyVariant("phone", q),
+          ],
+        },
+      },
+      {
+        shippingAddress: {
+          OR: [...containsAnyVariant("recipientName", q), ...containsAnyVariant("phone", q)],
+        },
+      },
+    ];
+  }
+
+  if (from || to) {
+    where.createdAt = {};
+    if (from) where.createdAt.gte = new Date(from);
+    if (to) {
+      // A date-only "to" means the whole of that day. Without this, filtering
+      // to today returns nothing, because midnight is before every order in it.
+      const end = new Date(to);
+      if (!to.includes("T")) end.setHours(23, 59, 59, 999);
+      where.createdAt.lte = end;
+    }
+  }
+
+  const orderBy: Prisma.OrderOrderByWithRelationInput =
+    sort === "createdAt:asc"
+      ? { createdAt: "asc" }
+      : sort === "total:desc"
+        ? { finalAmount: "desc" }
+        : sort === "total:asc"
+          ? { finalAmount: "asc" }
+          : { createdAt: "desc" };
 
   const [orders, total] = await Promise.all([
     prisma.order.findMany({
       where,
-      orderBy: { createdAt: "desc" },
+      orderBy,
       skip,
       take: limit,
       include: {

@@ -7,11 +7,26 @@ import type {
   TransactionListResponse,
 } from './types'
 
-export function getAdminOrders(page = 1, limit = 20, status?: string) {
+export interface AdminOrderFilters {
+  status?: string
+  paymentStatus?: string
+  /** Order number, tracking code, or the customer's name or mobile. */
+  q?: string
+  from?: string
+  to?: string
+  sort?: 'createdAt:desc' | 'createdAt:asc' | 'total:desc' | 'total:asc'
+}
+
+export function getAdminOrders(page = 1, limit = 20, filters: AdminOrderFilters = {}) {
   const params = new URLSearchParams()
   params.set('page', String(page))
   params.set('limit', String(limit))
-  if (status) params.set('status', status)
+  if (filters.status) params.set('status', filters.status)
+  if (filters.paymentStatus) params.set('paymentStatus', filters.paymentStatus)
+  if (filters.q) params.set('q', filters.q)
+  if (filters.from) params.set('from', filters.from)
+  if (filters.to) params.set('to', filters.to)
+  if (filters.sort) params.set('sort', filters.sort)
   return apiRequest<{ orders: import('@/features/orders/types').OrderDto[]; meta: { page: number; limit: number; total: number; totalPages: number } }>(`/admin/orders?${params.toString()}`)
 }
 

@@ -40,6 +40,15 @@ export const orderListQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
   status: z.enum(["PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"]).optional(),
+  paymentStatus: z.enum(["PENDING", "COMPLETED", "FAILED", "REFUNDED"]).optional(),
+  /** Order number, tracking number, or the customer's name or mobile. */
+  q: z.string().trim().max(120).optional().or(z.literal("").transform(() => undefined)),
+  /** Inclusive ISO dates. `to` is widened to the end of that day by the service. */
+  from: z.string().datetime().optional().or(z.string().date().optional()),
+  to: z.string().datetime().optional().or(z.string().date().optional()),
+  sort: z
+    .enum(["createdAt:desc", "createdAt:asc", "total:desc", "total:asc"])
+    .default("createdAt:desc"),
 });
 
 export const orderParamsSchema = z.object({

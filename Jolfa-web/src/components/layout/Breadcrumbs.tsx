@@ -128,6 +128,7 @@ const ADMIN_SEGMENT_LABELS: Record<string, string> = {
   'activity-log': 'گزارش فعالیت',
   'homepage-sections': 'بخش‌های صفحه اصلی',
   pages: 'صفحات سایت',
+  pricing: 'تغییر گروهی قیمت',
   about: 'درباره ما',
   contact: 'تماس با ما',
   rules: 'قوانین و مقررات',

@@ -177,8 +177,21 @@ export interface ProductFilters {
   limit?: number
   categorySlug?: string
   q?: string
-  sort?: 'price:asc' | 'price:desc' | 'createdAt:desc' | 'createdAt:asc'
+  sort?:
+    | 'price:asc'
+    | 'price:desc'
+    | 'createdAt:desc'
+    | 'createdAt:asc'
+    | 'title:asc'
+    | 'title:desc'
+    | 'stock:asc'
+    | 'stock:desc'
   minPrice?: number
   maxPrice?: number
   featured?: boolean
+  /** Admin-only. The storefront never sends these. */
+  isActive?: 'true' | 'false'
+  /** Products at or below this stock level — the restock worklist. */
+  maxStock?: number
+  onSale?: boolean
 }

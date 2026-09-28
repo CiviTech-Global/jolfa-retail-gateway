@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Search, UserCog, Power, KeyRound, Users } from 'lucide-react'
+import { UserCog, Power, KeyRound, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
+import { DebouncedSearchInput, FilterBar, FilterField } from '@/components/ui/FilterBar'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
 import { Badge } from '@/components/ui/Badge'
 import { DataTable } from '@/components/ui/DataTable'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -15,17 +16,43 @@ import { getAdminUsers, resetUserPassword, updateUserRole, updateUserStatus } fr
 import type { AdminUserDto } from '@/features/admin/types'
 
 const PAGE_SIZE = 20
+const ANY = '__any__'
 
 export function AdminUsersPage() {
   const queryClient = useQueryClient()
   const { confirm, Dialog } = useConfirmDialog()
   const [page, setPage] = useState(1)
   const [q, setQ] = useState('')
+  // These two have been supported by the API since it was written and were
+  // never exposed, so finding "all the admins" meant paging through everyone.
+  const [role, setRole] = useState(ANY)
+  const [status, setStatus] = useState(ANY)
+
+  const applyFilter = <T,>(setter: (next: T) => void) => (next: T) => {
+    setPage(1)
+    setter(next)
+  }
+
+  const activeFilterCount = [q !== '', role !== ANY, status !== ANY].filter(Boolean).length
+
+  const clearFilters = () => {
+    setPage(1)
+    setQ('')
+    setRole(ANY)
+    setStatus(ANY)
+  }
   const [resetTarget, setResetTarget] = useState<AdminUserDto | null>(null)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin', 'users', page, q],
-    queryFn: () => getAdminUsers(page, 20, q),
+    queryKey: ['admin', 'users', page, q, role, status],
+    queryFn: () =>
+      getAdminUsers(
+        page,
+        PAGE_SIZE,
+        q || undefined,
+        role === ANY ? undefined : role,
+        status === ANY ? undefined : status === 'active',
+      ),
   })
 
   const roleMutation = useMutation({
@@ -77,15 +104,41 @@ export function AdminUsersPage() {
         description="نقش، وضعیت و رمز عبور کاربران را مدیریت کنید."
       />
 
-      <div className="relative">
-        <Search className="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="جستجو بر اساس نام، موبایل یا ایمیل..."
-          value={q}
-          onChange={(e) => { setQ(e.target.value); setPage(1) }}
-          className="pe-9"
-        />
-      </div>
+      <FilterBar activeCount={activeFilterCount} onClear={clearFilters}>
+        <FilterField label="جستجو" className="min-w-[16rem] flex-1">
+          <DebouncedSearchInput
+            value={q}
+            onChange={applyFilter(setQ)}
+            placeholder="نام، موبایل یا ایمیل ..."
+          />
+        </FilterField>
+
+        <FilterField label="نقش">
+          <Select value={role} onValueChange={applyFilter(setRole)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ANY}>همه</SelectItem>
+              <SelectItem value="ADMIN">مدیر</SelectItem>
+              <SelectItem value="CUSTOMER">مشتری</SelectItem>
+            </SelectContent>
+          </Select>
+        </FilterField>
+
+        <FilterField label="وضعیت">
+          <Select value={status} onValueChange={applyFilter(setStatus)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ANY}>همه</SelectItem>
+              <SelectItem value="active">فعال</SelectItem>
+              <SelectItem value="inactive">غیرفعال</SelectItem>
+            </SelectContent>
+          </Select>
+        </FilterField>
+      </FilterBar>
 
       <Card>
         <CardHeader>

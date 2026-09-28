@@ -286,6 +286,13 @@ const rootChildren: RouteObject[] = [
             ),
           },
           {
+            path: 'products/pricing',
+            ...lazyRoute(
+              () => import('@/features/admin-search/AdminBulkPricingPage'),
+              'AdminBulkPricingPage',
+            ),
+          },
+          {
             // Two paths, one screen: /admin/pages opens «درباره ما», and the
             // tabs inside switch the slug.
             path: 'pages',

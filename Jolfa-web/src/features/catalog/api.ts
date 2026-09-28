@@ -53,6 +53,9 @@ export function getProducts(filters: ProductFilters = {}): Promise<ProductListRe
   if (filters.minPrice !== undefined) params.set('minPrice', String(filters.minPrice))
   if (filters.maxPrice !== undefined) params.set('maxPrice', String(filters.maxPrice))
   if (filters.featured) params.set('featured', 'true')
+  if (filters.isActive) params.set('isActive', filters.isActive)
+  if (filters.maxStock !== undefined) params.set('maxStock', String(filters.maxStock))
+  if (filters.onSale) params.set('onSale', 'true')
   const query = params.toString()
   return apiRequest<ProductListResponse>(`/products${query ? `?${query}` : ''}`)
 }

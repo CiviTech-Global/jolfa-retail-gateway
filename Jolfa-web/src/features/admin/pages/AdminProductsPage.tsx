@@ -7,6 +7,10 @@ import { formatDate, formatNumber, formatPrice } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { DataTable, type SortState } from '@/components/ui/DataTable'
+import { DebouncedSearchInput, FilterBar, FilterField } from '@/components/ui/FilterBar'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
+import { getCategories } from '@/features/catalog/api'
+import type { CategoryTreeDto } from '@/features/catalog/types'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
@@ -20,16 +24,48 @@ const PAGE_SIZE = 20
 /** Maps the table's sort state onto the values the products API accepts. */
 function toApiSort(sort: SortState | null): ProductFilters['sort'] {
   if (!sort) return undefined
-  if (sort.columnId === 'price') return sort.direction === 'asc' ? 'price:asc' : 'price:desc'
-  if (sort.columnId === 'createdAt') {
-    return sort.direction === 'asc' ? 'createdAt:asc' : 'createdAt:desc'
-  }
+  const suffix = sort.direction === 'asc' ? 'asc' : 'desc'
+  if (sort.columnId === 'price') return `price:${suffix}` as ProductFilters['sort']
+  if (sort.columnId === 'createdAt') return `createdAt:${suffix}` as ProductFilters['sort']
+  if (sort.columnId === 'title') return `title:${suffix}` as ProductFilters['sort']
+  if (sort.columnId === 'stock') return `stock:${suffix}` as ProductFilters['sort']
   return undefined
 }
+
+const ANY = '__any__'
+/** Anything at or below this counts as "running low" for the quick filter. */
+const LOW_STOCK_THRESHOLD = 5
 
 export function AdminProductsPage() {
   const [page, setPage] = useState(1)
   const [sort, setSort] = useState<SortState | null>(null)
+  const [q, setQ] = useState('')
+  const [categorySlug, setCategorySlug] = useState(ANY)
+  const [status, setStatus] = useState(ANY)
+  const [stockFilter, setStockFilter] = useState(ANY)
+
+  const { data: categoryData } = useQuery({
+    queryKey: ['categories', 'tree'],
+    queryFn: () => getCategories(true),
+  })
+  const categoryTree = (categoryData?.categories ?? []) as CategoryTreeDto[]
+
+  /** Every filter change returns to page 1; page 4 of the old result is meaningless. */
+  const applyFilter = <T,>(setter: (next: T) => void) => (next: T) => {
+    setPage(1)
+    setter(next)
+  }
+
+  const activeFilterCount = [q !== '', categorySlug !== ANY, status !== ANY, stockFilter !== ANY]
+    .filter(Boolean).length
+
+  const clearFilters = () => {
+    setPage(1)
+    setQ('')
+    setCategorySlug(ANY)
+    setStatus(ANY)
+    setStockFilter(ANY)
+  }
   const queryClient = useQueryClient()
   const { confirm, Dialog } = useConfirmDialog()
 
@@ -51,8 +87,22 @@ export function AdminProductsPage() {
   const { data, isLoading } = useQuery({
     // `sort` belongs in the key: without it a re-sort would serve the previous
     // ordering from cache and the table would appear not to respond.
-    queryKey: ['admin', 'products', page, sort],
-    queryFn: () => getProducts({ page, limit: PAGE_SIZE, sort: toApiSort(sort) }),
+    queryKey: ['admin', 'products', page, sort, q, categorySlug, status, stockFilter],
+    queryFn: () =>
+      getProducts({
+        page,
+        limit: PAGE_SIZE,
+        sort: toApiSort(sort),
+        q: q || undefined,
+        categorySlug: categorySlug === ANY ? undefined : categorySlug,
+        // The storefront hides inactive products by default; the admin list has
+        // to be able to reach them, which is the only way to find something
+        // that was switched off and forgotten.
+        isActive: status === ANY ? undefined : (status as 'true' | 'false'),
+        maxStock:
+          stockFilter === 'out' ? 0 : stockFilter === 'low' ? LOW_STOCK_THRESHOLD : undefined,
+        onSale: stockFilter === 'sale' ? true : undefined,
+      }),
   })
 
   const deleteMutation = useMutation({
@@ -88,6 +138,64 @@ export function AdminProductsPage() {
         }
       />
 
+      <FilterBar activeCount={activeFilterCount} onClear={clearFilters}>
+        <FilterField label="جستجو" className="min-w-[16rem] flex-1">
+          <DebouncedSearchInput
+            value={q}
+            onChange={applyFilter(setQ)}
+            placeholder="نام محصول یا کد کالا ..."
+          />
+        </FilterField>
+
+        <FilterField label="زیردسته">
+          <Select value={categorySlug} onValueChange={applyFilter(setCategorySlug)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ANY}>همه</SelectItem>
+              {categoryTree.map((parent) => [
+                <SelectItem key={parent.id} value={parent.slug}>
+                  {parent.name}
+                </SelectItem>,
+                ...(parent.children ?? []).map((child) => (
+                  <SelectItem key={child.id} value={child.slug}>
+                    {`${parent.name} › ${child.name}`}
+                  </SelectItem>
+                )),
+              ])}
+            </SelectContent>
+          </Select>
+        </FilterField>
+
+        <FilterField label="وضعیت">
+          <Select value={status} onValueChange={applyFilter(setStatus)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ANY}>همه</SelectItem>
+              <SelectItem value="true">فعال</SelectItem>
+              <SelectItem value="false">غیرفعال</SelectItem>
+            </SelectContent>
+          </Select>
+        </FilterField>
+
+        <FilterField label="موجودی و تخفیف">
+          <Select value={stockFilter} onValueChange={applyFilter(setStockFilter)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ANY}>همه</SelectItem>
+              <SelectItem value="out">ناموجود</SelectItem>
+              <SelectItem value="low">رو به اتمام (۵ یا کمتر)</SelectItem>
+              <SelectItem value="sale">دارای تخفیف</SelectItem>
+            </SelectContent>
+          </Select>
+        </FilterField>
+      </FilterBar>
+
       <Card>
         <CardHeader>
           <CardTitle>لیست محصولات</CardTitle>
@@ -119,6 +227,7 @@ export function AdminProductsPage() {
               {
                 id: 'title',
                 header: 'محصول',
+                sortable: true,
                 cell: (product) => (
                   <div className="flex flex-col">
                     <span className="font-medium text-foreground">{product.title}</span>
@@ -147,6 +256,7 @@ export function AdminProductsPage() {
                 id: 'stock',
                 header: 'موجودی',
                 numeric: true,
+                sortable: true,
                 hideBelow: 'sm',
                 cell: (product) => (
                   <span

@@ -13,7 +13,29 @@ export const productListQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(100).default(24),
   categorySlug: z.string().optional().or(z.literal("").transform(() => undefined)),
   q: z.string().optional().or(z.literal("").transform(() => undefined)),
-  sort: z.enum(["price:asc", "price:desc", "createdAt:desc", "createdAt:asc"]).default("createdAt:desc"),
+  sort: z
+    .enum([
+      "price:asc",
+      "price:desc",
+      "createdAt:desc",
+      "createdAt:asc",
+      "title:asc",
+      "title:desc",
+      "stock:asc",
+      "stock:desc",
+    ])
+    .default("createdAt:desc"),
+  /** Admin-only filters. The storefront never sends these. */
+  isActive: z.enum(["true", "false"]).optional(),
+  /** Products at or below this stock level — the restock worklist. */
+  maxStock: z.coerce.number().int().nonnegative().optional(),
+  /** Only products currently discounted (compareAtPrice set above price). */
+  onSale: z
+    .union([z.boolean(), z.string()])
+    .transform((value) =>
+      typeof value === "boolean" ? value : ["true", "1", "yes", "on"].includes(value.toLowerCase()),
+    )
+    .optional(),
   minPrice: z.coerce.number().int().nonnegative().optional(),
   maxPrice: z.coerce.number().int().nonnegative().optional(),
   featured: z

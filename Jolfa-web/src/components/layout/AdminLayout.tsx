@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router'
 import {
   LayoutDashboard,
@@ -7,6 +7,7 @@ import {
   ShoppingBag,
   Settings,
   LayoutTemplate,
+  Tag,
   FileText,
   Database,
   LogOut,
@@ -29,6 +30,8 @@ import { AdminBreadcrumbs } from '@/components/layout/Breadcrumbs'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/features/auth/context'
 import { SiteLogo } from './SiteLogo'
+import { CommandPalette } from '@/features/admin-search/CommandPalette'
+import { useCommandPaletteShortcut } from '@/features/admin-search/useCommandPaletteShortcut'
 
 const COLLAPSE_STORAGE_KEY = 'admin.sidebar.collapsed'
 
@@ -64,6 +67,7 @@ const navGroups: NavGroup[] = [
       { to: '/admin/banners', label: 'بنرها', icon: LayoutTemplate },
       { to: '/admin/homepage-sections', label: 'بخش‌های صفحه اصلی', icon: LayoutTemplate },
       { to: '/admin/pages', label: 'صفحات سایت', icon: FileText },
+      { to: '/admin/products/pricing', label: 'تغییر گروهی قیمت', icon: Tag },
     ],
   },
   {
@@ -144,6 +148,9 @@ export function AdminLayout() {
   const { logout, user } = useAuth()
   const navigate = useNavigate()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  // Ctrl+K / ⌘K from anywhere in the panel.
+  useCommandPaletteShortcut(useCallback(() => setPaletteOpen(true), []))
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem(COLLAPSE_STORAGE_KEY) === 'true'
@@ -247,18 +254,31 @@ export function AdminLayout() {
           </div>
 
           <div className="hidden items-center gap-3 md:flex">
-            <div className="relative">
-              <Search className="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="search"
-                placeholder="جستجو..."
-                aria-label="جستجو"
-                className="h-10 w-64 rounded-xl border border-border bg-background px-4 pe-9 text-sm text-foreground focus:border-primary focus:outline-none"
-              />
-            </div>
+            {/* A button, not an input: the palette owns the text field, so
+                typing here would mean two inputs fighting over one query. */}
+            <button
+              type="button"
+              onClick={() => setPaletteOpen(true)}
+              className="flex h-10 w-72 items-center gap-2 rounded-xl border border-border bg-background px-4 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+            >
+              <Search className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="flex-1 text-start">جستجو در کل پنل ...</span>
+              <kbd className="rounded border border-border px-1.5 py-0.5 text-[10px] tabular-nums">
+                Ctrl K
+              </kbd>
+            </button>
           </div>
 
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="جستجو"
+              className="md:hidden"
+              onClick={() => setPaletteOpen(true)}
+            >
+              <Search className="h-5 w-5" />
+            </Button>
             <Button variant="ghost" size="icon" aria-label="اعلانات">
               <Bell className="h-5 w-5" />
             </Button>
@@ -291,6 +311,8 @@ export function AdminLayout() {
           <Outlet />
         </main>
       </div>
+
+      {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
     </div>
   )
 }
