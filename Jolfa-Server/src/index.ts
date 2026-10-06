@@ -19,6 +19,7 @@ import settingsRoutes from "./modules/settings/settings.routes.js";
 import homepageSectionRoutes from "./modules/homepage-sections/homepage-section.routes.js";
 import contentPageRoutes from "./modules/content-pages/content-page.routes.js";
 import adminSearchRoutes from "./modules/admin-search/admin-search.routes.js";
+import smsRoutes from "./modules/sms/sms.routes.js";
 import demoRoutes from "./modules/demo/demo.routes.js";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 import bannerRoutes from "./modules/banners/banner.routes.js";
@@ -212,6 +213,8 @@ export async function buildApp(app: FastifyInstance): Promise<FastifyInstance> {
   // Global admin search and the bulk product tools. Mounted under /admin so
   // they sit behind the same admin guard as everything else there.
   await app.register(adminSearchRoutes, { prefix: `${env.API_PREFIX}/admin` });
+  // SMS templates, delivery log and account status, all admin-only.
+  await app.register(smsRoutes, { prefix: `${env.API_PREFIX}/admin` });
   await app.register(demoRoutes, { prefix: `${env.API_PREFIX}/demo` });
   await app.register(dashboardRoutes, { prefix: `${env.API_PREFIX}/dashboard` });
   await app.register(bannerRoutes, { prefix: `${env.API_PREFIX}/banners` });

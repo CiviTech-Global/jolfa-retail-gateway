@@ -309,6 +309,10 @@ const rootChildren: RouteObject[] = [
             ),
           },
           {
+            path: 'sms',
+            ...lazyRoute(() => import('@/features/sms/AdminSmsPage'), 'AdminSmsPage'),
+          },
+          {
             path: 'settings',
             ...lazyRoute(() => import('@/features/cms/pages/AdminSettingsPage'), 'AdminSettingsPage'),
           },

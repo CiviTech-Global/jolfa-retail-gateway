@@ -92,11 +92,13 @@ zibal_merchant_id: ""              # real id lives in vault as vault_zibal_merch
 # is deliberately a separate, visible decision from deploying the code.
 zibal_sandbox: "true"
 
-# ---- SMS (PLACEHOLDER) -----------------------------------------------------
-# Both blank => the server logs the password-reset code instead of sending it.
-# That is the correct state until the customer buys a provider line.
-kavenegar_api_key: ""
+# ---- SMS (SMS.ir) ----------------------------------------------------------
+# The API key is a secret and belongs in the vault (vault_sms_ir_api_key); the
+# two below are not secret. Blank key => notifications are logged, not sent.
 sms_ir_api_key: ""
+# Template id registered in the SMS.ir panel, used for the one-time code.
+sms_ir_otp_template_id: ""
+# The shop's own line, needed only for the free-text order notifications.
 sms_sender_number: ""
 
 # ---- Nginx / TLS ----------------------------------------------------------

@@ -98,9 +98,10 @@ payment_gateway: zarinpal
 zarinpal_sandbox: "true"
 zarinpal_merchant_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 
-# SMS: both empty means reset codes are logged, not sent.
-kavenegar_api_key: ""
+# SMS: an empty key means notifications are logged, not sent.
 sms_ir_api_key: ""
+sms_ir_otp_template_id: ""
+sms_sender_number: ""
 ```
 
 See [going-live.md](../08-reference/going-live.md) for the checklist when the
@@ -132,7 +133,6 @@ vault_admin_seed_password: "<openssl output>"
 vault_semaphore_admin_password: "<openssl output>"
 # left empty while in sandbox
 vault_zarinpal_merchant_id: ""
-vault_kavenegar_api_key: ""
 vault_sms_ir_api_key: ""
 ```
 

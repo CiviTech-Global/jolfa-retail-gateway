@@ -349,6 +349,44 @@ model ContentPage {
   @@map("content_pages")
 }
 
+/**
+ * Which events send an SMS, and what they say.
+ *
+ * The shop owner decides this, not a deploy: every row is editable in the admin
+ * panel, and switching one off stops that notification without touching code.
+ *
+ * The `channel` split is forced on us by SMS.ir and is the thing to understand
+ * here:
+ *
+ *   VERIFY  the text lives in a template registered in SMS.ir's own panel and
+ *           is referenced by `providerTemplateId`. It sends from a service line,
+ *           arrives within seconds, and reaches recipients who have blocked
+ *           advertising SMS — which is why one-time codes must use it. The body
+ *           cannot be edited here, only on their panel.
+ *   BULK    `body` is sent verbatim as free text from the shop's own line. The
+ *           admin can write whatever they like, but it needs a configured line
+ *           number and will not reach anyone who has blocked advertising SMS.
+ *
+ * So an OTP is VERIFY and an order update is BULK, and the admin UI has to say
+ * plainly why one of them has an uneditable body.
+ */
+model SmsTemplate {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /** Stable event key the code sends against, e.g. "order_shipped". */
+  event              String   @unique @db.VarChar(60)
+  enabled            Boolean  @default(true)
+  /** "VERIFY" (SMS.ir panel template) or "BULK" (free text from our own line). */
+  channel            String   @default("BULK") @db.VarChar(10)
+  /** Free text with {{placeholders}}. Null for VERIFY, whose text is theirs. */
+  body               String?  @db.Text
+  /** The template id from SMS.ir's panel. Required for VERIFY. */
+  providerTemplateId Int?     @map("provider_template_id")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("sms_templates")
+}
+
 model AuditLog {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId     String?  @map("user_id") @db.Uuid

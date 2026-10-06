@@ -6,6 +6,8 @@ import { env } from "../../config/env.js";
 import { BadRequestError, ConflictError, NotFoundError, UnauthorizedError } from "../../shared/app-error.js";
 import { loginSchema, registerSchema } from "./auth.types.js";
 import type { AuthResponse, AuthTokens, AuthUser, LoginInput, RegisterInput } from "./auth.types.js";
+import { notify } from "../../shared/sms/notification.service.js";
+import { resolveSiteName } from "../../shared/sms/site-name.js";
 
 const USER_PUBLIC_SELECT = {
   id: true,
@@ -135,6 +137,15 @@ export async function register(data: RegisterInput, app: FastifyInstance): Promi
       lastName: parsed.lastName,
     },
     select: USER_TOKEN_SELECT,
+  });
+
+  // A failed welcome SMS must not fail the registration that already
+  // succeeded, which is why `notify` swallows its own errors.
+  await notify({
+    event: "welcome",
+    phone: user.phone,
+    userId: user.id,
+    variables: { siteName: await resolveSiteName() },
   });
 
   const { tokenVersion: _newUserVersion, ...publicUser } = user;

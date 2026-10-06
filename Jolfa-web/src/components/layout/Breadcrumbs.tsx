@@ -126,6 +126,7 @@ const ADMIN_SEGMENT_LABELS: Record<string, string> = {
   payments: 'پرداخت‌ها',
   transactions: 'تراکنش‌ها',
   'activity-log': 'گزارش فعالیت',
+  sms: 'پیامک‌ها',
   'homepage-sections': 'بخش‌های صفحه اصلی',
   pages: 'صفحات سایت',
   pricing: 'تغییر گروهی قیمت',

@@ -38,8 +38,7 @@ vault_admin_seed_password: "REPLACE_ME_ADMIN_PASSWORD"
 vault_zarinpal_merchant_id: ""
 vault_zibal_merchant_id: ""
 
-# SMS provider key — fill exactly one, or leave both blank to keep logging.
-vault_kavenegar_api_key: ""
+# SMS.ir web-service key (from the developer panel). Blank keeps logging only.
 vault_sms_ir_api_key: ""
 
 # Semaphore UI admin password (only used by semaphore.yml).

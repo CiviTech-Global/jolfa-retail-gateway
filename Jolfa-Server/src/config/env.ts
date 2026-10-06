@@ -41,9 +41,22 @@ const envSchema = z.object({
    * declared only so a populated .env still validates.
    */
   ZIBAL_API_KEY: z.string().optional(),
-  KAVENEGAR_API_KEY: z.string().optional(),
   SMS_IR_API_KEY: z.string().optional(),
+  /**
+   * The shop's own line number at SMS.ir.
+   *
+   * Required for free-text SMS (order updates). One-time codes do NOT need it —
+   * they go through a registered template on a service line — so the OTP flow
+   * works before this is known.
+   */
   SMS_SENDER_NUMBER: z.string().optional(),
+  /**
+   * The SMS.ir panel template used for one-time codes.
+   *
+   * Seeds the `password_reset_otp` row on first boot. After that the admin panel
+   * owns the value, so changing this variable does not override an edit.
+   */
+  SMS_IR_OTP_TEMPLATE_ID: z.coerce.number().int().positive().optional(),
 
   ADMIN_SEED_EMAIL: z.string().email().optional(),
   ADMIN_SEED_PHONE: z.string().optional(),

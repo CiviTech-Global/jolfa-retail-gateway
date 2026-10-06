@@ -17,6 +17,7 @@ import {
   Users,
   CreditCard,
   ClipboardList,
+  MessageSquare,
   Receipt,
   PanelRightClose,
   PanelRightOpen,
@@ -75,6 +76,7 @@ const navGroups: NavGroup[] = [
     items: [
       { to: '/admin/users', label: 'کاربران', icon: Users },
       { to: '/admin/activity-log', label: 'گزارش فعالیت', icon: ClipboardList },
+      { to: '/admin/sms', label: 'پیامک‌ها', icon: MessageSquare },
       { to: '/admin/settings', label: 'تنظیمات', icon: Settings },
       { to: '/admin/demo', label: 'داده‌های نمونه', icon: Database },
     ],

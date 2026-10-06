@@ -3,6 +3,7 @@ import { prisma } from "./prisma.js";
 import { env } from "../config/env.js";
 import { ensureDefaultSettings } from "../modules/settings/settings.service.js";
 import { ensureDefaultContentPages } from "../modules/content-pages/content-page.service.js";
+import { ensureDefaultSmsTemplates } from "./sms/notification.service.js";
 import { pruneRetiredSections } from "../modules/homepage-sections/homepage-section.service.js";
 
 interface SeedUser {
@@ -68,6 +69,9 @@ export async function seedDefaults(): Promise<void> {
     // Create-only, like the settings above: a deploy must never overwrite
     // copy an admin has edited.
     await ensureDefaultContentPages();
+    // Also create-only: a deploy must not re-enable an event the shop owner
+    // switched off, nor overwrite wording they rewrote.
+    await ensureDefaultSmsTemplates();
   } catch (error) {
     console.error("[seed] Failed to seed default settings:", error);
   }

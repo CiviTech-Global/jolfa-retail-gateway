@@ -57,7 +57,7 @@ purchases the customer has not made yet. Both are single-variable changes:
 | Placeholder | Where | To go live |
 |---|---|---|
 | **Payment gateway** — ZarinPal stays in sandbox, no real money moves | `zarinpal_sandbox: "true"` in `ansible/group_vars/all/main.yml` | Set it to `"false"` and put the real merchant ID in the vault. See [going-live.md](./08-reference/going-live.md) |
-| **SMS provider** — password-reset codes are written to the server log instead of sent | `kavenegar_api_key` / `sms_ir_api_key`, both empty | Fill exactly one, in the vault |
+| **SMS** — notifications are written to the SMS log instead of sent | `sms_ir_api_key` empty | Put the SMS.ir key in the vault, and the line number in `main.yml` |
 
 Server-specific values (IP, domain, email, repository URL, passwords) are also
 placeholders — every one of them reads `REPLACE_ME_*` and the playbooks assert

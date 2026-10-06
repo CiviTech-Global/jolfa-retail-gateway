@@ -83,8 +83,9 @@ Every variable the playbooks read, where it lives, and what it affects.
 | `zarinpal_sandbox` | `"true"` | The go-live switch |
 | `zarinpal_merchant_id` | dummy UUID | Real value goes in the vault |
 | `zibal_merchant_id` | `""` | |
-| `kavenegar_api_key` / `sms_ir_api_key` | `""` | Both empty = codes are logged, not sent |
-| `sms_sender_number` | `""` | |
+| `sms_ir_api_key` | `""` | Empty = notifications are logged, not sent |
+| `sms_ir_otp_template_id` | `""` | Template id from the SMS.ir panel, for the one-time code |
+| `sms_sender_number` | `""` | The shop's own line. Needed only for the free-text notifications |
 
 ### Nginx and TLS
 
@@ -133,7 +134,7 @@ Every variable the playbooks read, where it lives, and what it affects.
 | `vault_jwt_secret` | `openssl rand -hex 32` — asserted ≥ 32 chars |
 | `vault_admin_seed_email` / `_phone` / `_password` | The bootstrap admin. Change the password after first login |
 | `vault_zarinpal_merchant_id` / `vault_zibal_merchant_id` | From the gateway. Empty in sandbox |
-| `vault_kavenegar_api_key` / `vault_sms_ir_api_key` | From the SMS provider. Empty = log only |
+| `vault_sms_ir_api_key` | The SMS.ir web-service key. Empty = log only |
 | `vault_semaphore_admin_password` | `openssl rand -base64 18` |
 
 ---

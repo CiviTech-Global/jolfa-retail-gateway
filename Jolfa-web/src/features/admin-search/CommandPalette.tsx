@@ -7,6 +7,7 @@ import {
   CreditCard,
   FileText,
   FolderTree,
+  MessageSquare,
   Package,
   Plus,
   Search,
@@ -73,6 +74,7 @@ const COMMANDS: Command[] = [
   { id: 'categories', label: 'دسته‌بندی‌ها', icon: FolderTree, url: '/admin/categories', keywords: 'category daste زیردسته' },
   { id: 'transactions', label: 'تراکنش‌ها', icon: CreditCard, url: '/admin/transactions', keywords: 'transaction payment tarakonesh پرداخت' },
   { id: 'pages', label: 'صفحات سایت', icon: FileText, url: '/admin/pages', keywords: 'page content about صفحه درباره' },
+  { id: 'sms', label: 'پیامک‌ها', hint: 'متن و رویدادها', icon: MessageSquare, url: '/admin/sms', keywords: 'sms otp message payamak notification پیامک اس ام اس کد تایید' },
 ]
 
 const RECENT_KEY = 'admin:recent-destinations'

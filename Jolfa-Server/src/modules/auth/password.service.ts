@@ -2,7 +2,9 @@ import bcrypt from "bcrypt";
 import { randomInt, timingSafeEqual } from "node:crypto";
 import { prisma } from "../../shared/prisma.js";
 import { AppError, NotFoundError, UnauthorizedError } from "../../shared/app-error.js";
-import { sendSms, isSmsConfigured } from "../../shared/sms/sms.service.js";
+import { notify } from "../../shared/sms/notification.service.js";
+import { resolveSiteName } from "../../shared/sms/site-name.js";
+import { isSmsIrConfigured } from "../../shared/sms/smsir.client.js";
 import { logAudit } from "../../shared/audit/audit.service.js";
 
 const BCRYPT_ROUNDS = 12;
@@ -93,11 +95,13 @@ export async function adminResetUserPassword(
     metadata: { field: "password", by: "admin" },
   });
 
-  await sendSms({
+  // Wording and the on/off switch now live in the admin panel, so the shop
+  // owner can reword or silence this without a deploy.
+  await notify({
+    event: "password_changed_by_admin",
     userId: user.id,
     phone: user.phone,
-    template: "password-reset",
-    message: "رمز عبور حساب شما توسط مدیر تغییر کرد. اگر این تغییر را انتظار نداشتید با پشتیبانی تماس بگیرید.",
+    variables: { siteName: await resolveSiteName() },
   });
 }
 
@@ -119,7 +123,9 @@ export async function requestPasswordReset(phone: string): Promise<RequestResetR
   });
 
   if (!user || !user.isActive) {
-    return { delivered: isSmsConfigured() };
+    // Mirrors what a real send would report, so the response cannot be used
+    // to tell a registered number from an unregistered one.
+    return { delivered: isSmsIrConfigured() };
   }
 
   const recent = await prisma.passwordResetToken.findFirst({
@@ -153,17 +159,30 @@ export async function requestPasswordReset(phone: string): Promise<RequestResetR
     },
   });
 
-  const result = await sendSms({
+  /*
+   * Sent through SMS.ir's VERIFY method — a template registered on their panel,
+   * delivered from a service line.
+   *
+   * This replaced a free-text send, and the difference matters: a service line
+   * arrives within seconds and reaches customers who have blocked advertising
+   * SMS, whereas the previous free-text route did not. Those customers could
+   * never complete a password reset, and nothing in our records said why —
+   * the old code treated any HTTP 200 as delivered.
+   *
+   * The code's wording lives on SMS.ir's panel, so it is not editable here.
+   */
+  const result = await notify({
+    event: "password_reset_otp",
     userId: user.id,
     phone: user.phone,
-    template: "password-reset",
-    message: `کد بازیابی رمز عبور شما: ${code}\nاین کد تا ${OTP_TTL_MINUTES} دقیقه معتبر است.`,
+    variables: { code },
   });
 
   return {
-    delivered: result.delivered,
-    // Returned ONLY when no provider is configured, i.e. local development.
-    ...(result.provider === "log" ? { devCode: code } : {}),
+    delivered: result.outcome === "sent",
+    // Returned ONLY when no provider is configured at all, i.e. local
+    // development. Never when a send was attempted and failed.
+    ...(result.outcome === "not_configured" ? { devCode: code } : {}),
   };
 }
 

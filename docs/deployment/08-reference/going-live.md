@@ -76,32 +76,51 @@ time.
 
 ---
 
-## SMS — Kavenegar / SMS.ir
+## SMS — SMS.ir
 
 ### Current state
 
-Both keys empty. `sendSms()` records every message in `sms_notifications` with
-status `SENT` and a `{provider: "log"}` response, and writes the text to the
-server log instead of sending it. The forgot-password flow is fully testable
-locally; the code appears in `pm2 logs`.
+With `sms_ir_api_key` empty, `notify()` records every notification in
+`sms_notifications` with status `PENDING` and `{provider: "none"}`, and nothing
+is sent. The forgot-password flow stays testable: the code is returned as
+`devCode` and appears in `pm2 logs`.
 
-`isSmsConfigured()` returns false, so callers can warn.
+Which events send at all, and the wording of the free-text ones, are rows in
+`sms_templates` — edited in the admin panel at `/admin/sms`, not in the code.
+Seeding is create-only, so a deploy never overwrites the shop owner's wording
+nor switches an event back on after they turned it off.
+
+### Two channels, and why it matters
+
+- **VERIFY** (`/v1/send/verify`) — a template registered in the SMS.ir panel,
+  sent on a service line. Arrives in seconds and **reaches people who have
+  blocked advertising SMS**, which is the only acceptable path for a one-time
+  code. Needs the template id, not a line number.
+- **BULK** (`/v1/send/bulk`) — free text from the shop's own line. Editable by
+  the admin, but needs `sms_sender_number`, and will not reach anyone who has
+  blocked advertising.
 
 ### The switch
 
-1. Customer buys a sender line from Kavenegar or SMS.ir.
-2. Fill **exactly one** key in the vault:
+1. Put the web-service key in the vault:
    ```yaml
-   vault_kavenegar_api_key: "..."
-   # or
    vault_sms_ir_api_key: "..."
    ```
-3. Set the sender number in `group_vars/all/main.yml`:
+2. Set the OTP template id in `group_vars/all/main.yml` (the id shown next to
+   the template in the SMS.ir panel):
+   ```yaml
+   sms_ir_otp_template_id: "683431"
+   ```
+3. For the order notifications, set the shop's own line as well. `/admin/sms`
+   lists the lines the account actually has, under «خطوط موجود در پنل»:
    ```yaml
    sms_sender_number: "30002100"
    ```
-4. Deploy, then trigger a password reset to your own phone and confirm delivery.
-5. Check the record landed:
+4. Confirm the server's IP is in SMS.ir's allowed-IP list, or every call comes
+   back rejected.
+5. Deploy, open `/admin/sms`, check the credit reads, then use «ارسال آزمایشی»
+   on one event and confirm it arrives.
+6. Check the record landed:
    ```bash
    ssh jolfa "sudo -u postgres psql jolfa -c \"select phone,status,template,sent_at from sms_notifications order by created_at desc limit 5;\""
    ```
@@ -116,16 +135,30 @@ is live, two things matter:
 - Watch `sms_notifications` for a spike. A sudden run of resets to unrelated
   numbers is someone testing how much of the customer's credit they can burn.
 
-`sendSms()` never throws — a failed SMS must not fail the surrounding request —
-so delivery failures are visible only in that table and the log, not to the
-user. Check it after enabling.
+`notify()` never throws — a failed SMS must not fail the surrounding request, or
+a completed purchase would become an error page. Delivery failures are visible
+in `/admin/sms` under «گزارش ارسال», with the reason SMS.ir gave, and nowhere
+else. Check it after enabling.
 
 ---
 
-## Order-status notifications
+## Which events send
 
-The `sms_notifications` table and `SmsTemplate` type exist, and the sending path
-works, but only the `password-reset` template is wired. Notifying customers when
-an order ships is a small feature on top of what is already there: add a
-template, call `sendSms` from the order status-change service. It is listed in
-the roadmap as in-scope and is not done.
+Eight events, all listed in `src/shared/sms/sms-events.ts` and all switchable
+from `/admin/sms`:
+
+| Event | Channel | Fires when |
+|---|---|---|
+| `password_reset_otp` | VERIFY | A reset code is requested |
+| `password_changed_by_admin` | BULK | An admin changes someone's password |
+| `welcome` | BULK | A customer registers |
+| `order_placed` | BULK | An order is created |
+| `order_paid` | BULK | A payment settles |
+| `order_shipped` | BULK | The admin marks it shipped |
+| `order_delivered` | BULK | The admin marks it delivered |
+| `order_cancelled` | BULK | The order is cancelled |
+
+The catalogue is code, not data: an event the code never fires cannot be
+configured into existence, and a newly added event appears in the panel as soon
+as it is deployed. Only `enabled`, the wording and the template id live in the
+database.
