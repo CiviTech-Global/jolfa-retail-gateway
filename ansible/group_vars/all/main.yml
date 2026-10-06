@@ -97,7 +97,7 @@ zibal_sandbox: "true"
 # two below are not secret. Blank key => notifications are logged, not sent.
 sms_ir_api_key: ""
 # Template id registered in the SMS.ir panel, used for the one-time code.
-sms_ir_otp_template_id: ""
+sms_ir_otp_template_id: "683431"
 # The shop's own line, needed only for the free-text order notifications.
 sms_sender_number: ""
 
