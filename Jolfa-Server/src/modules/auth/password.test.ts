@@ -60,6 +60,34 @@ describe("credential management", () => {
   });
 
   describe("forgot / reset password", () => {
+    // The code is returned only as a local-development affordance. A
+    // production server with no SMS key configured would otherwise answer the
+    // public endpoint with a working reset code for any phone number it knows.
+    it("never returns the code in production, even with no provider", async () => {
+      const { user } = await createTestUser();
+      const { env } = await import("../../config/env.js");
+      const original = env.NODE_ENV;
+
+      try {
+        // The validated object is what the service reads; NODE_ENV in
+        // process.env was already consumed when it was parsed.
+        (env as { NODE_ENV: string }).NODE_ENV = "production";
+
+        const forgot = await app.inject({
+          method: "POST",
+          url: `${API}/auth/forgot-password`,
+          payload: { phone: user.phone },
+        });
+
+        expect(forgot.statusCode).toBe(200);
+        expect(forgot.json().data.devCode).toBeUndefined();
+        // Still enumeration-safe: nothing distinguishes a known number.
+        expect(forgot.json().data.delivered).toBe(false);
+      } finally {
+        (env as { NODE_ENV: string }).NODE_ENV = original;
+      }
+    });
+
     it("completes a reset with the emitted code", async () => {
       const { user } = await createTestUser();
 

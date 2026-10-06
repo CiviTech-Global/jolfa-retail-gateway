@@ -72,7 +72,9 @@ export const forgotPasswordController = asyncHandler(async (
   // registered, so this endpoint cannot be used to enumerate accounts.
   // Caveat: with NO SMS provider configured, `devCode` is present only for a
   // real account, which does distinguish the two. That is a local-development
-  // affordance only — configure a provider and the field never appears.
+  // affordance only: the service withholds it whenever NODE_ENV is production,
+  // so a live site never returns it — not even with the provider unconfigured,
+  // where it would otherwise hand the reset code to anyone with a phone number.
   sendSuccess(reply, {
     message: "اگر این شماره در سیستم ثبت شده باشد، کد بازیابی ارسال می‌شود.",
     delivered: result.delivered,

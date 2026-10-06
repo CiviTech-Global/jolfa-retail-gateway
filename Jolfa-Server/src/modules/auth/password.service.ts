@@ -6,6 +6,7 @@ import { notify } from "../../shared/sms/notification.service.js";
 import { resolveSiteName } from "../../shared/sms/site-name.js";
 import { isSmsIrConfigured } from "../../shared/sms/smsir.client.js";
 import { logAudit } from "../../shared/audit/audit.service.js";
+import { env } from "../../config/env.js";
 
 const BCRYPT_ROUNDS = 12;
 const OTP_TTL_MINUTES = 10;
@@ -182,7 +183,16 @@ export async function requestPasswordReset(phone: string): Promise<RequestResetR
     delivered: result.outcome === "sent",
     // Returned ONLY when no provider is configured at all, i.e. local
     // development. Never when a send was attempted and failed.
-    ...(result.outcome === "not_configured" ? { devCode: code } : {}),
+    // Never in production, whatever the provider's state. "No provider
+    // configured" is the normal state of a development machine, and returning
+    // the code there is what makes the flow testable without spending credit.
+    // On a live site the same branch would hand the reset code to anyone who
+    // knows a phone number — an account takeover reachable from the public
+    // internet. A production server missing its key must fail to deliver,
+    // loudly and in the SMS log, rather than answer with the code.
+    ...(result.outcome === "not_configured" && env.NODE_ENV !== "production"
+      ? { devCode: code }
+      : {}),
   };
 }
 
