@@ -14,6 +14,7 @@ import {
 } from "./zibal.client.js";
 import { logger } from "../../shared/logger.js";
 import { notifyOrderPaid } from "../../shared/sms/order-notifications.js";
+import { queueNotification } from "../../shared/sms/notification-queue.js";
 
 /**
  * Order amounts are stored in TOMAN — that is what `formatPrice` renders and
@@ -288,9 +289,10 @@ export async function verifyPayment(data: PaymentVerifyBody) {
     }),
   ]);
 
-  // After the settlement transaction commits. `notify` never throws, but even
-  // so the customer's payment must be recorded before anything else is tried.
-  await notifyOrderPaid(payment.orderId);
+  // After the settlement transaction commits, and not awaited: the customer is
+  // mid-redirect back from the gateway, and a slow provider must not hold that
+  // callback open. Failures land in the SMS log.
+  void queueNotification(notifyOrderPaid(payment.orderId));
 
   return { success: true, orderId: payment.orderId, refId };
 }

@@ -6,6 +6,7 @@ import { prisma } from "../../shared/prisma.js";
 import { normalizeMobile } from "../../shared/sms/smsir.client.js";
 import { renderTemplate, unknownPlaceholders } from "../../shared/sms/sms-events.js";
 import { ensureDefaultSmsTemplates, notify } from "../../shared/sms/notification.service.js";
+import { queueNotification } from "../../shared/sms/notification-queue.js";
 
 const API = "/api/v1/admin/sms";
 
@@ -158,6 +159,43 @@ describe("notify", () => {
     expect(calls[0].url).toContain("/send/verify");
     expect(calls[0].body.templateId).toBe(683431);
     expect(calls[0].body.parameters).toEqual([{ name: "Code", value: "123456" }]);
+  });
+
+  // A reset code is a credential while it is valid. The log proves the message
+  // was sent; it must not hand an admin — or a database backup — the code
+  // itself, or anyone with panel access could take over any account.
+  it("sends the real code but never writes it to the delivery log", async () => {
+    smsEnv.SMS_IR_API_KEY = "test-key";
+    smsEnv.SMS_IR_OTP_TEMPLATE_ID = 683431;
+    await prisma.smsTemplate.update({
+      where: { event: "password_reset_otp" },
+      data: { providerTemplateId: 683431, enabled: true },
+    });
+    const { calls } = stubSmsIr();
+
+    await notify({
+      event: "password_reset_otp",
+      phone: "09121234567",
+      variables: { code: "424242" },
+    });
+
+    // The provider still gets the real value, or the SMS is useless.
+    expect(calls[0].body.parameters).toEqual([{ name: "Code", value: "424242" }]);
+
+    const logged = await prisma.smsNotification.findFirst({
+      where: { template: "password_reset_otp" },
+    });
+    expect(logged?.message).not.toContain("424242");
+    expect(logged?.message).toContain("******");
+  });
+
+  it("swallows a failure in work that nobody is awaiting", async () => {
+    // Order and payment flows fire notifications without awaiting them, so a
+    // rejection here would otherwise surface as an unhandled rejection and take
+    // the process down after a purchase had already succeeded.
+    await expect(
+      queueNotification(Promise.reject(new Error("order vanished"))),
+    ).resolves.toBeUndefined();
   });
 
   // The bug this rewrite exists for: SMS.ir answers HTTP 200 with the real

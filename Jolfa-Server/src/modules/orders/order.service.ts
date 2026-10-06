@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { containsAnyVariant } from "../../shared/search-text.js";
 import { notifyOrderEvent, notifyOrderPlaced } from "../../shared/sms/order-notifications.js";
+import { queueNotification } from "../../shared/sms/notification-queue.js";
 import { prisma } from "../../shared/prisma.js";
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from "../../shared/app-error.js";
 import { STOCK_NON_NEGATIVE_CONSTRAINT } from "./order.constants.js";
@@ -180,10 +181,10 @@ export async function createOrder(userId: string, data: OrderCreateBody) {
     return created;
   });
 
-  // After the transaction, never inside it: an SMS round trip would hold the
-  // stock-decrement transaction open for the length of a provider call, and a
-  // provider timeout would roll back a paid-for order.
-  await notifyOrderPlaced(order.id);
+  // After the transaction and without awaiting it: an SMS round trip inside the
+  // transaction would hold the stock decrement open for the length of a provider
+  // call, and awaiting it here would add up to 15 seconds to checkout.
+  void queueNotification(notifyOrderPlaced(order.id));
 
   return { order };
 }
@@ -363,7 +364,7 @@ export async function updateOrderStatus(
   // Only on an actual transition: re-saving the same status (which the admin
   // does while adding a note) must not text the customer again.
   if (previousStatus !== data.status) {
-    await notifyOrderEvent(orderId, data.status);
+    void queueNotification(notifyOrderEvent(orderId, data.status));
   }
 
   return { order: updated };
@@ -486,7 +487,7 @@ export async function cancelOrder(orderId: string, reason?: string, actorId?: st
     });
   }
 
-  await notifyOrderEvent(orderId, "CANCELLED");
+  void queueNotification(notifyOrderEvent(orderId, "CANCELLED"));
 
   return { success: true };
 }

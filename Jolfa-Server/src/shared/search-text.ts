@@ -48,7 +48,11 @@ export function normalizeSearchTerm(value: string): string {
     .map((char) => CANONICAL[char] ?? char)
     .join("")
     // ZWNJ and friends are invisible; whether one was typed is pure chance.
-    .replace(/[​-‏⁠﻿]/g, "");
+    // Built from a string rather than written as a regex literal because the
+    // characters themselves are invisible in an editor: as literals they are
+    // indistinguishable from a typo that would strip real digits and letters
+    // out of every search, and `no-irregular-whitespace` rejects them outright.
+    .replace(new RegExp("[\u200b-\u200f\u2060\ufeff]", "g"), "");
 
   return canonical.replace(/\s+/g, " ").trim();
 }

@@ -7,6 +7,7 @@ import { BadRequestError, ConflictError, NotFoundError, UnauthorizedError } from
 import { loginSchema, registerSchema } from "./auth.types.js";
 import type { AuthResponse, AuthTokens, AuthUser, LoginInput, RegisterInput } from "./auth.types.js";
 import { notify } from "../../shared/sms/notification.service.js";
+import { queueNotification } from "../../shared/sms/notification-queue.js";
 import { resolveSiteName } from "../../shared/sms/site-name.js";
 
 const USER_PUBLIC_SELECT = {
@@ -139,14 +140,19 @@ export async function register(data: RegisterInput, app: FastifyInstance): Promi
     select: USER_TOKEN_SELECT,
   });
 
-  // A failed welcome SMS must not fail the registration that already
-  // succeeded, which is why `notify` swallows its own errors.
-  await notify({
-    event: "welcome",
-    phone: user.phone,
-    userId: user.id,
-    variables: { siteName: await resolveSiteName() },
-  });
+  // Not awaited: registration must not wait on the provider, and a failed
+  // welcome SMS must not fail an account that already exists. The outcome is in
+  // the SMS log either way.
+  void queueNotification(
+    resolveSiteName().then((siteName) =>
+      notify({
+        event: "welcome",
+        phone: user.phone,
+        userId: user.id,
+        variables: { siteName },
+      }),
+    ),
+  );
 
   const { tokenVersion: _newUserVersion, ...publicUser } = user;
   return { user: publicUser, tokens: generateTokens(user, app) };

@@ -128,13 +128,31 @@ export async function notify(input: NotifyInput): Promise<NotifyResult> {
   const body = template?.body ?? definition.defaultBody ?? "";
   const providerTemplateId = template?.providerTemplateId ?? smsIrOtpTemplateId();
 
-  const renderedText =
+  /**
+   * Two renderings of the same message, and they must not be confused: one is
+   * sent to the customer with the real values, the other is what the delivery
+   * log keeps. A secret variable — see `secretVariables` in the catalogue — is
+   * masked in the second one only.
+   */
+  const secrets = new Set(definition.secretVariables ?? []);
+  const maskVariables = (values: Record<string, string>): Record<string, string> =>
+    Object.fromEntries(
+      Object.entries(values).map(([key, value]) => [
+        key,
+        secrets.has(key) ? "******" : value,
+      ]),
+    );
+
+  const describe = (values: Record<string, string>): string =>
     channel === "BULK"
-      ? renderTemplate(body, variables)
-      : // VERIFY text lives in SMS.ir's panel; this is only for our own log.
-        `[قالب ${providerTemplateId ?? "?"}] ${Object.entries(variables)
+      ? renderTemplate(body, values)
+      : // VERIFY text lives in SMS.ir's panel; this only describes the call.
+        `[قالب ${providerTemplateId ?? "?"}] ${Object.entries(values)
           .map(([key, value]) => `${key}=${value}`)
           .join(", ")}`;
+
+  const messageText = describe(variables);
+  const renderedText = describe(maskVariables(variables));
 
   if (!enabled) {
     // Not recorded in sms_notifications: the shop owner switched this off, so
@@ -205,7 +223,7 @@ export async function notify(input: NotifyInput): Promise<NotifyResult> {
       return { outcome: "sent", messageId: result.messageId };
     }
 
-    const result = await sendBulk({ mobiles: [input.phone], messageText: renderedText });
+    const result = await sendBulk({ mobiles: [input.phone], messageText });
     const messageId = result.messageIds[0] ?? null;
 
     // Per the docs, 0 means the recipient is blacklisted and null means the

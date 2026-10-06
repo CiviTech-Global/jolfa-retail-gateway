@@ -33,6 +33,16 @@ export interface SmsEventDefinition {
   /** Placeholders the sender supplies, without braces. */
   variables: string[];
   /**
+   * Variables whose value must never be stored in the delivery log.
+   *
+   * A one-time code is a credential for as long as it is valid. Writing it to
+   * `sms_notifications` would let anyone with access to the admin panel — or to
+   * a database backup — read a live reset code for any customer and take over
+   * the account. The log keeps the fact that the message was sent; the value is
+   * replaced with asterisks.
+   */
+  secretVariables?: string[];
+  /**
    * VERIFY uses a template registered in SMS.ir's panel; BULK sends `body` as
    * free text from the shop's own line.
    *
@@ -57,6 +67,7 @@ export const SMS_EVENT_DEFINITIONS: SmsEventDefinition[] = [
     label: "کد بازیابی رمز عبور",
     description: "هنگام درخواست بازیابی رمز عبور برای کاربر ارسال می‌شود.",
     variables: ["code"],
+    secretVariables: ["code"],
     channel: "VERIFY",
     // Mapped to the `Code` parameter of the template registered at SMS.ir.
     parameterMap: { Code: "code" },

@@ -55,8 +55,18 @@ const envSchema = z.object({
    *
    * Seeds the `password_reset_otp` row on first boot. After that the admin panel
    * owns the value, so changing this variable does not override an edit.
+   *
+   * The empty string is treated as "not set", which `z.coerce.number()` alone
+   * does not do: it coerces `""` to 0, fails `.positive()`, and the process
+   * exits before it listens. An env file that declares the variable without a
+   * value is the normal state — both `.env.example` and the Ansible template
+   * render `SMS_IR_OTP_TEMPLATE_ID=` until the customer's template id is
+   * known — so without this the server would not boot at all.
    */
-  SMS_IR_OTP_TEMPLATE_ID: z.coerce.number().int().positive().optional(),
+  SMS_IR_OTP_TEMPLATE_ID: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.coerce.number().int().positive().optional(),
+  ),
 
   ADMIN_SEED_EMAIL: z.string().email().optional(),
   ADMIN_SEED_PHONE: z.string().optional(),
