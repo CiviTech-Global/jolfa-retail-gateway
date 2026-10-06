@@ -99,7 +99,7 @@ sms_ir_api_key: ""
 # Template id registered in the SMS.ir panel, used for the one-time code.
 sms_ir_otp_template_id: "683431"
 # The shop's own line, needed only for the free-text order notifications.
-sms_sender_number: ""
+sms_sender_number: "30002108040527"
 
 # ---- Nginx / TLS ----------------------------------------------------------
 # Currently FALSE: there is no domain yet, and Let's Encrypt cannot issue a
