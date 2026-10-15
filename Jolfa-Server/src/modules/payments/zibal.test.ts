@@ -4,7 +4,6 @@ import {
   buildZibalStartUrl,
   describeZibalStatus,
   isPaidStatus,
-  isSandbox,
 } from "./zibal.client.js";
 
 afterEach(() => {
@@ -59,20 +58,6 @@ describe("payment session status", () => {
     expect(describeZibalStatus(3)).toContain("لغو");
     expect(describeZibalStatus(5)).toContain("موجودی");
     expect(describeZibalStatus(999)).toContain("999");
-  });
-});
-
-describe("sandbox", () => {
-  // Zibal serves live and test from the same hostname and decides purely from
-  // the merchant value, so an unset flag must never mean "live".
-  it("defaults to sandbox when the flag is absent", () => {
-    vi.stubEnv("ZIBAL_SANDBOX", "");
-    expect(isSandbox()).toBe(true);
-  });
-
-  it("only leaves sandbox for an explicit false", () => {
-    vi.stubEnv("ZIBAL_SANDBOX", "true");
-    expect(isSandbox()).toBe(true);
   });
 });
 

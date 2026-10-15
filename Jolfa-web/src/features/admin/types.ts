@@ -136,3 +136,15 @@ export interface AuditLogListResponse {
   items: AuditLogDto[]
   meta: { page: number; limit: number; total: number; totalPages: number }
 }
+
+export interface PaymentModeStatus {
+  /** True when customers' cards are really charged. */
+  live: boolean
+  gateway: 'ZIBAL' | 'ZARINPAL'
+  merchantConfigured: boolean
+  /** Enough of the merchant id to recognise it, never the whole value. */
+  merchantHint: string | null
+  callbackUrl: string
+  canGoLive: boolean
+  blockedReason: string | null
+}

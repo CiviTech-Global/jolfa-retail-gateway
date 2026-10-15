@@ -124,6 +124,18 @@ export const DEFAULT_SETTINGS: SettingDefault[] = [
   { key: "show_about", value: "true", group: "static_pages", isPublic: true, description: "Show About page link" },
   { key: "show_contact", value: "true", group: "static_pages", isPublic: true, description: "Show Contact page link" },
   { key: "show_rules", value: "true", group: "static_pages", isPublic: true, description: "Show Rules page link" },
+
+  // Seeded as sandbox, and seeding never overwrites a value — so a deploy can
+  // neither switch a live shop back to sandbox nor make a sandbox shop start
+  // charging cards. Edited only through PATCH /admin/payments/mode; see
+  // PROTECTED_SETTING_KEYS below.
+  {
+    key: "payment_live_mode",
+    value: "false",
+    group: "payments",
+    isPublic: false,
+    description: "Real payments are live when true; the gateway is in sandbox when false",
+  },
 ];
 
 /**
@@ -132,6 +144,18 @@ export const DEFAULT_SETTINGS: SettingDefault[] = [
  * storefront no longer reads — and the admin panel keeps offering a switch
  * that does nothing.
  */
+/**
+ * Settings the generic admin settings screen must never show or write.
+ *
+ * `payment_live_mode` decides whether customers' cards are really charged. The
+ * settings screen renders every row the API returns as a plain field, with no
+ * confirmation and no check that a real merchant id exists — so exposed there,
+ * one mis-click would either start taking real money or quietly stop taking
+ * any. It is edited through `PATCH /admin/payments/mode` instead, which refuses
+ * to go live without a merchant and writes an audit entry.
+ */
+export const PROTECTED_SETTING_KEYS = ["payment_live_mode"];
+
 export const RETIRED_SETTING_KEYS = [
   // The newsletter block and its email capture were removed from the footer.
   "show_newsletter_footer",

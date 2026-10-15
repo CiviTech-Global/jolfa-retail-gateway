@@ -1,8 +1,9 @@
 import { prisma } from "../../shared/prisma.js";
-import { NotFoundError } from "../../shared/app-error.js";
+import { AppError, NotFoundError } from "../../shared/app-error.js";
 import { logAudit, buildChangeMetadata } from "../../shared/audit/audit.service.js";
 import {
   DEFAULT_SETTINGS,
+  PROTECTED_SETTING_KEYS,
   RETIRED_SETTING_KEYS,
   findSettingDefault,
 } from "./settings.defaults.js";
@@ -47,12 +48,27 @@ export async function listPublicSettings() {
 
 export async function listAllSettings() {
   const settings = await prisma.setting.findMany({
+    // See PROTECTED_SETTING_KEYS: these are owned by a dedicated screen with
+    // its own guards, and rendering them here as plain fields would route
+    // around those guards.
+    where: { key: { notIn: PROTECTED_SETTING_KEYS } },
     orderBy: [{ group: "asc" }, { key: "asc" }],
   });
   return { settings };
 }
 
 export async function updateSetting(key: string, data: SettingUpdateBody, actorId?: string) {
+  // Hiding these from the list is not enough on its own: the key is guessable
+  // and this endpoint would otherwise accept it, which is exactly the check the
+  // dedicated screen exists to perform.
+  if (PROTECTED_SETTING_KEYS.includes(key)) {
+    throw new AppError(
+      "این تنظیم از این مسیر قابل تغییر نیست.",
+      400,
+      "SETTING_NOT_EDITABLE_HERE",
+    );
+  }
+
   const existing = await prisma.setting.findUnique({ where: { key } });
 
   // A known default that was never seeded is created on first write rather

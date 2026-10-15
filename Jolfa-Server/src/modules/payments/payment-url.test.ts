@@ -25,7 +25,7 @@ describe("ZarinPal gateway URLs", () => {
       ZARINPAL_SANDBOX: "true",
     });
 
-    const config = getGatewayConfig();
+    const config = await getGatewayConfig();
     expect(config.gateway).toBe("ZARINPAL");
     expect(config.apiBase).toBe("https://sandbox.zarinpal.com/pg/v4");
     expect(buildPaymentUrl(config, "A00001")).toBe(
@@ -40,7 +40,7 @@ describe("ZarinPal gateway URLs", () => {
       ZARINPAL_MERCHANT_ID: "11111111-2222-3333-4444-555555555555",
     });
 
-    const config = getGatewayConfig();
+    const config = await getGatewayConfig();
     expect(config.apiBase).toBe("https://api.zarinpal.com/pg/v4");
     expect(buildPaymentUrl(config, "A00001")).toBe("https://www.zarinpal.com/pg/StartPay/A00001");
   });
@@ -54,7 +54,7 @@ describe("ZarinPal gateway URLs", () => {
       ZARINPAL_MERCHANT_ID: "11111111-2222-3333-4444-555555555555",
     });
 
-    const config = getGatewayConfig();
+    const config = await getGatewayConfig();
     expect(buildPaymentUrl(config, "A00001")).not.toContain("sandbox");
   });
 });
@@ -65,7 +65,7 @@ describe("Zibal gateway URLs", () => {
       ZIBAL_MERCHANT_ID: "zibal-merchant",
     });
 
-    const config = getGatewayConfig();
+    const config = await getGatewayConfig();
     expect(config.gateway).toBe("ZIBAL");
     expect(config.apiBase).toBe("https://gateway.zibal.ir/v1");
     expect(buildPaymentUrl(config, "TRK9")).toBe("https://gateway.zibal.ir/start/TRK9");
@@ -77,6 +77,6 @@ describe("Zibal gateway URLs", () => {
       ZARINPAL_SANDBOX: "true",
     });
 
-    expect(buildPaymentUrl(getGatewayConfig(), "TRK9")).not.toContain("zarinpal");
+    expect(buildPaymentUrl(await getGatewayConfig(), "TRK9")).not.toContain("zarinpal");
   });
 });

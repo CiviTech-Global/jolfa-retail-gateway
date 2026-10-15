@@ -4,6 +4,7 @@ import type {
   AuditLogListResponse,
   DashboardStats,
   PaymentListResponse,
+  PaymentModeStatus,
   TransactionListResponse,
 } from './types'
 
@@ -152,4 +153,16 @@ export function getAdminProducts(
   return apiRequest<import('@/features/catalog/types').ProductListResponse>(
     `/admin/products${query ? `?${query}` : ''}`,
   )
+}
+
+export function getPaymentMode(): Promise<PaymentModeStatus> {
+  return apiRequest<PaymentModeStatus>('/admin/payments/mode')
+}
+
+/** Switches real payments on or off. Admin-only, and audited server-side. */
+export function setPaymentMode(live: boolean): Promise<PaymentModeStatus> {
+  return apiRequest<PaymentModeStatus>('/admin/payments/mode', {
+    method: 'PATCH',
+    body: { live },
+  })
 }

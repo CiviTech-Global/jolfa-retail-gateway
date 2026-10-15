@@ -1,6 +1,7 @@
 import { env } from "../../config/env.js";
 import { AppError } from "../../shared/app-error.js";
 import { logger } from "../../shared/logger.js";
+import { ZIBAL_SANDBOX_MERCHANT, isSandboxMode } from "./payment-mode.service.js";
 
 /**
  * Zibal Internet Payment Gateway (IPG) client.
@@ -23,15 +24,10 @@ import { logger } from "../../shared/logger.js";
 
 const ZIBAL_BASE = "https://gateway.zibal.ir";
 
-/**
- * Zibal's documented test merchant. Sending the literal string `zibal` puts the
- * gateway in sandbox: a real payment page is shown but no money moves.
- *
- * There is no separate sandbox hostname — the host is the same in both modes,
- * and only this value decides whether a payment is real. That makes it the one
- * setting worth being loud about, hence the startup log in `resolveMerchant`.
- */
-export const ZIBAL_SANDBOX_MERCHANT = "zibal";
+// Which mode the shop is in is owned by `payment-mode.service`, where the
+// admin-facing switch and its audit trail live. Re-exported here because this
+// is where callers expect to find the sandbox merchant.
+export { ZIBAL_SANDBOX_MERCHANT } from "./payment-mode.service.js";
 
 /** Result codes from POST /v1/request. 100 is the only success. */
 const REQUEST_RESULT_MESSAGES: Record<number, string> = {
@@ -131,14 +127,8 @@ export interface ZibalVerifyResult {
   verified: boolean;
 }
 
-export function isSandbox(): boolean {
-  // Defaults to sandbox. An unset flag on a machine that happens to hold a live
-  // merchant id must not start charging cards; going live is a deliberate act.
-  return env.ZIBAL_SANDBOX !== "false";
-}
-
-function resolveMerchant(): string {
-  if (isSandbox()) return ZIBAL_SANDBOX_MERCHANT;
+async function resolveMerchant(): Promise<string> {
+  if (await isSandboxMode()) return ZIBAL_SANDBOX_MERCHANT;
 
   const merchant = env.ZIBAL_MERCHANT_ID;
   if (!merchant) {
@@ -187,8 +177,8 @@ async function callZibal<T>(path: string, body: Record<string, unknown>): Promis
 }
 
 export async function createZibalPayment(input: ZibalRequestInput): Promise<ZibalRequestResult> {
-  const merchant = resolveMerchant();
-  const sandbox = isSandbox();
+  const merchant = await resolveMerchant();
+  const sandbox = await isSandboxMode();
 
   const payload: Record<string, unknown> = {
     merchant,
@@ -218,7 +208,7 @@ export async function createZibalPayment(input: ZibalRequestInput): Promise<Ziba
 }
 
 export async function verifyZibalPayment(trackId: string): Promise<ZibalVerifyResult> {
-  const merchant = resolveMerchant();
+  const merchant = await resolveMerchant();
 
   const data = await callZibal<{
     result: number;

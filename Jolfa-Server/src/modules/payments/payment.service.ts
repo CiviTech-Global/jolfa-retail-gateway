@@ -9,9 +9,9 @@ import {
   createZibalPayment,
   describeZibalStatus,
   isPaidStatus,
-  isSandbox,
   verifyZibalPayment,
 } from "./zibal.client.js";
+import { isSandboxMode } from "./payment-mode.service.js";
 import { logger } from "../../shared/logger.js";
 import { notifyOrderPaid } from "../../shared/sms/order-notifications.js";
 import { queueNotification } from "../../shared/sms/notification-queue.js";
@@ -44,7 +44,7 @@ export interface GatewayConfig {
   callbackUrl: string;
 }
 
-export function getGatewayConfig(): GatewayConfig {
+export async function getGatewayConfig(): Promise<GatewayConfig> {
   const gateway: PaymentGateway = env.ZIBAL_MERCHANT_ID ? "ZIBAL" : "ZARINPAL";
 
   if (gateway === "ZIBAL") {
@@ -65,7 +65,9 @@ export function getGatewayConfig(): GatewayConfig {
   // Both of these must move together: minting an authority against the live API
   // and then sending the customer to the sandbox to pay it fails every real
   // order, and does so silently because the redirect itself looks fine.
-  const sandbox = env.ZARINPAL_SANDBOX === "true";
+  // Follows the same admin switch as Zibal, so one toggle governs the shop
+  // rather than each gateway having its own notion of being live.
+  const sandbox = await isSandboxMode();
   return {
     gateway,
     merchantId: env.ZARINPAL_MERCHANT_ID ?? (sandbox ? "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" : ""),
@@ -78,7 +80,7 @@ export function getGatewayConfig(): GatewayConfig {
 }
 
 export async function requestPayment(userId: string, data: PaymentRequestBody) {
-  const config = getGatewayConfig();
+  const config = await getGatewayConfig();
 
   const order = await prisma.order.findUnique({
     where: { id: data.orderId },
@@ -248,6 +250,9 @@ export async function verifyPayment(data: PaymentVerifyBody) {
   }
 
   const refId = result.refNumber ?? payment.authority!;
+  // Recorded on the payment and the transaction so a row always says whether
+  // the money was real, whatever the shop was switched to later.
+  const sandbox = await isSandboxMode();
 
   await prisma.$transaction([
     prisma.payment.update({
@@ -262,7 +267,7 @@ export async function verifyPayment(data: PaymentVerifyBody) {
           refNumber: result.refNumber,
           cardNumber: result.cardNumber,
           paidAt: result.paidAt,
-          sandbox: isSandbox(),
+          sandbox,
         },
       },
     }),
@@ -283,7 +288,7 @@ export async function verifyPayment(data: PaymentVerifyBody) {
         metadata: {
           reason: "Verified with Zibal",
           cardNumber: result.cardNumber,
-          sandbox: isSandbox(),
+          sandbox,
         },
       },
     }),
