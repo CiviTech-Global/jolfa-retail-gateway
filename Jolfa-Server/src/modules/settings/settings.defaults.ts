@@ -125,6 +125,24 @@ export const DEFAULT_SETTINGS: SettingDefault[] = [
   { key: "show_contact", value: "true", group: "static_pages", isPublic: true, description: "Show Contact page link" },
   { key: "show_rules", value: "true", group: "static_pages", isPublic: true, description: "Show Rules page link" },
 
+  // Delivery. Public because the checkout page shows the figure before the
+  // order exists; the cost charged is still resolved server-side from these
+  // same rows, so the display and the charge cannot drift apart.
+  {
+    key: "shipping_cost_post",
+    value: "80000",
+    group: "shipping",
+    isPublic: true,
+    description: "Delivery cost by post, in Toman",
+  },
+  {
+    key: "shipping_cost_courier",
+    value: "150000",
+    group: "shipping",
+    isPublic: true,
+    description: "Delivery cost by courier, in Toman",
+  },
+
   // Seeded as sandbox, and seeding never overwrites a value — so a deploy can
   // neither switch a live shop back to sandbox nor make a sandbox shop start
   // charging cards. Edited only through PATCH /admin/payments/mode; see

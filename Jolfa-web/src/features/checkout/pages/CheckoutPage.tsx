@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/Switch'
 import { FormError, FormField } from '@/components/ui/FormField'
 import { cn, formatPrice } from '@/lib/utils'
 import { optionalText } from '@/lib/validation'
+import { useShippingCosts } from '@/features/cms/hooks'
 import { useCart } from '@/features/cart/context'
 import { createOrder, requestPayment } from '@/features/orders/api'
 import { ADDRESSES_QUERY_KEY, getAddresses } from '@/features/addresses/api'
@@ -168,7 +169,10 @@ export function CheckoutPage() {
   })
 
   const shippingMethod = useWatch({ control, name: 'shippingMethod' })
-  const shippingCost = shippingMethod === 'COURIER' ? 150_000 : 80_000
+  // From the shop's settings, not a literal: the server resolves the same rows
+  // when it writes the order, so what is shown here is what is charged.
+  const shippingCosts = useShippingCosts()
+  const shippingCost = shippingCosts[shippingMethod]
   const finalTotal = total + shippingCost
 
   async function submitOrder(data: CheckoutFormData) {
@@ -394,7 +398,7 @@ export function CheckoutPage() {
                 />
                 <div>
                   <p className="font-medium text-foreground">پست</p>
-                  <p className="text-sm text-muted-foreground">{formatPrice(80_000)}</p>
+                  <p className="text-sm text-muted-foreground">{formatPrice(shippingCosts.POST)}</p>
                 </div>
               </label>
               <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-4 has-[:checked]:border-primary">
@@ -406,7 +410,7 @@ export function CheckoutPage() {
                 />
                 <div>
                   <p className="font-medium text-foreground">پیک</p>
-                  <p className="text-sm text-muted-foreground">{formatPrice(150_000)}</p>
+                  <p className="text-sm text-muted-foreground">{formatPrice(shippingCosts.COURIER)}</p>
                 </div>
               </label>
             </div>

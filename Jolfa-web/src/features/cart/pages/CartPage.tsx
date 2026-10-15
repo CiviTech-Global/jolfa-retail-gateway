@@ -46,7 +46,18 @@ export function CartPage() {
                 >
                   {item.product.title}
                 </Link>
-                <p className="mt-1 text-sm text-muted-foreground">{formatPrice(item.product.price)}</p>
+                {/* The discount follows the product into the basket. Showing
+                    only the current price here made a discounted line look
+                    like the normal price, so the saving disappeared at exactly
+                    the moment the shopper is deciding whether to buy. */}
+                <p className="mt-1 flex items-center gap-2 text-sm">
+                  <span className="text-muted-foreground">{formatPrice(item.product.price)}</span>
+                  {item.product.compareAtPrice && item.product.compareAtPrice > item.product.price ? (
+                    <span className="text-xs text-muted-foreground/70 line-through">
+                      {formatPrice(item.product.compareAtPrice)}
+                    </span>
+                  ) : null}
+                </p>
 
                 <div className="mt-auto flex items-center justify-between">
                   <div className="flex items-center rounded-lg border border-border">

@@ -5,6 +5,7 @@ import {
   FileText,
   Settings2,
   Sparkles,
+  Truck,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -21,6 +22,10 @@ export interface SettingMeta {
   kind?: 'text' | 'textarea' | 'boolean' | 'image' | 'link-columns'
   placeholder?: string
 }
+
+/** Costs are whole Toman; the field is plain text so the admin can paste. */
+const SHIPPING_HELP =
+  'به تومان و بدون جداکننده وارد کنید. اگر خالی یا نامعتبر باشد، مقدار پیش‌فرض اعمال می‌شود.'
 
 export const SETTING_META: Record<string, SettingMeta> = {
   site_name: {
@@ -159,6 +164,19 @@ export const SETTING_META: Record<string, SettingMeta> = {
     help: 'با خاموش کردن، لینک آن حذف و صفحه غیرقابل دسترس می‌شود.',
     kind: 'boolean',
   },
+
+  shipping_cost_post: {
+    label: 'هزینه ارسال با پست',
+    help: SHIPPING_HELP,
+    kind: 'text',
+    placeholder: '۸۰۰۰۰',
+  },
+  shipping_cost_courier: {
+    label: 'هزینه ارسال با پیک',
+    help: SHIPPING_HELP,
+    kind: 'text',
+    placeholder: '۱۵۰۰۰۰',
+  },
 }
 
 export interface GroupMeta {
@@ -193,6 +211,12 @@ export const GROUP_META: Record<string, GroupMeta> = {
     description: 'صفحات ثابت مانند درباره ما و قوانین را روشن یا خاموش کنید.',
     icon: FileText,
   },
+  shipping: {
+    label: 'هزینه ارسال',
+    description:
+      'هزینه هر روش ارسال. تغییر این مبالغ بلافاصله در صفحه پرداخت دیده می‌شود و روی سفارش‌های جدید اعمال می‌گردد؛ سفارش‌های ثبت‌شده دست‌نخورده می‌مانند.',
+    icon: Truck,
+  },
 }
 
 export const FALLBACK_GROUP: GroupMeta = {
@@ -202,7 +226,14 @@ export const FALLBACK_GROUP: GroupMeta = {
 }
 
 /** Order groups deliberately rather than alphabetically by raw key. */
-export const GROUP_ORDER = ['branding', 'general', 'header', 'footer', 'static_pages']
+export const GROUP_ORDER = [
+  'branding',
+  'general',
+  'shipping',
+  'header',
+  'footer',
+  'static_pages',
+]
 
 export function describeSetting(key: string, fallbackDescription?: string | null): SettingMeta {
   return (

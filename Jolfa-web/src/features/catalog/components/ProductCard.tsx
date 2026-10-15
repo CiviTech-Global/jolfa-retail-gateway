@@ -28,7 +28,10 @@ export function ProductCard({ product }: ProductCardProps) {
   const purchase = usePurchaseState(full)
   const runPurchase = usePurchaseAction()
 
-  const compareAtPrice = full?.compareAtPrice ?? null
+  // Read from the product itself, not from `full`: both shapes carry it, and
+  // taking it only from the full one hid the discount on every related-product
+  // card while the same product showed it in the catalogue grid.
+  const compareAtPrice = product.compareAtPrice ?? null
   const hasDiscount = Boolean(compareAtPrice && compareAtPrice > product.price)
   const discountPercent = hasDiscount
     ? Math.round((1 - product.price / (compareAtPrice as number)) * 100)

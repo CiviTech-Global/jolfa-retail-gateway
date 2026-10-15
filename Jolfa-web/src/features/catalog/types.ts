@@ -168,6 +168,7 @@ export interface RelatedProductDto {
   title: string
   slug: string
   price: number
+  compareAtPrice: number | null
   shortDescription: string | null
   images: ProductImageDto[]
 }

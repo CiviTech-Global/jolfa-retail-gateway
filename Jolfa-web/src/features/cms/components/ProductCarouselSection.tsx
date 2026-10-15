@@ -8,7 +8,7 @@ import { ProductCard } from '@/features/catalog/components/ProductCard'
 import { ProductGrid } from '@/features/catalog/components/ProductGrid'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
 import { Button } from '@/components/ui/Button'
-import type { ProductDto } from '@/features/catalog/types'
+import type { ProductFilters } from '@/features/catalog/types'
 
 interface ProductCarouselSectionProps {
   title: string
@@ -24,11 +24,21 @@ const filterLabels: Record<string, string> = {
   discounted: 'تخفیف‌دارها',
 }
 
-function filterProducts(products: ProductDto[], filter: ProductFilter): ProductDto[] {
+/**
+ * Which products the API should return for this section.
+ *
+ * «تخفیف‌دارها» used to fetch the newest 50 products and filter for a discount
+ * in the browser. A discounted product outside that window could therefore
+ * never appear in the carousel, however deep a discount it carried — on the
+ * live catalogue that hid four of the five discounted products. The server
+ * already knows how to answer this question (`onSale`, which compares
+ * compareAtPrice against price in SQL), so it is asked instead of guessed.
+ */
+function queryFor(filter: ProductFilter, limit: number): ProductFilters {
   if (filter === 'discounted') {
-    return products.filter((product) => product.compareAtPrice && product.compareAtPrice > product.price)
+    return { onSale: true, sort: 'createdAt:desc', limit }
   }
-  return products
+  return { featured: filter === 'featured', sort: 'createdAt:desc', limit }
 }
 
 export function ProductCarouselSection({ title, config }: ProductCarouselSectionProps) {
@@ -39,18 +49,10 @@ export function ProductCarouselSection({ title, config }: ProductCarouselSection
 
   const { data, isLoading } = useQuery({
     queryKey: ['products', 'cms', filter, limit],
-    queryFn: () =>
-      getProducts({
-        featured: filter === 'featured',
-        sort: 'createdAt:desc',
-        limit: 50,
-      }),
+    queryFn: () => getProducts(queryFor(filter, limit)),
   })
 
-  const products = useMemo(() => {
-    const all = data?.products ?? []
-    return filterProducts(all, filter).slice(0, limit)
-  }, [data, filter, limit])
+  const products = useMemo(() => data?.products ?? [], [data])
 
   const [emblaRef, emblaApi] = useEmblaCarousel({ align: 'start', direction: 'rtl', dragFree: true })
 

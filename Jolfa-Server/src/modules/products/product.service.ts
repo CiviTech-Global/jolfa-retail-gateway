@@ -234,6 +234,10 @@ export async function getProductBySlug(slug: string) {
       title: true,
       slug: true,
       price: true,
+      // Without this the same product shows a struck-through price in the
+      // catalogue grid and no discount at all in this strip, because the card
+      // can only render what the summary carries.
+      compareAtPrice: true,
       shortDescription: true,
       images: {
         where: { isPrimary: true },

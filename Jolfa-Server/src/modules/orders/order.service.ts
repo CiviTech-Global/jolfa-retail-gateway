@@ -7,6 +7,7 @@ import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from ".
 import { STOCK_NON_NEGATIVE_CONSTRAINT } from "./order.constants.js";
 import { logAudit, buildChangeMetadata } from "../../shared/audit/audit.service.js";
 import { shippingAddressSchema } from "./order.types.js";
+import { resolveShippingCost } from "./shipping.service.js";
 import type {
   OrderCreateBody,
   OrderListQuery,
@@ -92,7 +93,9 @@ export async function createOrder(userId: string, data: OrderCreateBody) {
     totalAmount += product.price * item.quantity;
   }
 
-  const shippingCost = data.shippingMethod === "COURIER" ? 150_000 : 80_000;
+  // Resolved on the server from the shop's own settings, never taken from the
+  // request: the cost is what the customer is charged.
+  const shippingCost = await resolveShippingCost(data.shippingMethod);
   const finalAmount = totalAmount + shippingCost;
 
   const orderNumber = generateOrderNumber();
