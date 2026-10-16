@@ -100,6 +100,8 @@ export async function createTestSubcategory(
 
 export interface CreateTestProductOptions {
   title?: string;
+  /** Set above `price` to make the product discounted. */
+  compareAtPrice?: number | null;
   slug?: string;
   price?: number;
   stockQuantity?: number;
@@ -117,6 +119,7 @@ export async function createTestProduct(options: CreateTestProductOptions = {}):
       title: options.title ?? "محصول آزمایشی",
       slug: options.slug ?? uniqueSlug("product"),
       price: options.price ?? 100_000,
+      compareAtPrice: options.compareAtPrice ?? null,
       stockQuantity: options.stockQuantity ?? 10,
       isActive: options.isActive ?? true,
       categoryId,

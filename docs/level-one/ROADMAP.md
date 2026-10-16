@@ -118,11 +118,18 @@ Payment: id, orderId, gateway, authority, amount, status, refId
 
 - [x] Users can browse, search, and add products to cart.
 - [x] Users can register/login and place orders.
-- [ ] Online payment works via real Zarinpal/Zibal (verification is currently mocked).
+- [x] Online payment works via real Zibal — request and verify are both real
+      calls, and the live merchant is accepted (`/v1/request` → result 100).
+      Whether money actually moves is a switch the shop owner holds, at
+      `/admin/payments`; it ships in sandbox.
 - [x] Admin can manage products and orders.
-- [ ] Site is live on client domain with HTTPS.
-- [x] Pages are responsive on mobile and desktop.
-- [ ] SMS notifications are sent for order status (logic not wired).
+- [x] Site is live on client domain with HTTPS — https://araspro.ir, Let's
+      Encrypt.
+- [x] SMS notifications are sent for order status — eight events through
+      SMS.ir, each one switchable with editable wording at `/admin/sms`.
+      Free-text sending is confirmed working on line 30002108040527; the
+      one-time code is blocked on a template id the account does not yet have
+      (result 113), which is a panel task rather than a code one.
 
 ---
 
