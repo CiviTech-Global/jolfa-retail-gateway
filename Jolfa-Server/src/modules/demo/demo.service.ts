@@ -399,6 +399,10 @@ async function ensureAdminAddress(adminId: string) {
       phone: "09120000000",
       province: "آذربایجان شرقی",
       city: "جلفا",
+      district: "مرکزی",
+      // Demo orders were seeded without one, so every demo order showed an
+      // empty postal code and looked like the bug the panel used to have.
+      postalCode: "5441234567",
       addressLine: "جلفا، خیابان اصلی، فروشگاه نمونه",
       isDefault: true,
     },

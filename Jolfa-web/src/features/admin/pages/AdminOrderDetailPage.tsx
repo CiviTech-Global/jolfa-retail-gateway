@@ -146,11 +146,37 @@ export function AdminOrderDetailPage() {
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <p className="font-medium text-foreground">{order.shippingAddress.recipientName}</p>
-            <p className="text-muted-foreground">{order.shippingAddress.phone}</p>
+            {/* Numbers read backwards when the paragraph is RTL. */}
+            <p dir="ltr" className="text-start text-muted-foreground">
+              {order.shippingAddress.phone}
+            </p>
             <p className="text-muted-foreground">
-              {order.shippingAddress.province}، {order.shippingAddress.city}
+              {[
+                order.shippingAddress.province,
+                order.shippingAddress.city,
+                order.shippingAddress.district,
+              ]
+                .filter(Boolean)
+                .join('، ')}
             </p>
             <p className="text-muted-foreground">{order.shippingAddress.addressLine}</p>
+            {/*
+              The postal code was missing from this card entirely, so the one
+              field Iran Post requires on a parcel was the one field the person
+              packing it could not see. Rendered unconditionally, and labelled
+              when absent: "nothing here" has to mean "this order has none",
+              not "the panel forgot to show it".
+            */}
+            <p className="flex items-center gap-2 text-muted-foreground">
+              <span>کد پستی:</span>
+              {order.shippingAddress.postalCode ? (
+                <span dir="ltr" className="font-medium tabular-nums text-foreground">
+                  {order.shippingAddress.postalCode}
+                </span>
+              ) : (
+                <span className="text-warning">ثبت نشده</span>
+              )}
+            </p>
           </CardContent>
         </Card>
       </div>

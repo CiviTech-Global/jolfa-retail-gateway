@@ -317,11 +317,22 @@ export function OrderDetailPage() {
                       .filter(Boolean)
                       .join('، ')}
                   </p>
-                  {address.postalCode && (
-                    <p className="text-muted-foreground">
-                      کد پستی: <span dir="ltr">{address.postalCode}</span>
-                    </p>
-                  )}
+                  {/*
+                    Shown even when empty. Hiding the row made a missing postal
+                    code indistinguishable from a page that never displayed one,
+                    and it is the field most likely to hold up a delivery — the
+                    customer can act on it only if they can see it is absent.
+                  */}
+                  <p className="flex items-center gap-2 text-muted-foreground">
+                    <span>کد پستی:</span>
+                    {address.postalCode ? (
+                      <span dir="ltr" className="tabular-nums">
+                        {address.postalCode}
+                      </span>
+                    ) : (
+                      <span className="text-warning">ثبت نشده</span>
+                    )}
+                  </p>
                 </CardContent>
               </Card>
             </ScrollReveal>
