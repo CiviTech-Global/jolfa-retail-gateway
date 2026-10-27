@@ -11,6 +11,9 @@
 # layer that actually holds.
 limit_req_zone $binary_remote_addr zone=jolfa_api:10m rate={{ nginx_api_rate | default('20r/s') }};
 limit_req_zone $binary_remote_addr zone=jolfa_auth:10m rate={{ nginx_auth_rate | default('1r/s') }};
+# Product pages are rendered by Node and crawled by Torob from a few addresses,
+# so they get a bucket of their own rather than sharing the API's.
+limit_req_zone $binary_remote_addr zone=jolfa_pages:10m rate={{ nginx_pages_rate | default('10r/s') }};
 limit_conn_zone $binary_remote_addr zone=jolfa_conn:10m;
 
 upstream jolfa_api {
@@ -138,6 +141,35 @@ server {
         proxy_pass http://jolfa_api;
         include /etc/nginx/jolfa_proxy_params;
         expires 7d;
+    }
+
+    # ---- Product pages -----------------------------------------------------
+    # Node answers these with the same index.html, plus the product's meta
+    # tags (Torob, link previews). Crawlers do not run JavaScript, so from the
+    # static shell they could not see the product at all. Only the exact
+    # /products/<slug> shape: the /products list and /admin/products/... stay
+    # with the static shell below. A regex location, so it wins over `/`.
+    location ~ ^/products/[^/]+$ {
+        limit_req zone=jolfa_pages burst=60 nodelay;
+        # Not 503: that is in the error_page list below, and a throttled
+        # crawler must be told to slow down rather than handed a tagless page.
+        limit_req_status 429;
+        limit_conn jolfa_conn 25;
+        include /etc/nginx/jolfa_security_headers;
+        proxy_pass http://jolfa_api;
+        include /etc/nginx/jolfa_proxy_params;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        # If Node is down or fails, the page still loads exactly as it did
+        # before this location existed, just without the product tags.
+        proxy_intercept_errors on;
+        error_page 500 502 503 504 = @spa_shell;
+    }
+
+    location @spa_shell {
+        include /etc/nginx/jolfa_security_headers;
+        add_header Cache-Control "no-cache" always;
+        try_files /index.html =404;
     }
 
     # ---- SPA fallback ------------------------------------------------------

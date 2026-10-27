@@ -20,6 +20,13 @@ const envSchema = z.object({
   AUTH_RATE_LIMIT_WINDOW: z.string().default("15 minutes"),
 
   APP_URL: z.string().default("http://localhost:3001"),
+  /**
+   * The storefront's built `index.html`. Product pages are served from it with
+   * the product's meta tags filled in, because crawlers that do not run
+   * JavaScript (Torob, link previews) would otherwise see an empty shell.
+   * Relative paths resolve from the server's working directory.
+   */
+  WEB_INDEX_PATH: z.string().default("../Jolfa-web/dist/index.html"),
   UPLOAD_DIR: z.string().default("uploads"),
   PUBLIC_UPLOAD_PATH: z.string().default("/uploads"),
   MAX_FILE_SIZE: z.coerce.number().int().positive().default(5 * 1024 * 1024),

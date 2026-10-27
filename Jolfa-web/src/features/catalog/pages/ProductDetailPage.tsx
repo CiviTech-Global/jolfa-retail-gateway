@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
 import { BackButton, Breadcrumbs } from '@/components/layout/Breadcrumbs'
+import { Seo } from '@/components/seo/Seo'
+import { usePublicSettingValue } from '@/features/cms/hooks'
 import { formatPrice, FALLBACK_IMAGE_URL } from '@/lib/utils'
 import { resolvePurchaseState, usePurchaseAction, usePurchaseViewer } from '@/features/cart/purchase'
 import { toast } from 'sonner'
@@ -26,6 +28,7 @@ export function ProductDetailPage() {
   const viewer = usePurchaseViewer()
   const [quantity, setQuantity] = useState(1)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
+  const defaultGuarantee = usePublicSettingValue('default_guarantee')
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['product', slug],
@@ -60,6 +63,8 @@ export function ProductDetailPage() {
   const effectiveIndex = selectedImageIndex < images.length ? selectedImageIndex : defaultIndex
   const selectedImage = images[effectiveIndex]
   const hasDiscount = product.compareAtPrice && product.compareAtPrice > product.price
+  const guarantee = product.guarantee?.trim() || defaultGuarantee?.trim() || ''
+  const primaryImageUrl = images[defaultIndex]?.url
 
   function handleAddToCart() {
     // The hook decides what "buy" means for this visitor: add to cart, send a
@@ -74,6 +79,29 @@ export function ProductDetailPage() {
 
   return (
     <div className="mx-auto max-w-7xl flex-1 px-4 py-8">
+      {/* Mirrors the head the server sends for this URL (product-page module),
+          which the app drops on start so in-app navigation never shows a
+          previous product's tags. schema.org has no Toman, hence Rial. */}
+      <Seo
+        title={product.metaTitle || product.title}
+        description={product.metaDescription || product.shortDescription || undefined}
+        image={primaryImageUrl}
+        jsonLd={{
+          '@type': 'Product',
+          name: product.title,
+          ...(primaryImageUrl ? { image: primaryImageUrl } : {}),
+          ...(product.sku ? { sku: product.sku } : {}),
+          offers: {
+            '@type': 'Offer',
+            price: product.price * 10,
+            priceCurrency: 'IRR',
+            availability:
+              product.stockQuantity > 0
+                ? 'https://schema.org/InStock'
+                : 'https://schema.org/OutOfStock',
+          },
+        }}
+      />
       <Breadcrumbs
         className="mb-3"
         items={[
@@ -155,6 +183,12 @@ export function ProductDetailPage() {
               <div>
                 <span className="text-muted-foreground">شناسه:</span>{' '}
                 <span className="font-medium text-foreground">{product.sku}</span>
+              </div>
+            )}
+            {guarantee && (
+              <div className="col-span-2">
+                <span className="text-muted-foreground">گارانتی:</span>{' '}
+                <span className="font-medium text-foreground">{guarantee}</span>
               </div>
             )}
           </div>

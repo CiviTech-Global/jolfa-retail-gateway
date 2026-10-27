@@ -81,6 +81,7 @@ export const productCreateBodySchema = z.object({
     z.number().int("وزن باید عدد صحیح باشد").positive("وزن باید بیشتر از صفر باشد"),
   ),
   sku: nullableString(z.string().trim().max(100, "کد کالا حداکثر ۱۰۰ کاراکتر است")),
+  guarantee: nullableString(z.string().trim().max(200, "متن گارانتی حداکثر ۲۰۰ کاراکتر است")),
   categoryId: uuidSchema("دسته‌بندی"),
   isActive: z.boolean().default(true),
   isFeatured: z.boolean().default(false),

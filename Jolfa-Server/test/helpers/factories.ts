@@ -108,6 +108,7 @@ export interface CreateTestProductOptions {
   isActive?: boolean;
   categoryId?: string;
   sku?: string;
+  guarantee?: string | null;
 }
 
 export async function createTestProduct(options: CreateTestProductOptions = {}): Promise<Product> {
@@ -124,6 +125,7 @@ export async function createTestProduct(options: CreateTestProductOptions = {}):
       isActive: options.isActive ?? true,
       categoryId,
       sku: options.sku ?? uniqueSlug("sku"),
+      guarantee: options.guarantee ?? null,
     },
   });
 }

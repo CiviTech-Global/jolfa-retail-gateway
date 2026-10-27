@@ -41,6 +41,7 @@ The Level One MVP is **functionally complete** for core e-commerce flows. Both b
 - [x] Uploads: local image upload endpoint (`POST /api/v1/uploads`).
 - [x] Demo data: seed/clear via `POST /api/v1/demo`, tracked by `demo_snapshots`.
 - [x] Environment-based admin/user seeding on startup.
+- [x] Torob compatibility (CR-01): `/products/<slug>` is served by Node with the product's meta tags in the HTML; per-product guarantee with a shop-wide default. See ROADMAP → Change Requests.
 - [x] `npm run build` and `npm run lint` pass.
 
 ### Frontend (`Jolfa-web`)
