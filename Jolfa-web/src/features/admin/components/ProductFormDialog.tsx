@@ -48,6 +48,7 @@ const productSchema = z
     stockQuantity: numericField('موجودی', { min: 0 }),
     weightGrams: numericField('وزن', { required: false, min: 1 }),
     sku: optionalText('کد کالا', 100),
+    guarantee: optionalText('گارانتی', 200),
     categoryId: requiredUuid('دسته‌بندی'),
     isActive: z.boolean(),
     isFeatured: z.boolean(),
@@ -88,6 +89,7 @@ const FORM_FIELDS: Record<keyof ProductFormValues, true> = {
   stockQuantity: true,
   weightGrams: true,
   sku: true,
+  guarantee: true,
   categoryId: true,
   isActive: true,
   isFeatured: true,
@@ -107,6 +109,7 @@ function emptyValues(): ProductFormValues {
     stockQuantity: '0',
     weightGrams: '',
     sku: '',
+    guarantee: '',
     categoryId: '',
     isActive: true,
     isFeatured: false,
@@ -127,6 +130,7 @@ function productToValues(product: ProductDto): ProductFormValues {
     stockQuantity: String(product.stockQuantity),
     weightGrams: product.weightGrams ? String(product.weightGrams) : '',
     sku: product.sku ?? '',
+    guarantee: product.guarantee ?? '',
     categoryId: product.categoryId,
     isActive: product.isActive,
     isFeatured: product.isFeatured,
@@ -153,6 +157,7 @@ function toBody(data: ProductFormOutput): ProductCreateBody {
     stockQuantity: data.stockQuantity as number,
     weightGrams: clearable(data.weightGrams),
     sku: clearable(data.sku),
+    guarantee: clearable(data.guarantee),
     categoryId: data.categoryId,
     isActive: data.isActive,
     isFeatured: data.isFeatured,
@@ -397,6 +402,17 @@ function ProductEditor({ slug, initialProduct, subcategoryOptions, onDone }: Pro
 
             <FormField label="کد کالا (SKU)" error={errors.sku?.message}>
               {(field) => <Input {...field} dir="ltr" {...register('sku')} />}
+            </FormField>
+
+            <FormField
+              label="گارانتی"
+              hint="در صفحه محصول و ترب نمایش داده می‌شود. اگر خالی بماند، گارانتی پیش‌فرض فروشگاه (تنظیمات) استفاده می‌شود."
+              error={errors.guarantee?.message}
+              className="sm:col-span-2"
+            >
+              {(field) => (
+                <Input {...field} placeholder="مثلاً: ضمانت اصالت و سلامت فیزیکی کالا" {...register('guarantee')} />
+              )}
             </FormField>
 
             <div className="flex items-center gap-6 sm:col-span-2">

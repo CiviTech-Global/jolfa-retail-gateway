@@ -71,6 +71,8 @@ export interface ProductDto {
   stockQuantity: number
   weightGrams: number | null
   sku: string | null
+  /** Own warranty text; empty means the shop's `default_guarantee` applies. */
+  guarantee: string | null
   categoryId: string
   isActive: boolean
   isFeatured: boolean
@@ -128,6 +130,7 @@ export interface ProductCreateBody {
   stockQuantity?: number
   weightGrams?: number | null
   sku?: string | null
+  guarantee?: string | null
   categoryId: string
   isActive?: boolean
   isFeatured?: boolean
@@ -146,6 +149,7 @@ export interface ProductUpdateBody {
   stockQuantity?: number
   weightGrams?: number | null
   sku?: string | null
+  guarantee?: string | null
   categoryId?: string
   isActive?: boolean
   isFeatured?: boolean

@@ -308,6 +308,32 @@ If Brotli is available (`nginx-module-brotli`), enable it alongside gzip — it
 compresses the JS bundles roughly 15–20% smaller than gzip at the same CPU cost
 on static, pre-compressible files.
 
+### The one page Node does serve
+
+Product pages (`/products/<slug>`, exactly that shape) are the exception. Node
+answers them with the built `index.html` plus the product's meta tags, because
+Torob and link previews do not run JavaScript. The shell is read from
+`WEB_INDEX_PATH`, which defaults to `../Jolfa-web/dist/index.html` relative to
+the server's working directory — inside the same release, so the tags and the
+bundle always come from one build.
+
+```nginx
+location ~ ^/products/[^/]+$ {
+    limit_req zone=jolfa_pages burst=60 nodelay;
+    limit_req_status 429;
+    proxy_pass http://jolfa_api;
+    proxy_intercept_errors on;
+    error_page 500 502 503 504 = @spa_shell;   # Node down: the old static page
+}
+```
+
+The full block is in `ansible/roles/nginx/templates/jolfa.conf.j2`; apply it
+with `nginx.yml`. Check it from any machine:
+
+```bash
+curl -s https://araspro.ir/products/<slug> | grep -E 'product_|availability|og:image'
+```
+
 The API sets its own `Cache-Control`: public catalogue reads are cacheable for
 60 seconds with `stale-while-revalidate`, and anything carrying an
 `Authorization` header is `no-store`. Responses also send

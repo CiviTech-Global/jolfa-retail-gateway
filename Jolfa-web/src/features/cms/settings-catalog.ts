@@ -6,6 +6,7 @@ import {
   Settings2,
   Sparkles,
   Truck,
+  ShieldCheck,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -177,6 +178,13 @@ export const SETTING_META: Record<string, SettingMeta> = {
     kind: 'text',
     placeholder: '۱۵۰۰۰۰',
   },
+
+  default_guarantee: {
+    label: 'گارانتی پیش‌فرض محصولات',
+    help: 'برای هر محصولی که گارانتی خودش را ندارد، در صفحه محصول و ترب نمایش داده می‌شود. اگر خالی باشد، گارانتی نمایش داده نمی‌شود.',
+    kind: 'text',
+    placeholder: 'مثلاً: ضمانت اصالت و سلامت فیزیکی کالا',
+  },
 }
 
 export interface GroupMeta {
@@ -217,6 +225,11 @@ export const GROUP_META: Record<string, GroupMeta> = {
       'هزینه هر روش ارسال. تغییر این مبالغ بلافاصله در صفحه پرداخت دیده می‌شود و روی سفارش‌های جدید اعمال می‌گردد؛ سفارش‌های ثبت‌شده دست‌نخورده می‌مانند.',
     icon: Truck,
   },
+  products: {
+    label: 'محصولات',
+    description: 'تنظیماتی که برای همه محصولات اعمال می‌شود، مگر محصولی مقدار خودش را داشته باشد.',
+    icon: ShieldCheck,
+  },
 }
 
 export const FALLBACK_GROUP: GroupMeta = {
@@ -230,6 +243,7 @@ export const GROUP_ORDER = [
   'branding',
   'general',
   'shipping',
+  'products',
   'header',
   'footer',
   'static_pages',

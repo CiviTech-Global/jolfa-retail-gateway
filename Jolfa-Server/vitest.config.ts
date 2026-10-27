@@ -28,6 +28,9 @@ export default defineConfig({
       SMS_IR_API_KEY: "",
       SMS_IR_OTP_TEMPLATE_ID: "",
       SMS_SENDER_NUMBER: "",
+      // A copy of the built storefront shell, so product-page tests do not
+      // depend on Jolfa-web having been built first.
+      WEB_INDEX_PATH: "test/fixtures/web-index.html",
     },
     testTimeout: 20000,
     hookTimeout: 30000,

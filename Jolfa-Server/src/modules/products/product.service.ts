@@ -48,6 +48,7 @@ const publicProductSelect = {
   stockQuantity: true,
   weightGrams: true,
   sku: true,
+  guarantee: true,
   categoryId: true,
   isActive: true,
   isFeatured: true,

@@ -133,6 +133,33 @@ Payment: id, orderId, gateway, authority, amount, status, refId
 
 ---
 
+## Change Requests
+
+Work agreed with the client after Level One, each under its own agreement.
+
+### CR-01 — Torob compatibility (agreement dated 1405/08/04, 7 working days)
+
+Torob's crawler reads product pages without running JavaScript, and found no
+product id, name, image, price, old price or stock on them. Product pages are
+now answered by Node with those tags in the HTML (`Jolfa-Server/src/modules/product-page`);
+every other page is still the static shell.
+
+- [x] `/products/<slug>` carries `product_id`, `product_name`, `og:image`,
+      `product_price`, `product_old_price` (only for a real discount),
+      `availability` (`instock` / `outofstock`) and `guarantee` in the raw HTML.
+- [x] Guarantee is set per product in the admin form, with a shop-wide default
+      at `/admin/settings` (`default_guarantee`) for products that leave it empty.
+- [x] A missing or hidden product answers 404; a failed lookup still serves the
+      app; if Node is down nginx serves the static shell.
+- [x] Title, description, canonical, Open Graph and JSON-LD are filled in too,
+      so link previews in Telegram and WhatsApp show the product.
+- [x] 11 integration tests in `product-page.test.ts`.
+- [ ] Live: `curl -s https://araspro.ir/products/<slug> | grep product_`
+      shows the tags.
+- [ ] Torob confirms the products are read correctly.
+
+---
+
 ## Risks & Mitigation
 
 | Risk | Likelihood | Impact | Mitigation |

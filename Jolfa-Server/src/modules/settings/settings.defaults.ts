@@ -143,6 +143,17 @@ export const DEFAULT_SETTINGS: SettingDefault[] = [
     description: "Delivery cost by courier, in Toman",
   },
 
+  // Used for any product whose own guarantee field is empty, so the owner does
+  // not have to fill in the same text on every product. Empty means no
+  // guarantee is shown on the storefront or sent to Torob.
+  {
+    key: "default_guarantee",
+    value: "",
+    group: "products",
+    isPublic: true,
+    description: "Guarantee text for products that do not set their own",
+  },
+
   // Seeded as sandbox, and seeding never overwrites a value — so a deploy can
   // neither switch a live shop back to sandbox nor make a sandbox shop start
   // charging cards. Edited only through PATCH /admin/payments/mode; see

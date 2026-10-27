@@ -20,6 +20,7 @@ Each row in these files has an ID of the form `<AREA>-<NNN>`:
 | `CMS` | Admin: CMS (sections/banners/settings) | `08-admin-cms.md` |
 | `DDA` | Admin: dashboard/demo/audit | `09-admin-dashboard-demo-audit.md` |
 | `KG` | Known-gap regressions | `10-known-gaps.md` |
+| `TOR` | Torob / server-rendered product head (CR-01) | `11-torob.cases.md` |
 
 IDs are stable once assigned — if a checklist bullet is removed, retire its ID rather than renumbering everything after it; if a bullet is added, append a new ID at the end of its group (e.g. `G-071`) rather than renumbering.
 
