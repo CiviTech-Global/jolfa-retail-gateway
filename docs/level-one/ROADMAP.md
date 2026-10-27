@@ -154,8 +154,9 @@ every other page is still the static shell.
 - [x] Title, description, canonical, Open Graph and JSON-LD are filled in too,
       so link previews in Telegram and WhatsApp show the product.
 - [x] 11 integration tests in `product-page.test.ts`.
-- [ ] Live: `curl -s https://araspro.ir/products/<slug> | grep product_`
-      shows the tags.
+- [x] Live since 1405/08/05: `curl -s https://araspro.ir/products/<slug> | grep product_`
+      shows the tags; a headless browser confirms the app still loads and
+      replaces them.
 - [ ] Torob confirms the products are read correctly.
 
 ---
