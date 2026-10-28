@@ -18,4 +18,9 @@ below asserts on the response body of `GET /products/:slug`, not on a rendered p
 | TOR-009 | Escaping | Integration | same | `escapes product text so it cannot inject markup` | no raw `<script>` from the title; `<` inside JSON-LD |
 | TOR-010 | Lookup failure | Integration | same | `serves the plain shell when the product lookup fails` | 200, original shell, no product tags |
 | TOR-011 | Page headers | Integration | same | `sends headers fit for an HTML page, not the API's` | `text/html`, `no-cache`, no API CSP, not rate-limited by the API bucket |
+| TOR-013 | Sitemap is XML | Integration | `Jolfa-Server/src/modules/sitemap/sitemap.test.ts` | `is XML, not the storefront's HTML shell` | 200, `application/xml`, sitemaps.org namespace |
+| TOR-014 | Newest product first | Integration | same | `lists active products newest first, each with its last change` | order by creation, `<lastmod>` ISO 8601 |
+| TOR-015 | Hidden content left out | Integration | same | `leaves out hidden products and categories` | inactive product and category absent |
+| TOR-016 | Entry pages | Integration | same | `includes the home page and the product list` | `/` and `/products` first |
+| TOR-017 | robots.txt | Integration | same | `points crawlers at the sitemap and away from private pages` | `Sitemap:` line; admin, checkout disallowed; products allowed |
 | TOR-012 | Live check after deploy | Manual | — | — | `curl -s https://araspro.ir/products/<slug> \| grep product_` shows the tags; nginx falls back to the static shell when Node is stopped |
