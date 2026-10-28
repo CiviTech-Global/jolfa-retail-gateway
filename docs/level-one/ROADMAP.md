@@ -157,6 +157,9 @@ every other page is still the static shell.
 - [x] Live since 1405/08/05: `curl -s https://araspro.ir/products/<slug> | grep product_`
       shows the tags; a headless browser confirms the app still loads and
       replaces them.
+- [x] `/sitemap.xml` lists every active product newest first (Torob's follow-up
+      request, 1405/08/06), plus the home, product-list and category pages;
+      `/robots.txt` points to it. Both used to answer 200 with the HTML shell.
 - [ ] Torob confirms the products are read correctly.
 
 ---

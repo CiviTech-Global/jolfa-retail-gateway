@@ -26,6 +26,7 @@ import bannerRoutes from "./modules/banners/banner.routes.js";
 import addressRoutes from "./modules/addresses/address.routes.js";
 import uploadRoutes from "./modules/uploads/upload.routes.js";
 import productPageRoutes from "./modules/product-page/product-page.routes.js";
+import sitemapRoutes from "./modules/sitemap/sitemap.routes.js";
 import { getUploadDir } from "./modules/uploads/upload.service.js";
 import path from "node:path";
 import { mkdir } from "node:fs/promises";
@@ -224,6 +225,8 @@ export async function buildApp(app: FastifyInstance): Promise<FastifyInstance> {
   // The storefront product URL as HTML with the product's meta tags, for
   // crawlers that do not run JavaScript. Outside the API prefix on purpose.
   await app.register(productPageRoutes);
+  // /sitemap.xml and /robots.txt, at the root where crawlers look for them.
+  await app.register(sitemapRoutes);
 
   return app;
 }

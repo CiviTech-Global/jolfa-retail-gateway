@@ -327,6 +327,9 @@ location ~ ^/products/[^/]+$ {
 }
 ```
 
+`/sitemap.xml` and `/robots.txt` are proxied to Node the same way (exact-match
+locations), built from the live catalogue on each request.
+
 The full block is in `ansible/roles/nginx/templates/jolfa.conf.j2`; apply it
 with `nginx.yml`. Check it from any machine:
 
