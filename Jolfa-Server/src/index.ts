@@ -27,6 +27,7 @@ import addressRoutes from "./modules/addresses/address.routes.js";
 import uploadRoutes from "./modules/uploads/upload.routes.js";
 import productPageRoutes from "./modules/product-page/product-page.routes.js";
 import sitemapRoutes from "./modules/sitemap/sitemap.routes.js";
+import feedRoutes from "./modules/feeds/feed.routes.js";
 import { getUploadDir } from "./modules/uploads/upload.service.js";
 import path from "node:path";
 import { mkdir } from "node:fs/promises";
@@ -222,6 +223,8 @@ export async function buildApp(app: FastifyInstance): Promise<FastifyInstance> {
   await app.register(bannerRoutes, { prefix: `${env.API_PREFIX}/banners` });
   await app.register(addressRoutes, { prefix: `${env.API_PREFIX}/addresses` });
   await app.register(uploadRoutes, { prefix: `${env.API_PREFIX}/uploads` });
+  // Product feeds for price-comparison sites (Emalls).
+  await app.register(feedRoutes, { prefix: `${env.API_PREFIX}/feeds` });
   // The storefront product URL as HTML with the product's meta tags, for
   // crawlers that do not run JavaScript. Outside the API prefix on purpose.
   await app.register(productPageRoutes);

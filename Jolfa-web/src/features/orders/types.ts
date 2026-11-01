@@ -34,6 +34,10 @@ export interface OrderDto {
   totalAmount: number
   shippingCost: number
   discountAmount: number
+  /** What was charged at the time, kept on the order. Zero means no tax. */
+  taxAmount: number
+  taxLabel: string | null
+  taxBasisPoints: number
   finalAmount: number
   trackingNumber: string | null
   notes: string | null

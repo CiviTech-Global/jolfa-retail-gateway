@@ -12,9 +12,10 @@ import { Switch } from '@/components/ui/Switch'
 import { FormError, FormField } from '@/components/ui/FormField'
 import { cn, formatPrice } from '@/lib/utils'
 import { optionalText } from '@/lib/validation'
-import { useShippingCosts } from '@/features/cms/hooks'
+import { useShippingCosts, useTaxSettings } from '@/features/cms/hooks'
 import { useCart } from '@/features/cart/context'
 import { createOrder, requestPayment } from '@/features/orders/api'
+import { calculateTax, formatTaxLabel } from '@/features/orders/tax'
 import { ADDRESSES_QUERY_KEY, getAddresses } from '@/features/addresses/api'
 import {
   addressFieldsSchema,
@@ -173,7 +174,11 @@ export function CheckoutPage() {
   // when it writes the order, so what is shown here is what is charged.
   const shippingCosts = useShippingCosts()
   const shippingCost = shippingCosts[shippingMethod]
-  const finalTotal = total + shippingCost
+  // On goods plus delivery, as on the server, and recalculated when the
+  // customer switches delivery method.
+  const tax = useTaxSettings()
+  const taxAmount = tax.enabled ? calculateTax(total + shippingCost, tax.basisPoints) : 0
+  const finalTotal = total + shippingCost + taxAmount
 
   async function submitOrder(data: CheckoutFormData) {
     if (items.length === 0) {
@@ -461,6 +466,14 @@ export function CheckoutPage() {
                 <span className="text-muted-foreground">هزینه ارسال</span>
                 <span className="text-foreground">{formatPrice(shippingCost)}</span>
               </div>
+              {taxAmount > 0 && (
+                <div className="mt-2 flex justify-between gap-3 text-sm">
+                  <span className="text-muted-foreground">
+                    {formatTaxLabel(tax.label, tax.basisPoints)}
+                  </span>
+                  <span className="shrink-0 text-foreground">{formatPrice(taxAmount)}</span>
+                </div>
+              )}
               <div className="mt-2 flex justify-between text-lg font-bold">
                 <span className="text-foreground">مجموع</span>
                 <span className="text-primary">{formatPrice(finalTotal)}</span>

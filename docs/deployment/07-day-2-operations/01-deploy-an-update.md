@@ -69,7 +69,7 @@ credentials defensively, but anything else there runs against the real account.
 
 | Check | How |
 |---|---|
-| CI is green on the commit you are shipping | 246 backend tests against a real Postgres, 45 frontend tests, lint, both builds |
+| CI is green on the commit you are shipping | 340 backend tests against a real Postgres, 50 frontend tests, lint, both builds |
 | Everything is pushed | `git log --oneline -1 origin/main` matches what you intend |
 | You know whether the release contains a migration | `git diff --stat HEAD origin/main -- Jolfa-Server/prisma/migrations/` |
 | If it does: is the migration destructive? | A dropped or renamed column makes rollback insufficient — see below |

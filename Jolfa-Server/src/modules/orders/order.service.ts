@@ -8,6 +8,7 @@ import { STOCK_NON_NEGATIVE_CONSTRAINT } from "./order.constants.js";
 import { logAudit, buildChangeMetadata } from "../../shared/audit/audit.service.js";
 import { shippingAddressSchema } from "./order.types.js";
 import { resolveShippingCost } from "./shipping.service.js";
+import { resolveOrderTax } from "./tax.service.js";
 import type {
   OrderCreateBody,
   OrderListQuery,
@@ -96,7 +97,10 @@ export async function createOrder(userId: string, data: OrderCreateBody) {
   // Resolved on the server from the shop's own settings, never taken from the
   // request: the cost is what the customer is charged.
   const shippingCost = await resolveShippingCost(data.shippingMethod);
-  const finalAmount = totalAmount + shippingCost;
+  // On the whole payment, delivery included, and resolved here for the same
+  // reason: it is what the customer is charged.
+  const tax = await resolveOrderTax(totalAmount + shippingCost);
+  const finalAmount = totalAmount + shippingCost + tax.taxAmount;
 
   const orderNumber = generateOrderNumber();
   const shippingDetails = await resolveShippingDetails(userId, data);
@@ -132,6 +136,7 @@ export async function createOrder(userId: string, data: OrderCreateBody) {
         orderNumber,
         totalAmount,
         shippingCost,
+        ...tax,
         finalAmount,
         shippingAddressId: address.id,
         notes: data.customerNote,

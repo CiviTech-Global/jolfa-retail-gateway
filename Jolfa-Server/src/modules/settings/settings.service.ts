@@ -7,7 +7,48 @@ import {
   RETIRED_SETTING_KEYS,
   findSettingDefault,
 } from "./settings.defaults.js";
+import {
+  DEFAULT_TAX_LABEL,
+  TAX_LABEL_MAX_LENGTH,
+  TAX_SETTING_KEYS,
+  formatTaxPercent,
+  parseTaxPercent,
+} from "../orders/tax.service.js";
 import type { SettingUpdateBody } from "./settings.types.js";
+
+/**
+ * Refuses or tidies a value that feeds customers' totals, so a typing mistake
+ * is reported to the admin rather than quietly becoming a different charge. The
+ * rate is stored in its plain form, because the storefront reads it as a number.
+ */
+function normalizeSettingValue(key: string, value: string): string {
+  if (key === TAX_SETTING_KEYS.percent) {
+    const basisPoints = parseTaxPercent(value);
+    if (basisPoints === null) {
+      throw new AppError(
+        "درصد مالیات باید عددی بین ۰ تا ۱۰۰ با حداکثر دو رقم اعشار باشد.",
+        400,
+        "INVALID_SETTING_VALUE",
+      );
+    }
+    return formatTaxPercent(basisPoints);
+  }
+
+  if (key === TAX_SETTING_KEYS.label) {
+    const label = value.trim();
+    if (label.length > TAX_LABEL_MAX_LENGTH) {
+      throw new AppError(
+        "نام مالیات نباید بیشتر از ۱۰۰ نویسه باشد.",
+        400,
+        "INVALID_SETTING_VALUE",
+      );
+    }
+    // The name is optional; clearing it brings the default back.
+    return label || DEFAULT_TAX_LABEL;
+  }
+
+  return value;
+}
 
 /**
  * Creates any missing default setting and re-aligns the metadata (group,
@@ -69,6 +110,7 @@ export async function updateSetting(key: string, data: SettingUpdateBody, actorI
     );
   }
 
+  const value = normalizeSettingValue(key, data.value);
   const existing = await prisma.setting.findUnique({ where: { key } });
 
   // A known default that was never seeded is created on first write rather
@@ -81,10 +123,10 @@ export async function updateSetting(key: string, data: SettingUpdateBody, actorI
   const setting = existing
     ? await prisma.setting.update({
         where: { key },
-        data: { value: data.value },
+        data: { value },
       })
     : await prisma.setting.create({
-        data: { ...fallback!, value: data.value },
+        data: { ...fallback!, value },
       });
 
   if (actorId) {
@@ -93,7 +135,7 @@ export async function updateSetting(key: string, data: SettingUpdateBody, actorI
       action: existing ? "UPDATE" : "CREATE",
       entityType: "Setting",
       entityId: setting.id,
-      metadata: buildChangeMetadata({ value: existing?.value ?? "" }, { value: data.value }),
+      metadata: buildChangeMetadata({ value: existing?.value ?? "" }, { value }),
     });
   }
 

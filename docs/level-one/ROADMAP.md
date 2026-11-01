@@ -162,6 +162,35 @@ every other page is still the static shell.
       `/robots.txt` points to it. Both used to answer 200 with the HTML shell.
 - [ ] Torob confirms the products are read correctly.
 
+### CR-02 — VAT on the customer's payment (requested 1405/08/10)
+
+The shop owner sets it at `/admin/settings`, under «مالیات»: on or off, its name
+(default «مالیات بر ارزش افزوده») and its rate (default 9.5%).
+
+- [x] Worked out on the server when the order is placed, on goods plus delivery,
+      rounded to a whole Toman; the amount sent to the gateway includes it.
+- [x] The amount, name and rate are copied onto the order, so changing the
+      settings leaves placed orders as they were.
+- [x] Shown at checkout and on both order screens, only when there is tax.
+- [x] Ships switched off, and a deploy never changes the setting: nobody's total
+      moves until the owner turns it on.
+- [x] A rate the server cannot read is refused when saved. Clearing the name
+      brings the default back.
+
+### CR-03 — Emalls product feed (requested 1405/08/10)
+
+`https://araspro.ir/api/v1/feeds/emalls?page=1&item_per_page=50`, GET or POST,
+in the field names of Emalls' merchant guide. The URL is ours to choose, and is
+registered with Emalls by the shop owner.
+
+- [x] Every required field, plus `old_price` (only for a real discount) and
+      `guarantee` (with the shop-wide default). The shop has no colour field, so
+      the optional `color` is left out.
+- [x] A product with no image is left out, because Emalls requires one.
+- [x] Prices are the catalogue's, before any tax — the same figure as the product
+      page and Torob.
+- [ ] Emalls confirms the products are read correctly.
+
 ---
 
 ## Risks & Mitigation
