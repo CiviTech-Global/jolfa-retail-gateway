@@ -400,6 +400,10 @@ describe("POST /api/v1/payments/verify", () => {
 });
 
 describe("GET /api/v1/payments/:authority", () => {
+  beforeEach(() => {
+    stubZibal();
+  });
+
   it("returns the payment with its order summary", async () => {
     const fixture = await placeOrder();
     const authority = (await requestPayment(fixture)).json().data.authority;
