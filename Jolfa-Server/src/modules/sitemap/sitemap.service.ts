@@ -73,6 +73,8 @@ export function renderRobots(): string {
   return [
     "User-agent: *",
     "Disallow: /admin",
+    // Before the line below: price-comparison sites read their feed here.
+    `Allow: ${env.API_PREFIX}/feeds/`,
     "Disallow: /api/",
     "Disallow: /profile",
     "Disallow: /cart",

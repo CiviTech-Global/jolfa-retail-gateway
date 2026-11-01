@@ -57,7 +57,7 @@ function metaProperty(property: string, content: string): string {
 }
 
 /** Uploads are stored as absolute URLs, demo images and older rows may not be. */
-function absoluteUrl(url: string): string {
+export function absoluteUrl(url: string): string {
   if (/^https?:\/\//i.test(url)) return url;
   return `${env.APP_URL.replace(/\/+$/, "")}/${url.replace(/^\/+/, "")}`;
 }

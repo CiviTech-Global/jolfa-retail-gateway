@@ -21,6 +21,8 @@ Each row in these files has an ID of the form `<AREA>-<NNN>`:
 | `DDA` | Admin: dashboard/demo/audit | `09-admin-dashboard-demo-audit.md` |
 | `KG` | Known-gap regressions | `10-known-gaps.md` |
 | `TOR` | Torob / server-rendered product head (CR-01) | `11-torob.cases.md` |
+| `VAT` | Tax on the customer's payment (CR-02) | `12-vat.cases.md` |
+| `EML` | Emalls product feed (CR-03) | `13-emalls.cases.md` |
 
 IDs are stable once assigned — if a checklist bullet is removed, retire its ID rather than renumbering everything after it; if a bullet is added, append a new ID at the end of its group (e.g. `G-071`) rather than renumbering.
 
