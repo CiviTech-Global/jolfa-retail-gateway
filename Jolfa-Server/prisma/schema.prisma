@@ -189,6 +189,12 @@ model Order {
   totalAmount       Int           @map("total_amount")
   shippingCost      Int           @default(0) @map("shipping_cost")
   discountAmount    Int           @default(0) @map("discount_amount")
+  /// The tax charged, its name and its rate (950 is 9.5%), copied from the
+  /// settings when the order was placed. Changing those settings later must
+  /// not rewrite what this customer was charged. Null label means no tax.
+  taxAmount         Int           @default(0) @map("tax_amount")
+  taxLabel          String?       @map("tax_label") @db.VarChar(100)
+  taxBasisPoints    Int           @default(0) @map("tax_basis_points")
   finalAmount       Int           @map("final_amount")
   shippingAddressId String        @map("shipping_address_id") @db.Uuid
   trackingNumber    String?       @map("tracking_number") @db.VarChar(100)

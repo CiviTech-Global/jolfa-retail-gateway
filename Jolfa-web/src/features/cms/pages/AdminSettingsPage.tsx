@@ -33,18 +33,18 @@ function settingKind(setting: SettingDto): SettingKind {
 /** Shared save/invalidate wiring for every control on this page. */
 function useSettingMutation(
   key: string,
-  handlers: { onSuccess?: () => void; onError?: () => void } = {},
+  handlers: { onSuccess?: (saved: SettingDto) => void; onError?: () => void } = {},
 ) {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (nextValue: string) => updateAdminSetting(key, { value: nextValue }),
-    onSuccess: () => {
+    onSuccess: ({ setting }) => {
       void queryClient.invalidateQueries({ queryKey: ['admin', 'settings'] })
       void queryClient.invalidateQueries({ queryKey: ['settings', 'public'] })
       // The Seo component caches public settings under its own key.
       void queryClient.invalidateQueries({ queryKey: ['public-settings'] })
-      handlers.onSuccess?.()
+      handlers.onSuccess?.(setting)
     },
     onError: (error: unknown) => {
       handlers.onError?.()
@@ -99,7 +99,12 @@ function TextSetting({ setting }: { setting: SettingDto }) {
   const [value, setValue] = useState(setting.value)
 
   const mutation = useSettingMutation(setting.key, {
-    onSuccess: () => toast.success(`${meta.label} ذخیره شد`),
+    onSuccess: (saved) => {
+      // The server may tidy what was typed (۹٫۵ is stored as 9.5). Show what
+      // was kept, or the row would go on offering to save a change.
+      setValue(saved.value)
+      toast.success(`${meta.label} ذخیره شد`)
+    },
   })
 
   const hasChanged = value !== setting.value

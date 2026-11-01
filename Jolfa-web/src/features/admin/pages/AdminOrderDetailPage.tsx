@@ -13,6 +13,7 @@ import { PageHeader } from '@/components/layout/Breadcrumbs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import { cancelOrder, getAdminOrder, updateOrderStatus, updateOrderTracking } from '@/features/admin/api'
+import { formatTaxLabel } from '@/features/orders/tax'
 
 const statusLabels: Record<string, string> = {
   PENDING: 'در انتظار پرداخت',
@@ -123,6 +124,16 @@ export function AdminOrderDetailPage() {
               <span className="text-muted-foreground">تخفیف:</span>
               <span className="font-medium text-foreground">{formatPrice(order.discountAmount)}</span>
             </div>
+            {order.taxAmount > 0 && (
+              <div className="flex justify-between gap-3 text-sm">
+                <span className="text-muted-foreground">
+                  {formatTaxLabel(order.taxLabel ?? 'مالیات', order.taxBasisPoints)}:
+                </span>
+                <span className="shrink-0 font-medium text-foreground">
+                  {formatPrice(order.taxAmount)}
+                </span>
+              </div>
+            )}
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">مبلغ نهایی:</span>
               <span className="font-bold text-foreground">{formatPrice(order.finalAmount)}</span>

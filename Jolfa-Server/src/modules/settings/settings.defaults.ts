@@ -1,3 +1,9 @@
+import {
+  DEFAULT_TAX_LABEL,
+  DEFAULT_TAX_PERCENT,
+  TAX_SETTING_KEYS,
+} from "../orders/tax.service.js";
+
 /**
  * Canonical list of settings the storefront relies on.
  *
@@ -141,6 +147,32 @@ export const DEFAULT_SETTINGS: SettingDefault[] = [
     group: "shipping",
     isPublic: true,
     description: "Delivery cost by courier, in Toman",
+  },
+
+  // Tax on the customer's payment. Public for the same reason as delivery, and
+  // resolved again on the server when the order is written. Seeded off, and
+  // seeding never overwrites a value, so a deploy can never change what
+  // customers pay: the owner switches it on.
+  {
+    key: TAX_SETTING_KEYS.enabled,
+    value: "false",
+    group: "tax",
+    isPublic: true,
+    description: "Add tax to the customer's payment",
+  },
+  {
+    key: TAX_SETTING_KEYS.label,
+    value: DEFAULT_TAX_LABEL,
+    group: "tax",
+    isPublic: true,
+    description: "Name of the tax shown to the customer",
+  },
+  {
+    key: TAX_SETTING_KEYS.percent,
+    value: DEFAULT_TAX_PERCENT,
+    group: "tax",
+    isPublic: true,
+    description: "Tax rate as a percentage of goods plus delivery",
   },
 
   // Used for any product whose own guarantee field is empty, so the owner does

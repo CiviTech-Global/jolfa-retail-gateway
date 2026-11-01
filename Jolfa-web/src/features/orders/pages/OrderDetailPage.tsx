@@ -21,6 +21,7 @@ import { Seo } from '@/components/seo/Seo'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
 import { ApiError } from '@/api/errors'
 import { getOrder, requestPayment } from '../api'
+import { formatTaxLabel } from '../tax'
 import {
   ORDER_STATUS_HELP,
   ORDER_STATUS_LABELS,
@@ -285,6 +286,16 @@ export function OrderDetailPage() {
                     <span className="text-muted-foreground">تخفیف</span>
                     <span className="tabular-nums text-success">
                       − {formatPrice(order.discountAmount)}
+                    </span>
+                  </div>
+                )}
+                {order.taxAmount > 0 && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground">
+                      {formatTaxLabel(order.taxLabel ?? 'مالیات', order.taxBasisPoints)}
+                    </span>
+                    <span className="shrink-0 tabular-nums text-foreground">
+                      {formatPrice(order.taxAmount)}
                     </span>
                   </div>
                 )}
