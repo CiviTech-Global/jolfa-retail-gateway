@@ -174,10 +174,10 @@ export function CheckoutPage() {
   // when it writes the order, so what is shown here is what is charged.
   const shippingCosts = useShippingCosts()
   const shippingCost = shippingCosts[shippingMethod]
-  // On goods plus delivery, as on the server, and recalculated when the
-  // customer switches delivery method.
+  // On the items alone, as on the server: delivery is never taxed, so switching
+  // delivery method changes the total but not the tax.
   const tax = useTaxSettings()
-  const taxAmount = tax.enabled ? calculateTax(total + shippingCost, tax.basisPoints) : 0
+  const taxAmount = tax.enabled ? calculateTax(total, tax.basisPoints) : 0
   const finalTotal = total + shippingCost + taxAmount
 
   async function submitOrder(data: CheckoutFormData) {

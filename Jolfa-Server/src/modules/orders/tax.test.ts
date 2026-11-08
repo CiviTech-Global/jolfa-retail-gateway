@@ -29,7 +29,11 @@ async function setTax(values: { enabled?: string; label?: string; percent?: stri
   }
 }
 
-async function placeOrder(app: FastifyInstance, price = 100_000) {
+async function placeOrder(
+  app: FastifyInstance,
+  price = 100_000,
+  shippingMethod: "POST" | "COURIER" = "POST",
+) {
   const { user } = await createTestUser();
   const product = await createTestProduct({ price, stockQuantity: 5 });
   const res = await app.inject({
@@ -39,7 +43,7 @@ async function placeOrder(app: FastifyInstance, price = 100_000) {
     payload: {
       items: [{ productId: product.id, quantity: 1 }],
       shippingAddress: validShippingAddress(),
-      shippingMethod: "POST",
+      shippingMethod,
     },
   });
   expect(res.statusCode).toBe(201);
@@ -130,7 +134,7 @@ describe("tax on an order", () => {
     await app.close();
   });
 
-  it("charges the rate on goods plus delivery, and records it on the order", async () => {
+  it("charges the rate on the items only, and records it on the order", async () => {
     const app = await createTestApp();
     await setTax({ enabled: "true", label: DEFAULT_TAX_LABEL, percent: "9.5" });
 
@@ -138,10 +142,26 @@ describe("tax on an order", () => {
 
     expect(order.totalAmount).toBe(100_000);
     expect(order.shippingCost).toBe(80_000);
-    expect(order.taxAmount).toBe(17_100);
+    expect(order.taxAmount).toBe(9_500);
     expect(order.taxLabel).toBe(DEFAULT_TAX_LABEL);
     expect(order.taxBasisPoints).toBe(950);
-    expect(order.finalAmount).toBe(197_100);
+    expect(order.finalAmount).toBe(189_500);
+    await app.close();
+  });
+
+  /** The bug this pins: delivery was taxed, so courier orders paid more tax than post. */
+  it("charges the same tax whichever delivery method is chosen", async () => {
+    const app = await createTestApp();
+    await setTax({ enabled: "true", percent: "10" });
+
+    const byPost = await placeOrder(app, 100_000, "POST");
+    const byCourier = await placeOrder(app, 100_000, "COURIER");
+
+    expect(byPost.taxAmount).toBe(10_000);
+    expect(byCourier.taxAmount).toBe(10_000);
+    expect(byCourier.finalAmount - byPost.finalAmount).toBe(
+      byCourier.shippingCost - byPost.shippingCost,
+    );
     await app.close();
   });
 
@@ -182,7 +202,7 @@ describe("tax on an order", () => {
     });
 
     expect(res.statusCode).toBe(200);
-    expect(sent[0]?.amount).toBe(1_980_000);
+    expect(sent[0]?.amount).toBe(1_900_000);
     await app.close();
   });
 
@@ -193,7 +213,7 @@ describe("tax on an order", () => {
     const order = await placeOrder(app);
 
     expect(order.taxLabel).toBe("عوارض شهرداری");
-    expect(order.taxAmount).toBe(3_600);
+    expect(order.taxAmount).toBe(2_000);
     await app.close();
   });
 
@@ -216,10 +236,10 @@ describe("tax on an order", () => {
     await setTax({ enabled: "false", label: "دوم", percent: "20" });
 
     const saved = await prisma.order.findUniqueOrThrow({ where: { id: order.id } });
-    expect(saved.taxAmount).toBe(17_100);
+    expect(saved.taxAmount).toBe(9_500);
     expect(saved.taxLabel).toBe("اول");
     expect(saved.taxBasisPoints).toBe(950);
-    expect(saved.finalAmount).toBe(197_100);
+    expect(saved.finalAmount).toBe(189_500);
     await app.close();
   });
 

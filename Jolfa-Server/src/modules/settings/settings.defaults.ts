@@ -172,7 +172,7 @@ export const DEFAULT_SETTINGS: SettingDefault[] = [
     value: DEFAULT_TAX_PERCENT,
     group: "tax",
     isPublic: true,
-    description: "Tax rate as a percentage of goods plus delivery",
+    description: "Tax rate as a percentage of the items; delivery is not taxed",
   },
 
   // Used for any product whose own guarantee field is empty, so the owner does
