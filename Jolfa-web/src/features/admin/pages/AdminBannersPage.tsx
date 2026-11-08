@@ -49,7 +49,7 @@ const bannerSchema = z.object({
       .optional(),
   ),
   position: z.enum(['hero', 'sidebar', 'footer', 'promo'], {
-    errorMap: () => ({ message: 'موقعیت انتخاب‌شده معتبر نیست' }),
+    error: 'موقعیت انتخاب‌شده معتبر نیست',
   }),
   displayOrder: numericField('ترتیب نمایش', { min: 0 }),
   isActive: z.boolean(),

@@ -18,11 +18,11 @@ import { useAuth } from '../context'
 const changePasswordSchema = z
   .object({
     currentPassword: z
-      .string({ required_error: 'رمز عبور فعلی الزامی است' })
+      .string({ error: 'رمز عبور فعلی الزامی است' })
       .min(1, 'رمز عبور فعلی الزامی است'),
     newPassword: passwordSchema,
     confirmPassword: z
-      .string({ required_error: 'تکرار رمز عبور الزامی است' })
+      .string({ error: 'تکرار رمز عبور الزامی است' })
       .min(1, 'تکرار رمز عبور الزامی است'),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {

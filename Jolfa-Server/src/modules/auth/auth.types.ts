@@ -53,18 +53,18 @@ export interface AuthResponse {
 // --- Credential management -------------------------------------------------
 
 const passwordField = z
-  .string({ required_error: "رمز عبور الزامی است" })
+  .string({ error: "رمز عبور الزامی است" })
   .min(6, "رمز عبور باید حداقل ۶ کاراکتر باشد")
   .max(72, "رمز عبور حداکثر ۷۲ کاراکتر است");
 
 const phoneField = z
-  .string({ required_error: "شماره موبایل الزامی است" })
+  .string({ error: "شماره موبایل الزامی است" })
   .trim()
   .regex(/^09\d{9}$/, "شماره موبایل باید با ۰۹ شروع شود و ۱۱ رقم باشد");
 
 export const changePasswordSchema = z
   .object({
-    currentPassword: z.string({ required_error: "رمز عبور فعلی الزامی است" }).min(1, "رمز عبور فعلی الزامی است"),
+    currentPassword: z.string({ error: "رمز عبور فعلی الزامی است" }).min(1, "رمز عبور فعلی الزامی است"),
     newPassword: passwordField,
   })
   .refine((data) => data.currentPassword !== data.newPassword, {
@@ -79,7 +79,7 @@ export const forgotPasswordSchema = z.object({
 export const resetPasswordSchema = z.object({
   phone: phoneField,
   code: z
-    .string({ required_error: "کد تأیید الزامی است" })
+    .string({ error: "کد تأیید الزامی است" })
     .trim()
     .regex(/^\d{6}$/, "کد تأیید باید ۶ رقم باشد"),
   newPassword: passwordField,

@@ -13,7 +13,7 @@ const registerSchema = z
     email: optionalEmailSchema,
     phone: iranMobileSchema,
     password: passwordSchema,
-    confirmPassword: z.string({ required_error: 'تکرار رمز عبور الزامی است' }).min(1, 'تکرار رمز عبور الزامی است'),
+    confirmPassword: z.string({ error: 'تکرار رمز عبور الزامی است' }).min(1, 'تکرار رمز عبور الزامی است'),
   })
   .refine((data) => data.password === data.confirmPassword, {
     path: ['confirmPassword'],

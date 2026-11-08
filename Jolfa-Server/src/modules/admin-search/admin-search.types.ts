@@ -9,11 +9,11 @@ const bulkPriceScopeSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("products"),
     productIds: z
-      .array(z.string().uuid())
+      .array(z.guid())
       .min(1, "حداقل یک محصول انتخاب کنید")
       .max(500, "حداکثر ۵۰۰ محصول در هر عملیات"),
   }),
-  z.object({ kind: z.literal("category"), categoryId: z.string().uuid("دسته‌بندی معتبر نیست") }),
+  z.object({ kind: z.literal("category"), categoryId: z.guid("دسته‌بندی معتبر نیست") }),
   z.object({ kind: z.literal("all") }),
 ]);
 
@@ -21,13 +21,13 @@ export const bulkPriceBodySchema = z
   .object({
     scope: bulkPriceScopeSchema,
     mode: z.enum(["percent", "fixed"], {
-      errorMap: () => ({ message: "نوع تغییر باید درصدی یا مبلغ ثابت باشد" }),
+      error: "نوع تغییر باید درصدی یا مبلغ ثابت باشد",
     }),
     direction: z.enum(["increase", "decrease"], {
-      errorMap: () => ({ message: "جهت تغییر باید افزایش یا کاهش باشد" }),
+      error: "جهت تغییر باید افزایش یا کاهش باشد",
     }),
     value: z.coerce
-      .number({ invalid_type_error: "مقدار تغییر باید عدد باشد" })
+      .number({ error: "مقدار تغییر باید عدد باشد" })
       .positive("مقدار تغییر باید بیشتر از صفر باشد"),
     /** Round the result to a whole multiple, e.g. 1000 Toman. */
     roundTo: z.coerce.number().int().positive().max(1_000_000).optional(),

@@ -41,7 +41,7 @@ export const CONTENT_ICONS = [
 ] as const;
 
 const iconSchema = z.enum(CONTENT_ICONS, {
-  errorMap: () => ({ message: "آیکن انتخاب‌شده معتبر نیست" }),
+  error: "آیکن انتخاب‌شده معتبر نیست",
 });
 
 const headingBlock = z.object({

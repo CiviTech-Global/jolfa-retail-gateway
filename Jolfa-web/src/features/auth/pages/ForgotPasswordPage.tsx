@@ -21,12 +21,12 @@ const codeStepSchema = z
     code: z.preprocess(
       (value) => (typeof value === 'string' ? toEnglishDigits(value).trim() : value),
       z
-        .string({ required_error: 'کد تأیید الزامی است' })
+        .string({ error: 'کد تأیید الزامی است' })
         .regex(/^\d{6}$/, 'کد تأیید باید ۶ رقم باشد'),
     ),
     newPassword: passwordSchema,
     confirmPassword: z
-      .string({ required_error: 'تکرار رمز عبور الزامی است' })
+      .string({ error: 'تکرار رمز عبور الزامی است' })
       .min(1, 'تکرار رمز عبور الزامی است'),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {

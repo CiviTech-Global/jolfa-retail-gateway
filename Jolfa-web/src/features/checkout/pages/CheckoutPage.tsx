@@ -30,7 +30,7 @@ const NEW_ADDRESS = 'new'
 
 const checkoutBaseSchema = addressFieldsSchema.partial().extend({
   shippingMethod: z.enum(['POST', 'COURIER'], {
-    errorMap: () => ({ message: 'روش ارسال را انتخاب کنید' }),
+    error: 'روش ارسال را انتخاب کنید',
   }),
   customerNote: optionalText('توضیحات سفارش', 1000),
   saveAddress: z.boolean().optional(),
@@ -48,7 +48,7 @@ function makeCheckoutSchema(requireAddress: boolean) {
     const result = addressFieldsSchema.safeParse(data)
     if (result.success) return
     for (const issue of result.error.issues) {
-      ctx.addIssue(issue)
+      ctx.addIssue({ code: 'custom', message: issue.message, path: issue.path })
     }
   })
 }

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { productCreateBodySchema, productUpdateBodySchema } from "../modules/products/product.types.js";
-import { categoryCreateBodySchema } from "../modules/categories/category.types.js";
+import { categoryCreateBodySchema, categoryUpdateBodySchema } from "../modules/categories/category.types.js";
+import { bannerUpdateBodySchema } from "../modules/banners/banner.types.js";
 import { nullable, nullableNumber, optionalString } from "./zod-helpers.js";
 
 describe("zod-helpers", () => {
@@ -72,12 +73,44 @@ describe("productCreateBodySchema", () => {
     expect("compareAtPrice" in result).toBe(false);
   });
 
+  /**
+   * Zod 4 fills a default in even on an optional field, so a plain `.partial()`
+   * of the create schema would reset these on every edit: images dropped,
+   * stock zeroed, a hidden product shown again.
+   */
+  it("does not fill in the create defaults on an update", () => {
+    const result = productUpdateBodySchema.parse({ title: "عنوان تازه" });
+    for (const key of ["images", "stockQuantity", "isActive", "isFeatured"]) {
+      expect(key in result).toBe(false);
+    }
+  });
+
+  it("still applies its defaults when a product is created", () => {
+    const result = productCreateBodySchema.parse(base);
+    expect(result).toMatchObject({ images: [], stockQuantity: 0, isActive: true, isFeatured: false });
+  });
+
   it("accepts a server-relative image URL from the upload endpoint", () => {
     const result = productCreateBodySchema.safeParse({
       ...base,
       images: [{ url: "/uploads/abc.png" }],
     });
     expect(result.success).toBe(true);
+  });
+});
+
+describe("category and banner updates", () => {
+  // The same Zod 4 trap as products: an edit must not unhide or reorder.
+  it("leave visibility and order alone when only the name changes", () => {
+    expect(categoryUpdateBodySchema.parse({ name: "کیف" })).toEqual({ name: "کیف" });
+    expect(bannerUpdateBodySchema.parse({ title: "تخفیف" })).toEqual({ title: "تخفیف" });
+  });
+
+  it("still accept the fields when they are sent", () => {
+    expect(categoryUpdateBodySchema.parse({ isActive: false, displayOrder: "3" })).toEqual({
+      isActive: false,
+      displayOrder: 3,
+    });
   });
 });
 

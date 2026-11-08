@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { imageUrl, nullableString, requiredString } from "../../shared/zod-helpers.js";
+import { imageUrl, nullableString, requiredString, updateSchemaOf } from "../../shared/zod-helpers.js";
 
 export const bannerListQuerySchema = z.object({
   position: z.string().max(50).optional().or(z.literal("").transform(() => undefined)),
@@ -23,20 +23,20 @@ export const bannerCreateBodySchema = z.object({
   ),
   position: z
     .enum(BANNER_POSITIONS, {
-      errorMap: () => ({ message: "موقعیت انتخاب‌شده معتبر نیست" }),
+      error: "موقعیت انتخاب‌شده معتبر نیست",
     })
     .default("hero"),
   displayOrder: z.coerce
-    .number({ invalid_type_error: "ترتیب نمایش باید عدد باشد" })
+    .number({ error: "ترتیب نمایش باید عدد باشد" })
     .int("ترتیب نمایش باید عدد صحیح باشد")
     .default(0),
   isActive: z.boolean().default(true),
 });
 
-export const bannerUpdateBodySchema = bannerCreateBodySchema.partial();
+export const bannerUpdateBodySchema = updateSchemaOf(bannerCreateBodySchema);
 
 export const bannerParamsSchema = z.object({
-  id: z.string().uuid("شناسه بنر معتبر نیست"),
+  id: z.guid("شناسه بنر معتبر نیست"),
 });
 
 export type BannerListQuery = z.infer<typeof bannerListQuerySchema>;

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const paymentRequestBodySchema = z.object({
-  orderId: z.string().uuid(),
+  orderId: z.guid(),
 });
 
 export const paymentVerifyBodySchema = z.object({

@@ -27,19 +27,19 @@ export const iranMobileSchema = z.preprocess(
       .replace(/^9(\d{9})$/, '09$1')
   },
   z
-    .string({ required_error: 'شماره موبایل الزامی است' })
+    .string({ error: 'شماره موبایل الزامی است' })
     .min(1, 'شماره موبایل الزامی است')
     .regex(/^09\d{9}$/, 'شماره موبایل باید با ۰۹ شروع شود و ۱۱ رقم باشد'),
 )
 
 export const passwordSchema = z
-  .string({ required_error: 'رمز عبور الزامی است' })
+  .string({ error: 'رمز عبور الزامی است' })
   .min(6, 'رمز عبور باید حداقل ۶ کاراکتر باشد')
   .max(72, 'رمز عبور حداکثر ۷۲ کاراکتر است')
 
 /** Login only checks presence — strength rules belong on registration. */
 export const currentPasswordSchema = z
-  .string({ required_error: 'رمز عبور الزامی است' })
+  .string({ error: 'رمز عبور الزامی است' })
   .min(1, 'رمز عبور الزامی است')
 
 /** Optional email: empty string means "not provided". */
@@ -49,7 +49,7 @@ export const optionalEmailSchema = z.preprocess(
 )
 
 export const requiredEmailSchema = z
-  .string({ required_error: 'ایمیل الزامی است' })
+  .string({ error: 'ایمیل الزامی است' })
   .trim()
   .min(1, 'ایمیل الزامی است')
   .email('ایمیل معتبر نیست')
@@ -67,14 +67,14 @@ export const postalCodeSchema = z.preprocess(
     return typeof normalized === 'string' ? normalized.replace(/[\s-]/g, '') : normalized
   },
   z
-    .string({ required_error: 'کد پستی الزامی است', invalid_type_error: 'کد پستی الزامی است' })
+    .string({ error: 'کد پستی الزامی است' })
     .min(1, 'کد پستی الزامی است')
     .regex(/^\d{10}$/, 'کد پستی باید دقیقاً ۱۰ رقم باشد'),
 )
 
 export function requiredText(field: string, max = 200) {
   return z
-    .string({ required_error: `${field} الزامی است` })
+    .string({ error: `${field} الزامی است` })
     .trim()
     .min(1, `${field} الزامی است`)
     .max(max, `${field} حداکثر ${max} کاراکتر است`)
@@ -112,8 +112,8 @@ export function numericField(
     },
     (() => {
       let schema = z.number({
-        required_error: `${field} الزامی است`,
-        invalid_type_error: `${field} باید عدد باشد`,
+        error: (issue) =>
+          issue.input === undefined ? `${field} الزامی است` : `${field} باید عدد باشد`,
       })
       if (integer) schema = schema.int(`${field} باید عدد صحیح باشد`)
       if (min !== undefined) schema = schema.min(min, `${field} نمی‌تواند کمتر از ${min} باشد`)
@@ -152,7 +152,7 @@ export const optionalImageUrlSchema = z.preprocess(
 )
 
 export const requiredImageUrlSchema = z
-  .string({ required_error: 'تصویر الزامی است' })
+  .string({ error: 'تصویر الزامی است' })
   .trim()
   .min(1, 'تصویر الزامی است')
   .max(500, 'آدرس تصویر حداکثر ۵۰۰ کاراکتر است')
@@ -163,14 +163,14 @@ export const requiredImageUrlSchema = z
 
 export const optionalUuidSchema = z.preprocess(
   (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
-  z.string().uuid('شناسه انتخاب‌شده معتبر نیست').optional(),
+  z.guid('شناسه انتخاب‌شده معتبر نیست').optional(),
 )
 
 export function requiredUuid(field: string) {
-  return z
-    .string({ required_error: `${field} الزامی است` })
-    .min(1, `${field} الزامی است`)
-    .uuid(`${field} معتبر نیست`)
+  return z.guid({
+    error: (issue) =>
+      issue.input === undefined || issue.input === '' ? `${field} الزامی است` : `${field} معتبر نیست`,
+  })
 }
 
 /**

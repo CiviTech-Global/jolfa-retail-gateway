@@ -17,7 +17,7 @@ export const userStatusUpdateSchema = z.object({
 });
 
 export const userParamsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.guid(),
 });
 
 export type UserListQuery = z.infer<typeof userListQuerySchema>;

@@ -15,18 +15,18 @@ const adminPaymentQuerySchema = z.object({
 const transactionQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
-  orderId: z.string().uuid().optional(),
-  paymentId: z.string().uuid().optional(),
+  orderId: z.guid().optional(),
+  paymentId: z.guid().optional(),
   status: z.enum(["PENDING", "COMPLETED", "FAILED"]).optional(),
   type: z.enum(["PAYMENT", "REFUND", "RETRY", "FEE", "ADJUSTMENT"]).optional(),
 });
 
 const orderParamsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.guid(),
 });
 
 const paymentModeBodySchema = z.object({
-  live: z.boolean({ required_error: "حالت پرداخت الزامی است" }),
+  live: z.boolean({ error: "حالت پرداخت الزامی است" }),
 });
 
 const refundBodySchema = z.object({

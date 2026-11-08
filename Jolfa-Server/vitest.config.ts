@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
@@ -32,6 +32,9 @@ export default defineConfig({
       // depend on Jolfa-web having been built first.
       WEB_INDEX_PATH: "test/fixtures/web-index.html",
     },
+    // Vitest 4 no longer skips build output by default, and `dist/` can hold a
+    // stale compiled copy of a test that would then run against old code.
+    exclude: [...configDefaults.exclude, "dist/**"],
     testTimeout: 20000,
     hookTimeout: 30000,
     // Tests share a single real Postgres test database (truncated between

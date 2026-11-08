@@ -4,6 +4,7 @@ import {
   nullableString,
   optionalString,
   requiredString,
+  updateSchemaOf,
 } from "../../shared/zod-helpers.js";
 
 export const categoryListQuerySchema = z.object({
@@ -14,7 +15,7 @@ export const categoryListQuerySchema = z.object({
       return ["true", "1", "yes", "on"].includes(value.toLowerCase());
     })
     .optional(),
-  parentId: z.string().uuid().optional().or(z.literal("").transform(() => undefined)),
+  parentId: z.guid().optional().or(z.literal("").transform(() => undefined)),
 });
 
 export const categoryCreateBodySchema = z.object({
@@ -30,15 +31,15 @@ export const categoryCreateBodySchema = z.object({
   // Was `z.string().url()`, which rejected the server-relative paths the
   // upload endpoint returns.
   imageUrl: nullableString(imageUrlSchema()),
-  parentId: nullableString(z.string().uuid("دسته‌بندی والد معتبر نیست")),
+  parentId: nullableString(z.guid("دسته‌بندی والد معتبر نیست")),
   displayOrder: z.coerce
-    .number({ invalid_type_error: "ترتیب نمایش باید عدد باشد" })
+    .number({ error: "ترتیب نمایش باید عدد باشد" })
     .int("ترتیب نمایش باید عدد صحیح باشد")
     .default(0),
   isActive: z.boolean().default(true),
 });
 
-export const categoryUpdateBodySchema = categoryCreateBodySchema.partial();
+export const categoryUpdateBodySchema = updateSchemaOf(categoryCreateBodySchema);
 
 export const categoryParamsSchema = z.object({
   slug: z.string().min(1),

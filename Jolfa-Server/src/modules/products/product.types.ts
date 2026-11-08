@@ -6,6 +6,7 @@ import {
   optionalString,
   requiredString,
   uuidSchema,
+  updateSchemaOf,
 } from "../../shared/zod-helpers.js";
 
 export const productListQuerySchema = z.object({
@@ -66,14 +67,14 @@ export const productCreateBodySchema = z.object({
   description: nullableString(z.string().trim().max(10000, "توضیحات حداکثر ۱۰۰۰۰ کاراکتر است")),
   shortDescription: nullableString(z.string().trim().max(500, "توضیحات کوتاه حداکثر ۵۰۰ کاراکتر است")),
   price: z.coerce
-    .number({ required_error: "قیمت الزامی است", invalid_type_error: "قیمت باید عدد باشد" })
+    .number({ error: (issue) => (issue.input === undefined ? "قیمت الزامی است" : "قیمت باید عدد باشد") })
     .int("قیمت باید عدد صحیح باشد")
     .positive("قیمت باید بیشتر از صفر باشد"),
   compareAtPrice: nullableNumber(
     z.number().int("قیمت قبل از تخفیف باید عدد صحیح باشد").positive("قیمت قبل از تخفیف باید بیشتر از صفر باشد"),
   ),
   stockQuantity: z.coerce
-    .number({ invalid_type_error: "موجودی باید عدد باشد" })
+    .number({ error: "موجودی باید عدد باشد" })
     .int("موجودی باید عدد صحیح باشد")
     .nonnegative("موجودی نمی‌تواند منفی باشد")
     .default(0),
@@ -90,7 +91,7 @@ export const productCreateBodySchema = z.object({
   images: z.array(productImageSchema).max(10, "حداکثر ۱۰ تصویر مجاز است").default([]),
 });
 
-export const productUpdateBodySchema = productCreateBodySchema.partial();
+export const productUpdateBodySchema = updateSchemaOf(productCreateBodySchema);
 
 export const productParamsSchema = z.object({
   slug: z.string().min(1),
