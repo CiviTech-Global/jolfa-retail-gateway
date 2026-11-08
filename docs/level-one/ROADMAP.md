@@ -167,8 +167,10 @@ every other page is still the static shell.
 The shop owner sets it at `/admin/settings`, under «مالیات»: on or off, its name
 (default «مالیات بر ارزش افزوده») and its rate (default 9.5%).
 
-- [x] Worked out on the server when the order is placed, on goods plus delivery,
-      rounded to a whole Toman; the amount sent to the gateway includes it.
+- [x] Worked out on the server when the order is placed, on the items only (delivery
+      is not taxed), rounded to a whole Toman; the amount sent to the gateway
+      includes it. Until 1405/08/17 delivery was taxed too; orders placed before
+      the fix keep the tax they were charged.
 - [x] The amount, name and rate are copied onto the order, so changing the
       settings leaves placed orders as they were.
 - [x] Shown at checkout and on both order screens, only when there is tax.

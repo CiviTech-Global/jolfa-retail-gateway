@@ -97,9 +97,9 @@ export async function createOrder(userId: string, data: OrderCreateBody) {
   // Resolved on the server from the shop's own settings, never taken from the
   // request: the cost is what the customer is charged.
   const shippingCost = await resolveShippingCost(data.shippingMethod);
-  // On the whole payment, delivery included, and resolved here for the same
-  // reason: it is what the customer is charged.
-  const tax = await resolveOrderTax(totalAmount + shippingCost);
+  // On the items alone: delivery is never taxed. Resolved here for the same
+  // reason as the delivery cost: it is what the customer is charged.
+  const tax = await resolveOrderTax(totalAmount);
   const finalAmount = totalAmount + shippingCost + tax.taxAmount;
 
   const orderNumber = generateOrderNumber();

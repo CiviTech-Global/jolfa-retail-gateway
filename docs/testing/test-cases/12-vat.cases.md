@@ -13,8 +13,9 @@ Every case runs through the real routes against Postgres in
 | VAT-004 | Boot keeps the owner's values | Integration | `do not overwrite what the owner set when the server restarts` | settings survive `ensureDefaultSettings` |
 | VAT-005 | Storefront can read them | Integration | `reach the storefront, which has to show the line before the order exists` | all three keys public |
 | VAT-006 | Off | Integration | `adds nothing while it is off` | no tax fields; total unchanged |
-| VAT-007 | On | Integration | `charges the rate on goods plus delivery, and records it on the order` | 180,000 + 17,100 = 197,100 |
-| VAT-008 | Gateway amount | Integration | `asks the gateway for the taxed total, in Rial` | Zibal is asked for 1,980,000 |
+| VAT-007 | On, items only | Integration | `charges the rate on the items only, and records it on the order` | 100,000 + 80,000 + 9,500 = 189,500 |
+| VAT-013 | Delivery not taxed | Integration | `charges the same tax whichever delivery method is chosen` | post and courier both 10,000 tax |
+| VAT-008 | Gateway amount | Integration | `asks the gateway for the taxed total, in Rial` | Zibal is asked for 1,900,000 |
 | VAT-009 | Custom name, zero rate | Integration | `uses the name the owner chose`, `treats a rate of zero as no tax` | label kept; zero leaves no trace |
 | VAT-010 | Placed orders are fixed | Integration | `leaves a placed order alone when the owner changes the rate` | amount, label, rate, total unchanged |
 | VAT-011 | Saving | Integration | `stores a typed Persian rate in its plain form`, `refuses a rate it cannot read, and keeps the old one`, `brings the default name back when the field is cleared`, `refuses a name too long to keep on an order` | 400 `INVALID_SETTING_VALUE`; canonical value stored |

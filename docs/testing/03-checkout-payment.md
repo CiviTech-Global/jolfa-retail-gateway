@@ -14,7 +14,7 @@ Precondition: logged in, cart has at least one in-stock product.
 - [ ] Shipping method radio: selecting "پست" (post) shows/adds ۸۰,۰۰۰ تومان to the total; selecting "پیک" (courier) shows/adds ۱۵۰,۰۰۰ تومان — verify the order summary total updates live when you switch methods.
 - [ ] Order note textarea is optional and, if filled, is not lost on submit (spot-check it lands on the created order — see admin order detail in [06-admin-orders-payments.md](./06-admin-orders-payments.md)).
 - [ ] Order summary sidebar accurately reflects cart line items, shipping cost, and final total (cross-check the arithmetic by hand for at least one case).
-- [ ] With tax on at `/admin/settings`, the summary shows a line with the tax's name and rate, charged on goods plus delivery; it updates when the delivery method changes, and the payment button, the gateway page and the order all show the same total. With tax off there is no line at all.
+- [ ] With tax on at `/admin/settings`, the summary shows a line with the tax's name and rate, charged on the items only — switching delivery method changes the total but not the tax — and the payment button, the gateway page and the order all show the same total. With tax off there is no line at all.
 
 ## 2. Order placement → payment handoff
 
