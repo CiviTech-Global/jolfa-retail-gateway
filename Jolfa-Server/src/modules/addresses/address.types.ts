@@ -23,7 +23,7 @@ export const addressUpdateSchema = addressCreateSchema.partial().refine(
 );
 
 export const addressParamsSchema = z.object({
-  id: z.string().uuid("شناسه آدرس معتبر نیست"),
+  id: z.guid("شناسه آدرس معتبر نیست"),
 });
 
 export type AddressCreateBody = z.infer<typeof addressCreateSchema>;

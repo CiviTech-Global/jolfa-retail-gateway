@@ -3,7 +3,7 @@ import { SMS_EVENTS } from "../../shared/sms/sms-events.js";
 
 export const smsTemplateParamsSchema = z.object({
   event: z.enum(SMS_EVENTS, {
-    errorMap: () => ({ message: "رویداد پیامک معتبر نیست" }),
+    error: "رویداد پیامک معتبر نیست",
   }),
 });
 
@@ -18,7 +18,7 @@ export const smsTemplateUpdateSchema = z
     body: z.string().trim().max(400, "متن پیامک حداکثر ۴۰۰ کاراکتر است").optional(),
     /** The template id from SMS.ir's panel, for VERIFY events. */
     providerTemplateId: z.coerce
-      .number({ invalid_type_error: "شناسه قالب باید عدد باشد" })
+      .number({ error: "شناسه قالب باید عدد باشد" })
       .int("شناسه قالب باید عدد صحیح باشد")
       .positive("شناسه قالب باید بزرگتر از صفر باشد")
       .nullable()
@@ -30,7 +30,7 @@ export const smsTemplateUpdateSchema = z
 
 export const smsTestSendSchema = z.object({
   event: z.enum(SMS_EVENTS, {
-    errorMap: () => ({ message: "رویداد پیامک معتبر نیست" }),
+    error: "رویداد پیامک معتبر نیست",
   }),
   /**
    * Where to send the test.

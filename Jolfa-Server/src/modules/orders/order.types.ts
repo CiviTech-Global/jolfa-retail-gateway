@@ -15,7 +15,7 @@ export const shippingAddressSchema = z.object({
 });
 
 export const orderItemSchema = z.object({
-  productId: z.string().uuid(),
+  productId: z.guid(),
   quantity: z.number().int().positive("تعداد باید بیشتر از صفر باشد"),
 });
 
@@ -23,7 +23,7 @@ export const orderCreateBodySchema = z
   .object({
     items: z.array(orderItemSchema).min(1, "حداقل یک کالا الزامی است"),
     /** A saved address from the user's book; snapshotted onto the order. */
-    shippingAddressId: z.string().uuid("آدرس انتخاب‌شده معتبر نیست").optional(),
+    shippingAddressId: z.guid("آدرس انتخاب‌شده معتبر نیست").optional(),
     /** A one-off address typed at checkout. */
     shippingAddress: shippingAddressSchema.optional(),
     /** Also store the typed address in the book for next time. */
@@ -52,7 +52,7 @@ export const orderListQuerySchema = z.object({
 });
 
 export const orderParamsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.guid(),
 });
 
 export const orderStatusUpdateSchema = z.object({

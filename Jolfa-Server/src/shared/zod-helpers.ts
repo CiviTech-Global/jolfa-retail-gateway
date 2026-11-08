@@ -24,7 +24,7 @@ function normalizeEmpty(value: unknown): unknown {
  * `z.ZodType` result keeps the OUTPUT type intact so Prisma still typechecks
  * against the parsed value.
  */
-type Nullish<T extends z.ZodTypeAny> = z.ZodType<z.infer<T> | null | undefined, z.ZodTypeDef, unknown>;
+type Nullish<T extends z.ZodTypeAny> = z.ZodType<z.infer<T> | null | undefined, unknown>;
 
 /** Optional, clearable field. */
 export function nullable<T extends z.ZodTypeAny>(schema: T): Nullish<T> {
@@ -53,17 +53,17 @@ export const nullableString = nullable;
  */
 export function optionalString<T extends z.ZodTypeAny>(
   schema: T,
-): z.ZodType<z.infer<T> | undefined, z.ZodTypeDef, unknown> {
+): z.ZodType<z.infer<T> | undefined, unknown> {
   return z.preprocess(
     (value) => (normalizeEmpty(value) === null ? undefined : value),
     schema.optional(),
-  ) as unknown as z.ZodType<z.infer<T> | undefined, z.ZodTypeDef, unknown>;
+  ) as unknown as z.ZodType<z.infer<T> | undefined, unknown>;
 }
 
 /** Trimmed required string with a Persian message. */
 export function requiredString(field: string, max: number) {
   return z
-    .string({ required_error: `${field} الزامی است`, invalid_type_error: `${field} الزامی است` })
+    .string({ error: `${field} الزامی است` })
     .trim()
     .min(1, `${field} الزامی است`)
     .max(max, `${field} حداکثر ${max} کاراکتر است`);
@@ -76,7 +76,7 @@ export function requiredString(field: string, max: number) {
  */
 export function imageUrl(requiredMessage = "آدرس تصویر الزامی است") {
   return z
-    .string({ required_error: requiredMessage })
+    .string({ error: requiredMessage })
     .trim()
     .min(1, requiredMessage)
     .max(500, "آدرس تصویر حداکثر ۵۰۰ کاراکتر است")
@@ -109,11 +109,35 @@ export function postalCodeSchema() {
             .replace(/[\s-]/g, "")
         : value,
     z
-      .string({ required_error: "کد پستی الزامی است", invalid_type_error: "کد پستی الزامی است" })
+      .string({ error: "کد پستی الزامی است" })
       .min(1, "کد پستی الزامی است")
       .regex(/^\d{10}$/, message),
   );
 }
 
 export const uuidSchema = (field: string) =>
-  z.string({ required_error: `${field} الزامی است` }).uuid(`${field} معتبر نیست`);
+  z.guid({ error: (issue) => (issue.input === undefined ? `${field} الزامی است` : `${field} معتبر نیست`) });
+
+type WithoutDefault<S> = S extends z.ZodDefault<infer Inner> ? Inner : S;
+
+/**
+ * The PATCH form of a create schema: every field optional, and no defaults.
+ *
+ * Do not use `.partial()` for this. Zod 4 fills a default in even when the
+ * field is optional, so a partial of a create schema turns "the admin only sent
+ * a new title" into "reset stock to 0, unhide it, and drop every image".
+ * An update must touch only the fields it was sent.
+ */
+export function updateSchemaOf<Shape extends z.ZodRawShape>(
+  schema: z.ZodObject<Shape>,
+): z.ZodObject<{ [K in keyof Shape]: z.ZodOptional<WithoutDefault<Shape[K]>> }> {
+  const shape = Object.fromEntries(
+    Object.entries(schema.shape).map(([key, field]) => {
+      const inner = field instanceof z.ZodDefault ? field.unwrap() : field;
+      return [key, (inner as z.ZodTypeAny).optional()];
+    }),
+  );
+  return z.object(shape) as unknown as z.ZodObject<{
+    [K in keyof Shape]: z.ZodOptional<WithoutDefault<Shape[K]>>;
+  }>;
+}

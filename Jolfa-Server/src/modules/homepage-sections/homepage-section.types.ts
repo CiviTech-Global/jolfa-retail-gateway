@@ -46,7 +46,7 @@ export const homepageSectionCreateSchema = z.object({
   key: z.string().min(1).max(100),
   title: z.string().min(1).max(200),
   type: sectionTypeSchema,
-  config: z.record(z.unknown()).optional(),
+  config: z.record(z.string(), z.unknown()).optional(),
   displayOrder: z.number().int().default(0),
   isActive: z.boolean().default(true),
 });
@@ -54,13 +54,13 @@ export const homepageSectionCreateSchema = z.object({
 export const homepageSectionUpdateSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   type: sectionTypeSchema.optional(),
-  config: z.record(z.unknown()).optional(),
+  config: z.record(z.string(), z.unknown()).optional(),
   displayOrder: z.number().int().optional(),
   isActive: z.boolean().optional(),
 });
 
 export const homepageSectionParamsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.guid(),
 });
 
 export type HomepageSectionCreateBody = z.infer<typeof homepageSectionCreateSchema>;
