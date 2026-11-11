@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { MapPin, Pencil, Plus, Star, Trash2, User, Phone } from 'lucide-react'
+import { MapPin, Pencil, Plus, Star, Trash2, TriangleAlert, User, Phone } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -15,7 +16,7 @@ import {
   getAddresses,
   setDefaultAddress,
 } from '../api'
-import { formatAddressLine } from '../schema'
+import { findAddressProblems, formatAddressLine } from '../schema'
 import { AddressFormDialog } from '../components/AddressFormDialog'
 import type { AddressDto } from '../types'
 
@@ -32,8 +33,14 @@ function AddressCard({
   onMakeDefault: () => void
   isBusy: boolean
 }) {
+  const problems = findAddressProblems(address)
+
   return (
-    <Card className={address.isDefault ? 'border-primary' : undefined}>
+    <Card
+      className={
+        problems.length > 0 ? 'border-danger/60' : address.isDefault ? 'border-primary' : undefined
+      }
+    >
       <CardContent className="space-y-3 py-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
@@ -63,6 +70,20 @@ function AddressCard({
           )}
         </div>
 
+        {problems.length > 0 && (
+          <div className="rounded-lg border border-danger/30 bg-danger-soft/60 p-3 text-sm">
+            <p className="flex items-center gap-1.5 font-medium text-danger">
+              <TriangleAlert className="h-4 w-4 shrink-0" />
+              تا این موارد تکمیل نشود، نمی‌توان با این آدرس خرید کرد:
+            </p>
+            <ul className="mt-2 list-disc space-y-1 ps-6 text-foreground">
+              {problems.map((problem) => (
+                <li key={problem.field}>{problem.message}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-2 border-t border-border pt-3">
           {!address.isDefault && (
             <Button size="sm" variant="outline" onClick={onMakeDefault} disabled={isBusy}>
@@ -70,9 +91,14 @@ function AddressCard({
               <span className="ms-1">پیش‌فرض کن</span>
             </Button>
           )}
-          <Button size="sm" variant="outline" onClick={onEdit} disabled={isBusy}>
+          <Button
+            size="sm"
+            variant={problems.length > 0 ? 'solid' : 'outline'}
+            onClick={onEdit}
+            disabled={isBusy}
+          >
             <Pencil className="h-4 w-4" />
-            <span className="ms-1">ویرایش</span>
+            <span className="ms-1">{problems.length > 0 ? 'تکمیل آدرس' : 'ویرایش'}</span>
           </Button>
           <Button size="sm" variant="ghost" onClick={onDelete} disabled={isBusy}>
             <Trash2 className="h-4 w-4 text-danger" />
@@ -96,6 +122,23 @@ export function AddressesPage() {
   })
 
   const addresses = data?.addresses ?? []
+
+  // Arriving from checkout's "complete this address" link: open that entry
+  // straight away, and go back to checkout once it is saved.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const editId = searchParams.get('edit')
+  const returnToCheckout = searchParams.get('from') === 'checkout'
+
+  const linkedAddress = editId ? addresses.find((address) => address.id === editId) : undefined
+  const dialogAddress = linkedAddress ?? editing
+  const isDialogOpen = dialogOpen || Boolean(linkedAddress)
+
+  const handleDialogChange = (open: boolean) => {
+    setDialogOpen(open)
+    // Closing without saving leaves the page as a plain address book.
+    if (!open && editId) setSearchParams({}, { replace: true })
+  }
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ADDRESSES_QUERY_KEY })
@@ -208,7 +251,12 @@ export function AddressesPage() {
         </div>
       )}
 
-      <AddressFormDialog open={dialogOpen} onOpenChange={setDialogOpen} address={editing} />
+      <AddressFormDialog
+        open={isDialogOpen}
+        onOpenChange={handleDialogChange}
+        address={dialogAddress}
+        onSaved={returnToCheckout ? () => void navigate('/checkout') : undefined}
+      />
       <ConfirmDialogComponent />
     </div>
   )

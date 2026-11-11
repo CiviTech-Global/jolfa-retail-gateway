@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { TriangleAlert } from 'lucide-react'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -18,7 +19,13 @@ import {
   DialogTitle,
 } from '@/components/ui/Dialog'
 import { ADDRESSES_QUERY_KEY, createAddress, updateAddress } from '../api'
-import { addressFormSchema, emptyAddressForm, type AddressFormData, type AddressFormValues } from '../schema'
+import {
+  addressFormSchema,
+  emptyAddressForm,
+  findAddressProblems,
+  type AddressFormData,
+  type AddressFormValues,
+} from '../schema'
 import type { AddressDto } from '../types'
 
 interface AddressFormDialogProps {
@@ -26,6 +33,8 @@ interface AddressFormDialogProps {
   onOpenChange: (open: boolean) => void
   /** Absent when adding; present when editing an existing entry. */
   address?: AddressDto
+  /** Called after a successful save, e.g. to return the customer to checkout. */
+  onSaved?: () => void
 }
 
 function toFormValues(address: AddressDto): AddressFormValues {
@@ -42,7 +51,7 @@ function toFormValues(address: AddressDto): AddressFormValues {
   }
 }
 
-export function AddressFormDialog({ open, onOpenChange, address }: AddressFormDialogProps) {
+export function AddressFormDialog({ open, onOpenChange, address, onSaved }: AddressFormDialogProps) {
   const queryClient = useQueryClient()
   const isEditing = Boolean(address)
 
@@ -52,6 +61,7 @@ export function AddressFormDialog({ open, onOpenChange, address }: AddressFormDi
     handleSubmit,
     reset,
     setError,
+    trigger,
     formState: { errors, isSubmitting },
   } = useForm<AddressFormValues, unknown, AddressFormData>({
     resolver: zodResolver(addressFormSchema),
@@ -62,11 +72,18 @@ export function AddressFormDialog({ open, onOpenChange, address }: AddressFormDi
 
   // The dialog stays mounted between opens, so the form is refilled each time
   // rather than remounted — otherwise "edit B" would show A's values.
+  // An address that is already incomplete is opened with its problem fields
+  // marked, so the customer sees at once what to fix instead of a form that
+  // looks fine.
+  const problems = address ? findAddressProblems(address) : []
+  const hasProblems = problems.length > 0
+
   useEffect(() => {
     if (open) {
       reset(address ? toFormValues(address) : emptyAddressForm)
+      if (address && hasProblems) void trigger()
     }
-  }, [open, address, reset])
+  }, [open, address, hasProblems, reset, trigger])
 
   const mutation = useMutation({
     mutationFn: (values: AddressFormData) =>
@@ -75,6 +92,7 @@ export function AddressFormDialog({ open, onOpenChange, address }: AddressFormDi
       void queryClient.invalidateQueries({ queryKey: ADDRESSES_QUERY_KEY })
       toast.success(isEditing ? 'آدرس به‌روزرسانی شد' : 'آدرس جدید ذخیره شد')
       onOpenChange(false)
+      onSaved?.()
     },
     onError: (error: unknown) => {
       setError('root', {
@@ -98,6 +116,23 @@ export function AddressFormDialog({ open, onOpenChange, address }: AddressFormDi
 
         <DialogForm onSubmit={handleSubmit((values) => mutation.mutateAsync(values))}>
           <DialogBody className="space-y-4">
+            {hasProblems && (
+              <div
+                role="alert"
+                className="rounded-xl border border-danger/30 bg-danger-soft/60 p-4 text-sm"
+              >
+                <p className="flex items-center gap-1.5 font-medium text-danger">
+                  <TriangleAlert className="h-4 w-4 shrink-0" />
+                  این آدرس کامل نیست. فیلدهای قرمز را اصلاح و ذخیره کنید:
+                </p>
+                <ul className="mt-2 list-disc space-y-1 ps-6 text-foreground">
+                  {problems.map((problem) => (
+                    <li key={problem.field}>{problem.message}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             <FormField
               label="عنوان آدرس"
               error={errors.title?.message}
