@@ -87,3 +87,53 @@
   ansible.builtin.command: "pm2 startup systemd -u {{ app_user }} --hp /home/{{ app_user }}"
   register: pm2_startup
   changed_when: "'already' not in pm2_startup.stdout"
+
+# `pm2 startup` writes a unit with `PIDFile=/home/<user>/.pm2/pm2.pid`. On an
+# SELinux-enforcing host (this one is AlmaLinux) systemd may not read that file
+# through the home directory's label, so it never sees PM2 as started: after 90
+# seconds it times out, kills PM2 — and both API workers with it — and starts
+# again. From the reboot on 1405/08/09 it did that every 90 seconds for eleven
+# days, failing whatever request was in flight, and hanging every deploy's
+# `pm2 reload` on a daemon that kept dying under it.
+#
+# Clearing PIDFile lets systemd find PM2 by its own process tracking instead,
+# which needs no access to the home directory.
+- name: Let systemd track PM2 without reading its PID file
+  tags: [pm2_service]
+  block:
+    - name: Create the PM2 unit's drop-in directory
+      ansible.builtin.file:
+        path: "/etc/systemd/system/pm2-{{ app_user }}.service.d"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Clear the PM2 unit's PIDFile
+      ansible.builtin.copy:
+        dest: "/etc/systemd/system/pm2-{{ app_user }}.service.d/no-pidfile.conf"
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          # Managed by Ansible (roles/nodejs). See the role for why.
+          [Service]
+          PIDFile=
+      register: pm2_pidfile_dropin
+
+    - name: Restart PM2 under the corrected unit
+      ansible.builtin.systemd:
+        name: "pm2-{{ app_user }}"
+        daemon_reload: true
+        state: restarted
+      when: pm2_pidfile_dropin.changed
+
+    - name: Confirm systemd now sees PM2 as running
+      ansible.builtin.command: "systemctl is-active pm2-{{ app_user }}"
+      register: pm2_unit_state
+      changed_when: false
+      retries: 6
+      delay: 5
+      until: pm2_unit_state.stdout == "active"
+      # A dry run changes nothing, so there is nothing yet to confirm.
+      when: not ansible_check_mode
