@@ -157,3 +157,4 @@ Symptoms seen in practice, and what they mean:
 | `[DEPRECATED]: community.general.yaml has been removed` | A stale `stdout_callback`. Fixed in `ansible.cfg`; if it returns, `export ANSIBLE_STDOUT_CALLBACK=default` |
 | HTTPS to `araspro.ir` hangs from WSL but the browser loads it | The VPN again. Confirm from a third vantage before concluding the site is down |
 | `api.sms.ir` does not answer | SMS.ir is Iran-only **and** IP-allow-listed. Run SMS checks from the server, not from your machine |
+| Deploy hangs at «Reload the API under PM2»; `pm2.log` shows «pm2 has been killed by signal» every 90 s | systemd cannot read PM2's PID file under SELinux and keeps killing PM2. Fixed by `provision.yml --tags pm2_service` (1405/08/20); re-run it if the unit is ever regenerated with `pm2 startup` |
