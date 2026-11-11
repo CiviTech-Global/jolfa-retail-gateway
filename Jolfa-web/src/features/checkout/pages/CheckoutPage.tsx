@@ -1,60 +1,36 @@
 import { useMemo, useState } from 'react'
 
-import { Controller, useForm, useWatch } from 'react-hook-form'
+import { Controller, useForm, useWatch, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
-import { z } from 'zod'
 import { Link } from 'react-router'
-import { MapPin, Plus, TriangleAlert } from 'lucide-react'
+import { MapPin, Pencil, Plus, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input, Textarea } from '@/components/ui/Input'
 import { Switch } from '@/components/ui/Switch'
 import { FormError, FormField } from '@/components/ui/FormField'
 import { cn, formatPrice } from '@/lib/utils'
-import { optionalText } from '@/lib/validation'
 import { useShippingCosts, useTaxSettings } from '@/features/cms/hooks'
 import { useCart } from '@/features/cart/context'
 import { createOrder, requestPayment } from '@/features/orders/api'
 import { calculateTax, formatTaxLabel } from '@/features/orders/tax'
 import { ADDRESSES_QUERY_KEY, getAddresses } from '@/features/addresses/api'
 import {
-  addressFieldsSchema,
+  addressEditLink,
+  findAddressProblems,
   formatAddressLine,
-  validateSavedAddress,
+  type AddressProblem,
 } from '@/features/addresses/schema'
 import type { AddressDto } from '@/features/addresses/types'
 import { toast } from 'sonner'
+import {
+  checkoutSchemaFor,
+  type CheckoutFormData,
+  type CheckoutFormValues,
+} from '../schema'
 
 /** Sentinel for "type a new address" in the saved-address picker. */
 const NEW_ADDRESS = 'new'
-
-const checkoutBaseSchema = addressFieldsSchema.partial().extend({
-  shippingMethod: z.enum(['POST', 'COURIER'], {
-    error: 'روش ارسال را انتخاب کنید',
-  }),
-  customerNote: optionalText('توضیحات سفارش', 1000),
-  saveAddress: z.boolean().optional(),
-})
-
-/**
- * The address fields are only on screen when the customer chose "new address",
- * so they are optional by default and required only in that mode — a form
- * cannot be blocked by fields it is not showing.
- */
-function makeCheckoutSchema(requireAddress: boolean) {
-  if (!requireAddress) return checkoutBaseSchema
-
-  return checkoutBaseSchema.superRefine((data, ctx) => {
-    const result = addressFieldsSchema.safeParse(data)
-    if (result.success) return
-    for (const issue of result.error.issues) {
-      ctx.addIssue({ code: 'custom', message: issue.message, path: issue.path })
-    }
-  })
-}
-
-type CheckoutFormValues = z.input<typeof checkoutBaseSchema>
-type CheckoutFormData = z.output<typeof checkoutBaseSchema>
 
 function SavedAddressOption({
   address,
@@ -65,14 +41,16 @@ function SavedAddressOption({
   selected: boolean
   onSelect: () => void
 }) {
-  const problem = validateSavedAddress(address)
+  const problems = findAddressProblems(address)
 
   return (
     <label
       className={cn(
         'flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors',
-        problem
-          ? 'border-danger/60'
+        problems.length > 0
+          ? selected
+            ? 'border-danger bg-danger-soft/40'
+            : 'border-danger/60'
           : selected
             ? 'border-primary bg-primary-soft/40'
             : 'border-border hover:border-primary',
@@ -96,20 +74,44 @@ function SavedAddressOption({
         <span className="mt-1 block text-sm text-muted-foreground">
           {address.recipientName} — <span dir="ltr">{address.phone}</span>
         </span>
-        {problem && (
-          <span className="mt-2 flex items-start gap-1.5 text-sm text-danger">
-            <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>
-              {problem} — این آدرس را در{' '}
-              <Link to="/profile/addresses" className="underline">
-                آدرس‌های من
-              </Link>{' '}
-              کامل کنید.
-            </span>
-          </span>
+        {problems.length > 0 && (
+          <AddressProblemsNotice addressId={address.id} problems={problems} />
         )}
       </span>
     </label>
+  )
+}
+
+/** What is wrong with a saved address, field by field, and where to fix it. */
+function AddressProblemsNotice({
+  addressId,
+  problems,
+}: {
+  addressId: string
+  problems: AddressProblem[]
+}) {
+  return (
+    <span className="mt-3 block rounded-lg border border-danger/30 bg-danger-soft/60 p-3 text-sm">
+      <span className="flex items-center gap-1.5 font-medium text-danger">
+        <TriangleAlert className="h-4 w-4 shrink-0" />
+        برای ارسال به این آدرس، این موارد را تکمیل کنید:
+      </span>
+      <ul className="mt-2 list-disc space-y-1 ps-6 text-foreground">
+        {problems.map((problem) => (
+          <li key={problem.field}>{problem.message}</li>
+        ))}
+      </ul>
+      <Link
+        to={addressEditLink(addressId, true)}
+        className="mt-3 inline-flex items-center gap-1.5 font-medium text-primary underline"
+      >
+        <Pencil className="h-3.5 w-3.5" />
+        تکمیل این آدرس
+      </Link>
+      <span className="mt-1 block text-xs text-muted-foreground">
+        پس از ذخیره، به همین صفحه برمی‌گردید.
+      </span>
+    </span>
   )
 }
 
@@ -141,9 +143,7 @@ export function CheckoutPage() {
   // A saved address is validated against the same rules as a typed one, so an
   // entry that predates a rule (or came in through the API) cannot slip through
   // to the payment gateway half-filled.
-  const selectedAddressProblem = selectedAddress
-    ? validateSavedAddress(selectedAddress)
-    : undefined
+  const selectedAddressProblems = selectedAddress ? findAddressProblems(selectedAddress) : []
 
   const {
     register,
@@ -151,7 +151,12 @@ export function CheckoutPage() {
     handleSubmit,
     formState: { errors },
   } = useForm<CheckoutFormValues, unknown, CheckoutFormData>({
-    resolver: zodResolver(makeCheckoutSchema(isTypingNewAddress)),
+    // Only what is on screen is validated: see checkoutSchemaFor.
+    resolver: zodResolver(checkoutSchemaFor(isTypingNewAddress)) as Resolver<
+      CheckoutFormValues,
+      unknown,
+      CheckoutFormData
+    >,
     defaultValues: {
       title: '',
       recipientName: '',
@@ -191,8 +196,12 @@ export function CheckoutPage() {
         setError('آدرس انتخاب‌شده یافت نشد. لطفاً دوباره یک آدرس انتخاب کنید.')
         return
       }
-      if (selectedAddressProblem) {
-        setError(`آدرس انتخاب‌شده کامل نیست: ${selectedAddressProblem}`)
+      if (selectedAddressProblems.length > 0) {
+        setError(
+          `آدرس انتخاب‌شده کامل نیست: ${selectedAddressProblems
+            .map((problem) => problem.message)
+            .join('، ')}. آن را تکمیل کنید یا آدرس دیگری انتخاب کنید.`,
+        )
         return
       }
     }
@@ -250,7 +259,15 @@ export function CheckoutPage() {
       <h1 className="text-2xl font-bold text-foreground">تسویه حساب</h1>
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <form onSubmit={handleSubmit(submitOrder)} noValidate className="space-y-4 lg:col-span-2">
+        <form
+          onSubmit={handleSubmit(submitOrder, () =>
+            // Never a silent no-op: whatever the form refused, the customer is
+            // told, next to the button they just pressed.
+            setError('لطفاً موارد مشخص‌شده با رنگ قرمز را تکمیل یا اصلاح کنید.'),
+          )}
+          noValidate
+          className="space-y-4 lg:col-span-2"
+        >
           {(savedAddresses.length > 0 || addressesLoading) && (
             <div className="rounded-2xl border border-border bg-surface p-6">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -438,14 +455,24 @@ export function CheckoutPage() {
             </div>
           </div>
 
+          {selectedAddress && selectedAddressProblems.length > 0 && !error && (
+            <p className="flex items-start gap-1.5 text-sm text-danger">
+              <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                آدرس انتخاب‌شده کامل نیست. آن را{' '}
+                <Link to={addressEditLink(selectedAddress.id, true)} className="font-medium underline">
+                  تکمیل کنید
+                </Link>{' '}
+                یا آدرس دیگری انتخاب کنید.
+              </span>
+            </p>
+          )}
+
           <FormError message={error} />
 
-          <Button
-            type="submit"
-            loading={isSubmitting}
-            disabled={Boolean(selectedAddressProblem)}
-            className="w-full"
-          >
+          {/* Not disabled: a disabled button gives no reason. Pressing it with
+              an incomplete address says exactly what to fix. */}
+          <Button type="submit" loading={isSubmitting} className="w-full">
             پرداخت {formatPrice(finalTotal)}
           </Button>
         </form>

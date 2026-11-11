@@ -80,9 +80,15 @@ export function requiredText(field: string, max = 200) {
     .max(max, `${field} حداکثر ${max} کاراکتر است`)
 }
 
+/**
+ * An optional text field. Blank, and `null` — which is how the server stores
+ * an optional field left empty — both mean "not given". Rejecting `null` made
+ * every saved address without a title or neighbourhood look incomplete.
+ */
 export function optionalText(field: string, max = 200) {
   return z.preprocess(
-    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    (value) =>
+      value === null || (typeof value === 'string' && value.trim() === '') ? undefined : value,
     z.string().trim().max(max, `${field} حداکثر ${max} کاراکتر است`).optional(),
   )
 }

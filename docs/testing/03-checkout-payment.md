@@ -10,7 +10,9 @@ Precondition: logged in, cart has at least one in-stock product.
 
 - [ ] Visiting `/checkout` with an empty cart shows an explicit "cart is empty" guard state and does not let you submit an order.
 - [ ] Shipping form requires: recipient name, phone (≥10 chars), province, city, address line — leaving any required field blank blocks submission with a visible validation message.
-- [ ] Postal code is optional — submitting without it succeeds.
+- [ ] Postal code is required — ten digits, Persian digits accepted.
+- [ ] A customer with a saved address — including one with no title or neighbourhood — has it selected by default and can pay with it straight away; the empty new-address fields never block the pay button.
+- [ ] A saved address that is incomplete (e.g. saved before the postal code was required) lists each missing field in Persian on the address itself; pressing pay explains what to fix instead of doing nothing; «تکمیل این آدرس» opens it with the field marked, and saving returns to checkout, where it now pays.
 - [ ] Shipping method radio: selecting "پست" (post) shows/adds ۸۰,۰۰۰ تومان to the total; selecting "پیک" (courier) shows/adds ۱۵۰,۰۰۰ تومان — verify the order summary total updates live when you switch methods.
 - [ ] Order note textarea is optional and, if filled, is not lost on submit (spot-check it lands on the created order — see admin order detail in [06-admin-orders-payments.md](./06-admin-orders-payments.md)).
 - [ ] Order summary sidebar accurately reflects cart line items, shipping cost, and final total (cross-check the arithmetic by hand for at least one case).
