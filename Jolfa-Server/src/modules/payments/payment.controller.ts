@@ -2,14 +2,27 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { sendSuccess } from "../../shared/reply.js";
 import { asyncHandler } from "../../shared/async-handler.js";
 import * as paymentService from "./payment.service.js";
+import { handleTorobPayReturn, listPaymentMethods as listMethods } from "./torobpay.service.js";
 import { env } from "../../config/env.js";
 import { logger } from "../../shared/logger.js";
 import type {
+  PaymentMethodsQuery,
   PaymentParams,
   PaymentRequestBody,
   PaymentVerifyBody,
+  TorobPayReturn,
   ZibalCallbackQuery,
 } from "./payment.types.js";
+
+export const listPaymentMethods = asyncHandler(
+  async (
+    request: FastifyRequest<{ Querystring: PaymentMethodsQuery }>,
+    reply: FastifyReply
+  ): Promise<void> => {
+    const methods = await listMethods(request.query.amount);
+    sendSuccess(reply, { methods });
+  }
+);
 
 export const requestPayment = asyncHandler(
   async (
@@ -68,6 +81,40 @@ export const zibalCallback = asyncHandler(
       logger.error({ err: error, trackId, success, status }, "zibal callback failed to settle");
       const params = new URLSearchParams({ authority: trackId, status: "NOK" });
       await reply.redirect(`${resultPage}?${params.toString()}`, 302);
+    }
+  }
+);
+
+/**
+ * Where TorobPay returns the customer, by form POST.
+ *
+ * Like the Zibal callback it always ends in a redirect to the result page,
+ * never in JSON or a 500: the person in front of it may just have been
+ * charged. The posted `state` is only logged; what the page says comes from
+ * asking TorobPay.
+ */
+export const torobPayCallback = asyncHandler(
+  async (
+    request: FastifyRequest<{ Body: TorobPayReturn }>,
+    reply: FastifyReply
+  ): Promise<void> => {
+    const { transactionId, state } = request.body;
+    const resultPage = `${env.APP_URL}/payment/callback`;
+
+    try {
+      const outcome = await handleTorobPayReturn(transactionId);
+      const params = new URLSearchParams({
+        gateway: "torobpay",
+        status: outcome.success ? "OK" : outcome.pending ? "PENDING" : "NOK",
+      });
+      if (outcome.authority) params.set("authority", outcome.authority);
+      if (outcome.refId) params.set("refId", outcome.refId);
+      if (!outcome.success && outcome.reason) params.set("reason", outcome.reason);
+      await reply.redirect(`${resultPage}?${params.toString()}`, 303);
+    } catch (error) {
+      logger.error({ err: error, transactionId, state }, "torobpay return failed to settle");
+      const params = new URLSearchParams({ gateway: "torobpay", status: "NOK" });
+      await reply.redirect(`${resultPage}?${params.toString()}`, 303);
     }
   }
 );

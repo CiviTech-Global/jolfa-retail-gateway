@@ -34,6 +34,8 @@ export interface OrderDto {
   totalAmount: number
   shippingCost: number
   discountAmount: number
+  /** The discount code applied, as it was when the order was placed. */
+  discountCode: string | null
   /** What was charged at the time, kept on the order. Zero means no tax. */
   taxAmount: number
   taxLabel: string | null
@@ -71,6 +73,8 @@ export interface CreateOrderRequest {
   saveAddress?: boolean
   shippingMethod: 'POST' | 'COURIER'
   customerNote?: string
+  /** Priced on the server; a code that no longer applies fails the order with the reason. */
+  discountCode?: string
 }
 
 export interface OrderListResponse {

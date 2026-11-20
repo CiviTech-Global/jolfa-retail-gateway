@@ -253,6 +253,13 @@ const rootChildren: RouteObject[] = [
             ),
           },
           {
+            path: 'discount-codes',
+            ...lazyRoute(
+              () => import('@/features/admin/pages/AdminDiscountCodesPage'),
+              'AdminDiscountCodesPage',
+            ),
+          },
+          {
             path: 'banners',
             ...lazyRoute(() => import('@/features/admin/pages/AdminBannersPage'), 'AdminBannersPage'),
           },

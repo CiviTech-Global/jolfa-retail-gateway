@@ -12,7 +12,16 @@ import { FormError, FormField } from '@/components/ui/FormField'
 import { cn, formatPrice } from '@/lib/utils'
 import { useShippingCosts, useTaxSettings } from '@/features/cms/hooks'
 import { useCart } from '@/features/cart/context'
-import { createOrder, requestPayment } from '@/features/orders/api'
+import {
+  createOrder,
+  getPaymentMethods,
+  validateDiscountCode,
+  requestPayment,
+  type PaymentMethodId,
+  type PaymentMethodOption,
+} from '@/features/orders/api'
+import { PaymentMethodPicker } from '../components/PaymentMethodPicker'
+import { DiscountCodeField } from '../components/DiscountCodeField'
 import { calculateTax, formatTaxLabel } from '@/features/orders/tax'
 import { ADDRESSES_QUERY_KEY, getAddresses } from '@/features/addresses/api'
 import {
@@ -115,6 +124,12 @@ function AddressProblemsNotice({
   )
 }
 
+const CARD_PAYMENT: PaymentMethodOption = {
+  id: 'ZIBAL',
+  title: 'پرداخت اینترنتی',
+  description: 'پرداخت آنلاین با تمامی کارت‌های عضو شتاب',
+}
+
 export function CheckoutPage() {
   const { items, total, clearCart } = useCart()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -182,8 +197,42 @@ export function CheckoutPage() {
   // On the items alone, as on the server: delivery is never taxed, so switching
   // delivery method changes the total but not the tax.
   const tax = useTaxSettings()
-  const taxAmount = tax.enabled ? calculateTax(total, tax.basisPoints) : 0
-  const finalTotal = total + shippingCost + taxAmount
+
+  // The code is re-checked whenever the items total changes: a code with a
+  // minimum, or a percentage, depends on it. The server prices it again when
+  // the order is placed; this is what the customer is shown meanwhile.
+  const [appliedCode, setAppliedCode] = useState<string | null>(null)
+  const discountQuery = useQuery({
+    queryKey: ['discount-code', appliedCode, total],
+    queryFn: () => validateDiscountCode(appliedCode!, total),
+    enabled: appliedCode !== null && total > 0,
+    retry: false,
+    staleTime: 30_000,
+  })
+  const discountAmount = appliedCode ? (discountQuery.data?.discountAmount ?? 0) : 0
+  const discountApplies = appliedCode !== null && discountQuery.isSuccess
+
+  // VAT is on the items after the discount; delivery is never taxed.
+  const taxAmount = tax.enabled ? calculateTax(total - discountAmount, tax.basisPoints) : 0
+  const finalTotal = total - discountAmount + shippingCost + taxAmount
+
+  // Asked again whenever the total changes: TorobPay decides per amount, and
+  // its limits are on the final total, delivery and tax included.
+  const paymentMethodsQuery = useQuery({
+    queryKey: ['payment-methods', finalTotal],
+    queryFn: () => getPaymentMethods(finalTotal),
+    enabled: items.length > 0,
+    staleTime: 60_000,
+    retry: false,
+  })
+  // Card payment is always on offer, even if the question above failed.
+  const paymentMethods: PaymentMethodOption[] = paymentMethodsQuery.data?.methods ?? [CARD_PAYMENT]
+  const [chosenPaymentMethod, setChosenPaymentMethod] = useState<PaymentMethodId>('ZIBAL')
+  // A choice that is no longer offered (the total changed, TorobPay said no)
+  // falls back to card rather than failing at the gateway.
+  const paymentMethod: PaymentMethodId = paymentMethods.some((m) => m.id === chosenPaymentMethod)
+    ? chosenPaymentMethod
+    : 'ZIBAL'
 
   async function submitOrder(data: CheckoutFormData) {
     if (items.length === 0) {
@@ -231,11 +280,16 @@ export function CheckoutPage() {
           : { shippingAddressId: selectedAddressId }),
         shippingMethod: data.shippingMethod,
         customerNote: data.customerNote,
+        ...(discountApplies && appliedCode ? { discountCode: appliedCode } : {}),
       })
 
-      const paymentResult = await requestPayment(orderResult.order.id)
+      const paymentResult = await requestPayment(orderResult.order.id, paymentMethod)
       clearCart()
-      toast.success('در حال انتقال به درگاه پرداخت ...')
+      toast.success(
+        paymentMethod === 'TOROBPAY'
+          ? 'در حال انتقال به ترب‌پی ...'
+          : 'در حال انتقال به درگاه پرداخت ...',
+      )
       // eslint-disable-next-line react-hooks/immutability -- a gateway redirect leaves the SPA entirely
       window.location.href = paymentResult.paymentUrl
     } catch (err) {
@@ -438,6 +492,13 @@ export function CheckoutPage() {
             </div>
           </div>
 
+          <PaymentMethodPicker
+            methods={paymentMethods}
+            value={paymentMethod}
+            onChange={setChosenPaymentMethod}
+            checking={paymentMethodsQuery.isPending}
+          />
+
           <div className="rounded-2xl border border-border bg-surface p-6">
             <h2 className="text-lg font-bold text-foreground">توضیحات سفارش</h2>
             <div className="mt-3">
@@ -473,7 +534,9 @@ export function CheckoutPage() {
           {/* Not disabled: a disabled button gives no reason. Pressing it with
               an incomplete address says exactly what to fix. */}
           <Button type="submit" loading={isSubmitting} className="w-full">
-            پرداخت {formatPrice(finalTotal)}
+            {paymentMethod === 'TOROBPAY'
+              ? 'ادامه خرید اقساطی با ترب‌پی'
+              : `پرداخت ${formatPrice(finalTotal)}`}
           </Button>
         </form>
 
@@ -489,6 +552,21 @@ export function CheckoutPage() {
               </div>
             ))}
             <div className="border-t border-border pt-3">
+              <DiscountCodeField
+                subtotal={total}
+                applied={appliedCode}
+                appliedError={discountQuery.isError ? discountQuery.error.message : undefined}
+                onApply={setAppliedCode}
+                onRemove={() => setAppliedCode(null)}
+              />
+            </div>
+            <div className="border-t border-border pt-3">
+              {discountAmount > 0 && (
+                <div className="mb-2 flex justify-between text-sm">
+                  <span className="text-muted-foreground">تخفیف</span>
+                  <span className="tabular-nums text-success">− {formatPrice(discountAmount)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">هزینه ارسال</span>
                 <span className="text-foreground">{formatPrice(shippingCost)}</span>

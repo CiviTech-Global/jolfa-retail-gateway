@@ -121,7 +121,13 @@ export function AdminOrderDetailPage() {
               <span className="font-medium text-foreground">{formatPrice(order.shippingCost)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">تخفیف:</span>
+              <span className="text-muted-foreground">
+                تخفیف
+                {order.discountCode && (
+                  <span className="ltr-text ms-1 font-mono text-xs">({order.discountCode})</span>
+                )}
+                :
+              </span>
               <span className="font-medium text-foreground">{formatPrice(order.discountAmount)}</span>
             </div>
             {order.taxAmount > 0 && (

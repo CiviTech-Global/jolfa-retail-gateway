@@ -38,6 +38,13 @@ vault_admin_seed_password: "REPLACE_ME_ADMIN_PASSWORD"
 vault_zarinpal_merchant_id: ""
 vault_zibal_merchant_id: ""
 
+# TorobPay merchant credentials, issued by TorobPay on activation. Empty keeps
+# the instalment option unavailable. Always real: TorobPay has no sandbox.
+vault_torobpay_client_id: ""
+vault_torobpay_client_secret: ""
+vault_torobpay_username: ""
+vault_torobpay_password: ""
+
 # SMS.ir web-service key (from the developer panel). Blank keeps logging only.
 vault_sms_ir_api_key: ""
 

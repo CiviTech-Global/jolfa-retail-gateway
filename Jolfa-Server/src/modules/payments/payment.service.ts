@@ -1,7 +1,7 @@
 import { prisma } from "../../shared/prisma.js";
 import { BadRequestError, ConflictError, NotFoundError } from "../../shared/app-error.js";
 import { env } from "../../config/env.js";
-import type { PaymentGateway, PaymentStatus } from "@prisma/client";
+import { Prisma, type PaymentGateway, type PaymentStatus } from "@prisma/client";
 import type { PaymentRequestBody, PaymentVerifyBody } from "./payment.types.js";
 import { createTransaction } from "./transaction.service.js";
 import {
@@ -16,24 +16,16 @@ import { logger } from "../../shared/logger.js";
 import { notifyOrderPaid } from "../../shared/sms/order-notifications.js";
 import { queueNotification } from "../../shared/sms/notification-queue.js";
 
-/**
- * Order amounts are stored in TOMAN — that is what `formatPrice` renders and
- * what the admin types in. Zibal's API is denominated in RIAL.
- *
- * Getting this wrong does not fail; it charges the customer ten times too much
- * or a tenth of the price, and both look like a working checkout. The
- * conversion is therefore a named function used at exactly one call site, not
- * a `* 10` buried in a request payload.
- */
-const RIAL_PER_TOMAN = 10;
+import { tomanToRial } from "./currency.js";
+import { assertOrderDiscountStillValid } from "../discounts/discount.service.js";
+import {
+  confirmTorobPayPayment,
+  isTorobPaySelectable,
+  startTorobPayPayment,
+} from "./torobpay.service.js";
 
-export function tomanToRial(toman: number): number {
-  return toman * RIAL_PER_TOMAN;
-}
-
-export function rialToToman(rial: number): number {
-  return Math.round(rial / RIAL_PER_TOMAN);
-}
+// Re-exported: callers and tests have always found the conversion here.
+export { tomanToRial, rialToToman } from "./currency.js";
 
 export interface GatewayConfig {
   gateway: PaymentGateway;
@@ -99,7 +91,26 @@ export async function requestPayment(userId: string, data: PaymentRequestBody) {
     throw new ConflictError("وضعیت سفارش امکان پرداخت ندارد");
   }
 
-  if (order.payment && order.payment.status === "PENDING" && order.payment.authority) {
+  // An unpaid order whose discount hold has lapsed is re-checked: the code may
+  // have expired or been used up by others since it was placed.
+  await assertOrderDiscountStillValid(order);
+
+  if (data.method === "TOROBPAY") {
+    if (!(await isTorobPaySelectable(order.finalAmount))) {
+      throw new BadRequestError("پرداخت اقساطی با ترب‌پی برای این سفارش در دسترس نیست.");
+    }
+    return startTorobPayPayment(order, userId);
+  }
+
+  // Only a pending session at the SAME gateway can be resumed: a customer who
+  // tried TorobPay and then chose a card must be sent to Zibal, not back to
+  // TorobPay's page.
+  if (
+    order.payment &&
+    order.payment.status === "PENDING" &&
+    order.payment.authority &&
+    order.payment.gateway === config.gateway
+  ) {
     return {
       paymentUrl: buildPaymentUrl(config, order.payment.authority),
       authority: order.payment.authority,
@@ -126,7 +137,16 @@ export async function requestPayment(userId: string, data: PaymentRequestBody) {
 
   const payment = await prisma.payment.upsert({
     where: { orderId: order.id },
-    update: { authority, gateway: config.gateway, amount: order.finalAmount, status: "PENDING" as PaymentStatus },
+    // The transaction id belongs to an earlier TorobPay attempt, if any; left
+    // in place it would let that attempt's return settle this Zibal payment.
+    update: {
+      authority,
+      gateway: config.gateway,
+      amount: order.finalAmount,
+      status: "PENDING" as PaymentStatus,
+      gatewayTransactionId: null,
+      gatewayResponse: Prisma.DbNull,
+    },
     create: {
       orderId: order.id,
       gateway: config.gateway,
@@ -164,6 +184,15 @@ export async function verifyPayment(data: PaymentVerifyBody) {
 
   if (!payment) {
     throw new NotFoundError("Payment");
+  }
+
+  // TorobPay has its own verify/settle sequence; the result page's fallback
+  // check lands here with the payment token as the authority.
+  if (payment.gateway === "TOROBPAY") {
+    const outcome = await confirmTorobPayPayment(payment);
+    return outcome.success
+      ? { success: true, orderId: outcome.orderId, refId: outcome.refId ?? null }
+      : { success: false, orderId: outcome.orderId, reason: outcome.reason, pending: outcome.pending ?? false };
   }
 
   // Already settled. Zibal would answer 201 here anyway, but there is no reason

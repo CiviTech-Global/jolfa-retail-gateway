@@ -283,7 +283,12 @@ export function OrderDetailPage() {
                 </div>
                 {order.discountAmount > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">تخفیف</span>
+                    <span className="text-muted-foreground">
+                      تخفیف
+                      {order.discountCode && (
+                        <span className="ltr-text ms-1 font-mono text-xs">({order.discountCode})</span>
+                      )}
+                    </span>
                     <span className="tabular-nums text-success">
                       − {formatPrice(order.discountAmount)}
                     </span>

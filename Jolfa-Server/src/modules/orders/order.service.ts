@@ -9,6 +9,8 @@ import { logAudit, buildChangeMetadata } from "../../shared/audit/audit.service.
 import { shippingAddressSchema } from "./order.types.js";
 import { resolveShippingCost } from "./shipping.service.js";
 import { resolveOrderTax } from "./tax.service.js";
+import { reverseTorobPayForCancellation } from "../payments/torobpay.service.js";
+import { applyDiscountCode } from "../discounts/discount.service.js";
 import type {
   OrderCreateBody,
   OrderListQuery,
@@ -97,15 +99,23 @@ export async function createOrder(userId: string, data: OrderCreateBody) {
   // Resolved on the server from the shop's own settings, never taken from the
   // request: the cost is what the customer is charged.
   const shippingCost = await resolveShippingCost(data.shippingMethod);
-  // On the items alone: delivery is never taxed. Resolved here for the same
-  // reason as the delivery cost: it is what the customer is charged.
-  const tax = await resolveOrderTax(totalAmount);
-  const finalAmount = totalAmount + shippingCost + tax.taxAmount;
 
   const orderNumber = generateOrderNumber();
   const shippingDetails = await resolveShippingDetails(userId, data);
 
   const order = await prisma.$transaction(async (tx) => {
+    // Priced inside the transaction: applying the code locks its row until the
+    // order is written, so its usage limits hold under concurrent checkouts.
+    const discount = data.discountCode
+      ? await applyDiscountCode(tx, { code: data.discountCode, userId, subtotal: totalAmount })
+      : { discountAmount: 0, discountCode: null, discountCodeId: null };
+
+    // On the items alone, after the discount: delivery is never taxed, and VAT
+    // is due on what the customer actually pays for the goods. Resolved on the
+    // server for the same reason as the delivery cost.
+    const tax = await resolveOrderTax(totalAmount - discount.discountAmount);
+    const finalAmount = totalAmount - discount.discountAmount + shippingCost + tax.taxAmount;
+
     const address = await tx.address.create({
       data: {
         userId,
@@ -136,6 +146,7 @@ export async function createOrder(userId: string, data: OrderCreateBody) {
         orderNumber,
         totalAmount,
         shippingCost,
+        ...discount,
         ...tax,
         finalAmount,
         shippingAddressId: address.id,
@@ -443,6 +454,14 @@ export async function cancelOrder(orderId: string, reason?: string, actorId?: st
     throw new BadRequestError("سفارش تحویل‌شده را نمی‌توان لغو کرد");
   }
 
+  // A paid TorobPay order is told to TorobPay BEFORE it is cancelled here. If
+  // TorobPay refuses, this throws and nothing local changes: an order shown as
+  // cancelled while the customer keeps paying instalments on it is the worst
+  // outcome available, worse than an admin who has to try again.
+  const torobPayReversal = order.payment
+    ? await reverseTorobPayForCancellation(order.payment)
+    : null;
+
   await prisma.$transaction(async (tx) => {
     await tx.order.update({
       where: { id: orderId },
@@ -471,6 +490,12 @@ export async function cancelOrder(orderId: string, reason?: string, actorId?: st
     });
 
     if (order.payment?.status === "COMPLETED") {
+      // The payments list reads this row: left COMPLETED, a refunded payment
+      // would still show as a successful one.
+      await tx.payment.update({
+        where: { id: order.payment.id },
+        data: { status: "REFUNDED" },
+      });
       await tx.transaction.create({
         data: {
           orderId: order.id,
@@ -479,7 +504,17 @@ export async function cancelOrder(orderId: string, reason?: string, actorId?: st
           amount: order.payment.amount,
           status: "COMPLETED",
           gateway: order.payment.gateway,
-          metadata: { reason: reason ?? "Order cancelled" },
+          metadata: {
+            reason: reason ?? "Order cancelled",
+            // How the money goes back: REVERT is an instant card reversal,
+            // CANCEL a Paya transfer of the instalments paid so far.
+            ...(torobPayReversal
+              ? {
+                  torobPayRefund: torobPayReversal.method,
+                  torobPayTransactionId: torobPayReversal.transactionId,
+                }
+              : {}),
+          },
         },
       });
     }
