@@ -101,7 +101,16 @@ export interface OrderTax {
 
 /** The tax fields of a new order. No tax leaves no trace on the order at all. */
 export async function resolveOrderTax(taxableAmount: number): Promise<OrderTax> {
-  const { enabled, label, basisPoints } = await getTaxConfig();
+  return orderTaxFor(await getTaxConfig(), taxableAmount);
+}
+
+/**
+ * The same, from settings already read. For use inside a transaction: reading
+ * the settings there would take a second pooled connection while the
+ * transaction holds one, and a burst of checkouts would starve the pool.
+ */
+export function orderTaxFor(config: TaxConfig, taxableAmount: number): OrderTax {
+  const { enabled, label, basisPoints } = config;
   if (!enabled || basisPoints === 0) {
     return { taxAmount: 0, taxLabel: null, taxBasisPoints: 0 };
   }

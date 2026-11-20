@@ -8,7 +8,7 @@ import { STOCK_NON_NEGATIVE_CONSTRAINT } from "./order.constants.js";
 import { logAudit, buildChangeMetadata } from "../../shared/audit/audit.service.js";
 import { shippingAddressSchema } from "./order.types.js";
 import { resolveShippingCost } from "./shipping.service.js";
-import { resolveOrderTax } from "./tax.service.js";
+import { getTaxConfig, orderTaxFor } from "./tax.service.js";
 import { reverseTorobPayForCancellation } from "../payments/torobpay.service.js";
 import { applyDiscountCode } from "../discounts/discount.service.js";
 import type {
@@ -99,6 +99,8 @@ export async function createOrder(userId: string, data: OrderCreateBody) {
   // Resolved on the server from the shop's own settings, never taken from the
   // request: the cost is what the customer is charged.
   const shippingCost = await resolveShippingCost(data.shippingMethod);
+  // Read before the transaction, not inside it: see orderTaxFor.
+  const taxConfig = await getTaxConfig();
 
   const orderNumber = generateOrderNumber();
   const shippingDetails = await resolveShippingDetails(userId, data);
@@ -113,7 +115,7 @@ export async function createOrder(userId: string, data: OrderCreateBody) {
     // On the items alone, after the discount: delivery is never taxed, and VAT
     // is due on what the customer actually pays for the goods. Resolved on the
     // server for the same reason as the delivery cost.
-    const tax = await resolveOrderTax(totalAmount - discount.discountAmount);
+    const tax = orderTaxFor(taxConfig, totalAmount - discount.discountAmount);
     const finalAmount = totalAmount - discount.discountAmount + shippingCost + tax.taxAmount;
 
     const address = await tx.address.create({

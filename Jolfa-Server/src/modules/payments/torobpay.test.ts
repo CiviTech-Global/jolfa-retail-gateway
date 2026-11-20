@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
 import type { User } from "@prisma/client";
 import { createTestApp } from "../../../test/helpers/build-app.js";
@@ -667,6 +667,13 @@ describe("admin controls (scenarios 8, 9)", () => {
 
 describe("Zibal alongside TorobPay (scenario 10)", () => {
   it("sends a customer who tried TorobPay and then chose a card to Zibal", async () => {
+    // The card gateway is Zibal only when a Zibal merchant is configured; CI
+    // has none, so this case sets one up rather than relying on the machine.
+    const previousMerchant = env.ZIBAL_MERCHANT_ID;
+    (env as Record<string, unknown>).ZIBAL_MERCHANT_ID = "test-zibal-merchant";
+    onTestFinished(() => {
+      (env as Record<string, unknown>).ZIBAL_MERCHANT_ID = previousMerchant;
+    });
     stubTorobPay();
     await enableTorobPay();
     const f = await placeOrder();
