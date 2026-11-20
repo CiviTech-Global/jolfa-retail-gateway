@@ -19,9 +19,11 @@ import { verifyPayment } from '../api'
  */
 export function PaymentCallbackPage() {
   const [searchParams] = useSearchParams()
-  const [status, setStatus] = useState<'loading' | 'success' | 'failed'>('loading')
+  const [status, setStatus] = useState<'loading' | 'success' | 'failed' | 'pending'>('loading')
   const [refId, setRefId] = useState<string>()
   const [reason, setReason] = useState<string>()
+  // TorobPay refunds through its own system; Zibal through the card network.
+  const isTorobPay = searchParams.get('gateway') === 'torobpay'
 
   useEffect(() => {
     const authority = searchParams.get('authority') ?? searchParams.get('Authority') ?? ''
@@ -38,6 +40,12 @@ export function PaymentCallbackPage() {
       setStatus('failed')
       return
     }
+    // TorobPay had not decided when the customer came back.
+    if (outcome === 'PENDING') {
+      setReason(searchParams.get('reason') ?? undefined)
+      setStatus('pending')
+      return
+    }
 
     if (!authority) {
       setStatus('failed')
@@ -47,10 +55,11 @@ export function PaymentCallbackPage() {
     verifyPayment(authority, outcome)
       .then((result) => {
         if (result.success) {
-          setRefId(result.refId)
+          setRefId(result.refId ?? undefined)
           setStatus('success')
         } else {
-          setStatus('failed')
+          setReason(result.reason)
+          setStatus(result.pending ? 'pending' : 'failed')
         }
       })
       .catch(() => setStatus('failed'))
@@ -83,6 +92,27 @@ export function PaymentCallbackPage() {
     )
   }
 
+  if (status === 'pending') {
+    return (
+      <div className="mx-auto max-w-md px-4 py-20 text-center">
+        <div className="rounded-2xl border border-warning/30 bg-warning-soft p-8">
+          <h1 className="text-2xl font-semibold text-warning">در انتظار نتیجه پرداخت</h1>
+          <p className="mt-2 text-foreground">
+            {reason ?? 'نتیجه پرداخت هنوز مشخص نشده است. چند دقیقه دیگر وضعیت سفارش را بررسی کنید.'}
+          </p>
+          <p className="mt-3 text-sm text-muted-foreground">
+            اگر پرداخت را انجام داده‌اید، سفارش شما ظرف چند دقیقه به‌صورت خودکار ثبت می‌شود.
+          </p>
+          <div className="mt-6 flex justify-center gap-2">
+            <Link to="/profile">
+              <Button>سفارش‌های من</Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="mx-auto max-w-md px-4 py-20 text-center">
       <div className="rounded-2xl border border-danger/30 bg-danger-soft p-8">
@@ -93,7 +123,9 @@ export function PaymentCallbackPage() {
           {reason ?? 'متأسفانه پرداخت با خطا مواجه شد. لطفاً دوباره تلاش کنید.'}
         </p>
         <p className="mt-3 text-sm text-muted-foreground">
-          اگر مبلغی از حساب شما کسر شده باشد، طی ۷۲ ساعت به‌صورت خودکار بازگردانده می‌شود.
+          {isTorobPay
+            ? 'اگر قسطی پرداخت کرده‌اید، ترب‌پی آن را به‌صورت خودکار بازمی‌گرداند.'
+            : 'اگر مبلغی از حساب شما کسر شده باشد، طی ۷۲ ساعت به‌صورت خودکار بازگردانده می‌شود.'}
         </p>
         <div className="mt-6 flex justify-center gap-2">
           <Link to="/cart">

@@ -30,6 +30,8 @@ enum PaymentStatus {
 enum PaymentGateway {
   ZARINPAL
   ZIBAL
+  /// TorobPay credit purchase (CPG): the customer pays in instalments.
+  TOROBPAY
 }
 
 enum SmsStatus {
@@ -189,6 +191,10 @@ model Order {
   totalAmount       Int           @map("total_amount")
   shippingCost      Int           @default(0) @map("shipping_cost")
   discountAmount    Int           @default(0) @map("discount_amount")
+  /// The discount code applied, as the customer typed it (normalised), kept
+  /// even if the code is later edited or deleted. Null when none was used.
+  discountCode      String?       @map("discount_code") @db.VarChar(50)
+  discountCodeId    String?       @map("discount_code_id") @db.Uuid
   /// The tax charged, its name and its rate (950 is 9.5%), copied from the
   /// settings when the order was placed. Changing those settings later must
   /// not rewrite what this customer was charged. Null label means no tax.
@@ -208,10 +214,12 @@ model Order {
   payment         Payment?
   transactions    Transaction[]
   statusHistory   OrderStatusHistory[]
+  discount        DiscountCode?        @relation(fields: [discountCodeId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   @@index([userId, createdAt])
   @@index([status, createdAt])
   @@index([paymentStatus])
+  @@index([discountCodeId])
   @@index([createdAt])
   @@map("orders")
 }
@@ -236,17 +244,21 @@ model OrderItem {
 }
 
 model Payment {
-  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  orderId         String         @unique @map("order_id") @db.Uuid
-  gateway         PaymentGateway
-  amount          Int
-  authority       String?        @db.VarChar(255)
-  refId           String?        @map("ref_id") @db.VarChar(255)
-  status          PaymentStatus  @default(PENDING)
-  gatewayResponse Json?          @map("gateway_response")
-  paidAt          DateTime?      @map("paid_at") @db.Timestamptz(6)
-  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                   String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId              String         @unique @map("order_id") @db.Uuid
+  gateway              PaymentGateway
+  amount               Int
+  authority            String?        @db.VarChar(255)
+  refId                String?        @map("ref_id") @db.VarChar(255)
+  /// Our own id for this attempt, for gateways that return the customer with
+  /// it rather than with their session id (TorobPay's transactionId). Fresh
+  /// per attempt, so a retried order never collides with its failed session.
+  gatewayTransactionId String?        @unique @map("gateway_transaction_id") @db.VarChar(100)
+  status               PaymentStatus  @default(PENDING)
+  gatewayResponse      Json?          @map("gateway_response")
+  paidAt               DateTime?      @map("paid_at") @db.Timestamptz(6)
+  createdAt            DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   order        Order         @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   transactions Transaction[]
@@ -256,8 +268,6 @@ model Payment {
   @@index([refId])
   @@map("payments")
 }
-
-
 
 model SmsNotification {
   id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -331,14 +341,12 @@ model HomepageSection {
 
 /**
  * An editable content page: /about, and later /contact and /rules.
- *
  * Kept separate from HomepageSection on purpose. The homepage is a
  * merchandising surface whose sections pull live catalogue data (carousels,
  * flash deals, category grids); these are prose pages whose blocks are the
  * words themselves. Forcing them through the same table would mean every
  * section type answering "what does this mean on /about?", and the two would
  * drift apart anyway.
- *
  * `blocks` is a JSON array rather than a child table: blocks are always read
  * and written as a whole page, are ordered, and have per-type shapes. A table
  * would buy nothing and cost a join plus a reordering dance. Every shape is
@@ -346,7 +354,9 @@ model HomepageSection {
  */
 model ContentPage {
   id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  /** Route segment: "about", "contact", "rules". */
+  /**
+   * Route segment: "about", "contact", "rules".
+   */
   slug            String   @unique @db.VarChar(50)
   title           String   @db.VarChar(200)
   metaTitle       String?  @map("meta_title") @db.VarChar(200)
@@ -360,35 +370,39 @@ model ContentPage {
 
 /**
  * Which events send an SMS, and what they say.
- *
  * The shop owner decides this, not a deploy: every row is editable in the admin
  * panel, and switching one off stops that notification without touching code.
- *
  * The `channel` split is forced on us by SMS.ir and is the thing to understand
  * here:
- *
- *   VERIFY  the text lives in a template registered in SMS.ir's own panel and
- *           is referenced by `providerTemplateId`. It sends from a service line,
- *           arrives within seconds, and reaches recipients who have blocked
- *           advertising SMS — which is why one-time codes must use it. The body
- *           cannot be edited here, only on their panel.
- *   BULK    `body` is sent verbatim as free text from the shop's own line. The
- *           admin can write whatever they like, but it needs a configured line
- *           number and will not reach anyone who has blocked advertising SMS.
- *
+ * VERIFY  the text lives in a template registered in SMS.ir's own panel and
+ * is referenced by `providerTemplateId`. It sends from a service line,
+ * arrives within seconds, and reaches recipients who have blocked
+ * advertising SMS — which is why one-time codes must use it. The body
+ * cannot be edited here, only on their panel.
+ * BULK    `body` is sent verbatim as free text from the shop's own line. The
+ * admin can write whatever they like, but it needs a configured line
+ * number and will not reach anyone who has blocked advertising SMS.
  * So an OTP is VERIFY and an order update is BULK, and the admin UI has to say
  * plainly why one of them has an uneditable body.
  */
 model SmsTemplate {
   id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  /** Stable event key the code sends against, e.g. "order_shipped". */
+  /**
+   * Stable event key the code sends against, e.g. "order_shipped".
+   */
   event              String   @unique @db.VarChar(60)
   enabled            Boolean  @default(true)
-  /** "VERIFY" (SMS.ir panel template) or "BULK" (free text from our own line). */
+  /**
+   * "VERIFY" (SMS.ir panel template) or "BULK" (free text from our own line).
+   */
   channel            String   @default("BULK") @db.VarChar(10)
-  /** Free text with {{placeholders}}. Null for VERIFY, whose text is theirs. */
+  /**
+   * Free text with {{placeholders}}. Null for VERIFY, whose text is theirs.
+   */
   body               String?  @db.Text
-  /** The template id from SMS.ir's panel. Required for VERIFY. */
+  /**
+   * The template id from SMS.ir's panel. Required for VERIFY.
+   */
   providerTemplateId Int?     @map("provider_template_id")
   createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -484,8 +498,6 @@ model DemoSnapshot {
   @@map("demo_snapshots")
 }
 
-
-
 model PaymentGatewayLog {
   id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   orderId        String?  @map("order_id") @db.Uuid
@@ -505,7 +517,6 @@ model PaymentGatewayLog {
   @@map("payment_gateway_logs")
 }
 
-
 /// Single-use, short-lived OTP for the forgot-password flow. The code is
 /// stored hashed so a database read cannot be replayed as a reset.
 model PasswordResetToken {
@@ -522,4 +533,43 @@ model PasswordResetToken {
   @@index([userId])
   @@index([expiresAt])
   @@map("password_reset_tokens")
+}
+
+enum DiscountType {
+  /// `value` is a percentage of the items subtotal, 1 to 100.
+  PERCENT
+  /// `value` is a fixed amount in Toman.
+  FIXED
+}
+
+/// A code the shop owner defines and customers type at checkout.
+///
+/// Applies to the items subtotal only, never to delivery, and VAT is charged on
+/// what is left. A use counts once its order is paid; an unpaid order holds its
+/// use for an hour so an abandoned checkout does not burn the code.
+model DiscountCode {
+  id                String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Stored normalised: upper-case Latin letters, digits, - and _.
+  code              String       @unique @db.VarChar(50)
+  description       String?      @db.VarChar(200)
+  type              DiscountType
+  value             Int
+  /// Caps a percentage discount, in Toman. Ignored for FIXED.
+  maxDiscountAmount Int?         @map("max_discount_amount")
+  /// Minimum items subtotal, in Toman.
+  minOrderAmount    Int          @default(0) @map("min_order_amount")
+  startsAt          DateTime?    @map("starts_at") @db.Timestamptz(6)
+  expiresAt         DateTime?    @map("expires_at") @db.Timestamptz(6)
+  /// Total uses across all customers. Null is unlimited.
+  usageLimit        Int?         @map("usage_limit")
+  /// Uses per customer. Null is unlimited.
+  perUserLimit      Int?         @default(1) @map("per_user_limit")
+  isActive          Boolean      @default(true) @map("is_active")
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  orders Order[]
+
+  @@index([isActive])
+  @@map("discount_codes")
 }

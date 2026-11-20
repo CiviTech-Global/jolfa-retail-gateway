@@ -28,6 +28,11 @@ export default defineConfig({
       SMS_IR_API_KEY: "",
       SMS_IR_OTP_TEMPLATE_ID: "",
       SMS_SENDER_NUMBER: "",
+      // TorobPay has no sandbox: any credential here is a real merchant's.
+      TOROBPAY_CLIENT_ID: "",
+      TOROBPAY_CLIENT_SECRET: "",
+      TOROBPAY_USERNAME: "",
+      TOROBPAY_PASSWORD: "",
       // A copy of the built storefront shell, so product-page tests do not
       // depend on Jolfa-web having been built first.
       WEB_INDEX_PATH: "test/fixtures/web-index.html",

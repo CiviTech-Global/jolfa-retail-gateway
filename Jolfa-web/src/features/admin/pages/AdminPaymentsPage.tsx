@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { CreditCard, FlaskConical, ShieldCheck } from 'lucide-react'
+import { CalendarClock, CreditCard, FlaskConical, RefreshCw, ShieldCheck } from 'lucide-react'
 import { formatDate, formatPrice } from '@/lib/utils'
 import { Badge } from '@/components/ui/Badge'
 import { DataTable } from '@/components/ui/DataTable'
@@ -11,14 +11,28 @@ import { Switch } from '@/components/ui/Switch'
 import { Alert } from '@/components/ui/Alert'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { ScrollReveal } from '@/components/motion/ScrollReveal'
+import { Button } from '@/components/ui/Button'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
-import { getAdminPayments, getPaymentMode, setPaymentMode } from '@/features/admin/api'
+import {
+  checkTorobPayPayment,
+  getAdminPayments,
+  getPaymentMode,
+  getTorobPayStatus,
+  setPaymentMode,
+  setTorobPayEnabled,
+} from '@/features/admin/api'
 
 const statusMap: Record<string, string> = {
   PENDING: 'در انتظار',
   COMPLETED: 'موفق',
   FAILED: 'ناموفق',
   REFUNDED: 'بازگشت وجه',
+}
+
+const gatewayLabels: Record<string, string> = {
+  ZIBAL: 'زیبال',
+  ZARINPAL: 'زرین‌پال',
+  TOROBPAY: 'ترب‌پی (اقساطی)',
 }
 
 const PAGE_SIZE = 20
@@ -138,6 +152,142 @@ function PaymentModeCard() {
   )
 }
 
+/**
+ * Whether TorobPay instalments are offered at checkout.
+ *
+ * Separate from the card gateway's live/sandbox switch: TorobPay has no
+ * sandbox, so this is simply on or off, and it cannot be turned on until the
+ * merchant credentials TorobPay issued are on the server.
+ */
+function TorobPayCard() {
+  const queryClient = useQueryClient()
+  const { confirm, Dialog } = useConfirmDialog()
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin', 'payments', 'torobpay'],
+    queryFn: getTorobPayStatus,
+  })
+
+  const mutation = useMutation({
+    mutationFn: setTorobPayEnabled,
+    onSuccess: (status) => {
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'payments', 'torobpay'] })
+      toast.success(
+        status.enabled
+          ? 'خرید اقساطی ترب‌پی برای سبدهای مجاز در صفحه پرداخت نمایش داده می‌شود.'
+          : 'خرید اقساطی ترب‌پی از صفحه پرداخت حذف شد.',
+      )
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  const change = async (enabled: boolean) => {
+    const confirmed = await confirm(
+      enabled
+        ? {
+            title: 'فعال‌سازی خرید اقساطی ترب‌پی',
+            description:
+              'مشتریانی که ترب‌پی آن‌ها را تأیید کند، می‌توانند سفارش خود را اقساطی بپردازند. ترب‌پی محیط آزمایشی ندارد و هر پرداخت واقعی است.',
+            confirmText: 'فعال کن',
+          }
+        : {
+            title: 'غیرفعال‌سازی ترب‌پی',
+            description:
+              'گزینه ترب‌پی از صفحه پرداخت حذف می‌شود. سفارش‌هایی که قبلاً با ترب‌پی پرداخت شده‌اند تغییری نمی‌کنند و همچنان قابل لغو هستند.',
+            confirmText: 'غیرفعال کن',
+            variant: 'danger',
+          },
+    )
+    if (confirmed) mutation.mutate(enabled)
+  }
+
+  if (isLoading) return <Skeleton className="h-40 w-full" />
+  if (!data) return null
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-start justify-between gap-4 border-b border-border/60">
+        <div className="space-y-1">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <CalendarClock className="size-4 text-primary" aria-hidden="true" />
+            خرید اقساطی ترب‌پی
+            <Badge variant={data.enabled ? 'success' : 'warning'}>
+              {data.enabled ? 'فعال' : 'غیرفعال'}
+            </Badge>
+          </CardTitle>
+          <p className="text-sm leading-6 text-muted-foreground">
+            {data.enabled
+              ? 'برای سبدهای ۲۰ هزار تا ۱۰۰ میلیون تومان، اگر ترب‌پی تأیید کند، در صفحه پرداخت نمایش داده می‌شود.'
+              : 'در صفحه پرداخت نمایش داده نمی‌شود.'}
+          </p>
+        </div>
+        <label className="flex shrink-0 items-center gap-2 text-sm">
+          <Switch
+            checked={data.enabled}
+            disabled={mutation.isPending || (!data.enabled && !data.canEnable)}
+            onCheckedChange={(checked) => void change(checked)}
+            aria-label="فعال‌سازی ترب‌پی"
+          />
+          <span className="text-muted-foreground">نمایش به مشتری</span>
+        </label>
+      </CardHeader>
+
+      <CardContent className="space-y-3 pt-4">
+        {data.blockedReason ? (
+          <Alert variant="warning" title="فعال‌سازی ترب‌پی ممکن نیست">
+            {data.blockedReason}
+          </Alert>
+        ) : null}
+
+        <dl className="grid gap-3 text-sm sm:grid-cols-2">
+          <div>
+            <dt className="text-xs text-muted-foreground">شناسه پذیرنده</dt>
+            <dd className="mt-1 font-medium tabular-nums">{data.clientHint ?? 'تنظیم نشده'}</dd>
+          </div>
+          <div className="min-w-0">
+            <dt className="text-xs text-muted-foreground">آدرس بازگشت</dt>
+            <dd className="mt-1 truncate font-mono text-xs" title={data.returnUrl}>
+              {data.returnUrl}
+            </dd>
+          </div>
+        </dl>
+
+        <p className="text-xs leading-6 text-muted-foreground">
+          لغو سفارش پرداخت‌شده با ترب‌پی، تا ۳۰ دقیقه پس از پرداخت وجه را فوراً برمی‌گرداند و پس از آن
+          اقساط پرداخت‌شده از طریق پایا بازگردانده می‌شود. تغییر این گزینه در «گزارش فعالیت» ثبت می‌شود.
+        </p>
+      </CardContent>
+      <Dialog />
+    </Card>
+  )
+}
+
+/** Asks TorobPay about one payment, and settles it here if it was still pending. */
+function TorobPayCheckButton({ paymentId }: { paymentId: string }) {
+  const queryClient = useQueryClient()
+  const mutation = useMutation({
+    mutationFn: () => checkTorobPayPayment(paymentId),
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'payments'] })
+      toast.success('وضعیت در ترب‌پی: ' + result.label)
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      loading={mutation.isPending}
+      onClick={() => mutation.mutate()}
+      title="استعلام وضعیت از ترب‌پی"
+    >
+      <RefreshCw className="size-4" aria-hidden="true" />
+      استعلام
+    </Button>
+  )
+}
+
 export function AdminPaymentsPage() {
   const [page, setPage] = useState(1)
   const { data, isLoading } = useQuery({
@@ -155,6 +305,8 @@ export function AdminPaymentsPage() {
       />
 
       <PaymentModeCard />
+
+      <TorobPayCard />
 
       <Card>
         <CardHeader>
@@ -200,7 +352,9 @@ export function AdminPaymentsPage() {
                 header: 'درگاه',
                 hideBelow: 'sm',
                 cell: (payment) => (
-                  <span className="text-muted-foreground">{payment.gateway}</span>
+                  <span className="text-muted-foreground">
+                    {gatewayLabels[payment.gateway] ?? payment.gateway}
+                  </span>
                 ),
               },
               {
@@ -232,6 +386,15 @@ export function AdminPaymentsPage() {
                 header: 'تاریخ',
                 numeric: true,
                 cell: (payment) => formatDate(payment.createdAt),
+              },
+              {
+                id: 'actions',
+                header: 'عملیات',
+                align: 'center',
+                cell: (payment) =>
+                  payment.gateway === 'TOROBPAY' ? (
+                    <TorobPayCheckButton paymentId={payment.id} />
+                  ) : null,
               },
             ]}
           />

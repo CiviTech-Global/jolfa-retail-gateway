@@ -23,7 +23,8 @@ export type AuditEntityType =
   | "User"
   | "Payment"
   | "Transaction"
-  | "Upload";
+  | "Upload"
+  | "DiscountCode";
 
 export interface AuditLogInput {
   userId?: string;

@@ -91,6 +91,27 @@ export interface PaymentDto {
   }
 }
 
+/** The TorobPay on/off switch and whether it can be turned on. */
+export interface TorobPayAdminStatus {
+  enabled: boolean
+  /** All four merchant credentials are set on the server. */
+  configured: boolean
+  /** Enough of the client id to recognise it, never the whole value. */
+  clientHint: string | null
+  returnUrl: string
+  canEnable: boolean
+  blockedReason: string | null
+}
+
+/** What TorobPay says about one payment, after any reconciliation it triggered. */
+export interface TorobPayPaymentCheck {
+  status: 'PENDING' | 'VERIFY' | 'SETTLE' | 'REVERT' | null
+  label: string
+  amountToman: number | null
+  transactionId: string | null
+  localStatus: string
+}
+
 export interface PaymentListResponse {
   payments: PaymentDto[]
   meta: { page: number; limit: number; total: number; totalPages: number }
@@ -147,4 +168,41 @@ export interface PaymentModeStatus {
   callbackUrl: string
   canGoLive: boolean
   blockedReason: string | null
+}
+
+export type DiscountType = 'PERCENT' | 'FIXED'
+
+export interface DiscountCodeDto {
+  id: string
+  code: string
+  description: string | null
+  type: DiscountType
+  /** A percentage (1–100) for PERCENT; Toman for FIXED. */
+  value: number
+  maxDiscountAmount: number | null
+  minOrderAmount: number
+  startsAt: string | null
+  expiresAt: string | null
+  usageLimit: number | null
+  perUserLimit: number | null
+  isActive: boolean
+  createdAt: string
+  /** Orders paid with this code. */
+  paidUses: number
+  /** Toman taken off those orders. */
+  totalDiscountGiven: number
+}
+
+export interface DiscountCodeBody {
+  code: string
+  description: string | null
+  type: DiscountType
+  value: number
+  maxDiscountAmount: number | null
+  minOrderAmount: number
+  startsAt: string | null
+  expiresAt: string | null
+  usageLimit: number | null
+  perUserLimit: number | null
+  isActive: boolean
 }

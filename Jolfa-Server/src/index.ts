@@ -38,9 +38,11 @@ import userRoutes from "./modules/users/user.routes.js";
 import { seedDefaults } from "./shared/seed.js";
 import paymentAdminRoutes from "./modules/payments/payment.admin.routes.js";
 import orderAdminRoutes from "./modules/orders/order.admin.routes.js";
+import discountRoutes, { discountAdminRoutes } from "./modules/discounts/discount.routes.js";
 import { registerRequestLogging } from "./shared/logging.js";
 import { registerCacheHeaders } from "./shared/caching.js";
 import { registerCrashHandlers } from "./shared/crash-handlers.js";
+import { startTorobPaySweep } from "./modules/payments/torobpay.service.js";
 
 export function createFastifyInstance(): FastifyInstance {
   return Fastify({
@@ -210,6 +212,8 @@ export async function buildApp(app: FastifyInstance): Promise<FastifyInstance> {
   await app.register(userRoutes, { prefix: `${env.API_PREFIX}/admin` });
   await app.register(paymentAdminRoutes, { prefix: `${env.API_PREFIX}/admin` });
   await app.register(orderAdminRoutes, { prefix: `${env.API_PREFIX}/admin` });
+  await app.register(discountRoutes, { prefix: `${env.API_PREFIX}/discount-codes` });
+  await app.register(discountAdminRoutes, { prefix: `${env.API_PREFIX}/admin` });
   await app.register(settingsRoutes, { prefix: `${env.API_PREFIX}/settings` });
   await app.register(homepageSectionRoutes, { prefix: `${env.API_PREFIX}/homepage-sections` });
   await app.register(contentPageRoutes, { prefix: `${env.API_PREFIX}/content-pages` });
@@ -280,6 +284,7 @@ async function bootstrap(): Promise<void> {
   registerCrashHandlers(app);
   registerShutdownHandlers(app);
   await app.listen({ port: env.PORT, host: env.HOST });
+  startTorobPaySweep();
 }
 
 /**

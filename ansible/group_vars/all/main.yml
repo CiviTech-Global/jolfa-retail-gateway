@@ -92,6 +92,13 @@ zibal_merchant_id: ""              # real id lives in vault as vault_zibal_merch
 # is deliberately a separate, visible decision from deploying the code.
 zibal_sandbox: "true"
 
+# ---- TorobPay instalment gateway (CPG) -----------------------------------
+# The four merchant credentials are secrets and live in the vault
+# (vault_torobpay_client_id, _client_secret, _username, _password). Deploying
+# them does not offer TorobPay to anyone: the shop owner switches it on in the
+# admin panel, which refuses until all four are present.
+torobpay_base_url: "https://cpg.torobpay.com"
+
 # ---- SMS (SMS.ir) ----------------------------------------------------------
 # The API key is a secret and belongs in the vault (vault_sms_ir_api_key); the
 # two below are not secret. Blank key => notifications are logged, not sent.

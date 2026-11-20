@@ -48,6 +48,20 @@ const envSchema = z.object({
    * declared only so a populated .env still validates.
    */
   ZIBAL_API_KEY: z.string().optional(),
+
+  /**
+   * TorobPay credit gateway (CPG): customers pay in instalments.
+   *
+   * TorobPay issues all four values when the shop's merchant account is
+   * activated; the gateway stays unavailable, and cannot be switched on in the
+   * admin panel, until every one of them is set. There is no sandbox host and
+   * no test merchant: these are always real credentials.
+   */
+  TOROBPAY_BASE_URL: z.string().url().default("https://cpg.torobpay.com"),
+  TOROBPAY_CLIENT_ID: z.string().optional(),
+  TOROBPAY_CLIENT_SECRET: z.string().optional(),
+  TOROBPAY_USERNAME: z.string().optional(),
+  TOROBPAY_PASSWORD: z.string().optional(),
   SMS_IR_API_KEY: z.string().optional(),
   /**
    * The shop's own line number at SMS.ir.

@@ -30,6 +30,13 @@ export const orderCreateBodySchema = z
     saveAddress: z.boolean().optional(),
     shippingMethod: z.enum(["POST", "COURIER"]).default("POST"),
     customerNote: z.string().max(1000).optional(),
+    /** Priced on the server; an unknown or used-up code fails the order with the reason. */
+    discountCode: z
+      .string()
+      .trim()
+      .max(50)
+      .optional()
+      .transform((value) => value || undefined),
   })
   .refine((data) => Boolean(data.shippingAddressId) !== Boolean(data.shippingAddress), {
     path: ["shippingAddress"],

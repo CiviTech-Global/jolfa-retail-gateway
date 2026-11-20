@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Package,
   Tags,
+  TicketPercent,
   ShoppingBag,
   Settings,
   LayoutTemplate,
@@ -53,6 +54,7 @@ const navGroups: NavGroup[] = [
       { to: '/admin/products', label: 'محصولات', icon: Package },
       { to: '/admin/categories', label: 'دسته‌بندی‌ها', icon: Tags },
       { to: '/admin/orders', label: 'سفارش‌ها', icon: ShoppingBag },
+      { to: '/admin/discount-codes', label: 'کدهای تخفیف', icon: TicketPercent },
     ],
   },
   {

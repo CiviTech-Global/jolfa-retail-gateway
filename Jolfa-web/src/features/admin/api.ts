@@ -5,6 +5,10 @@ import type {
   DashboardStats,
   PaymentListResponse,
   PaymentModeStatus,
+  TorobPayAdminStatus,
+  DiscountCodeDto,
+  DiscountCodeBody,
+  TorobPayPaymentCheck,
   TransactionListResponse,
 } from './types'
 
@@ -159,10 +163,46 @@ export function getPaymentMode(): Promise<PaymentModeStatus> {
   return apiRequest<PaymentModeStatus>('/admin/payments/mode')
 }
 
+export function getTorobPayStatus(): Promise<TorobPayAdminStatus> {
+  return apiRequest<TorobPayAdminStatus>('/admin/payments/torobpay')
+}
+
+/** Offers or withdraws TorobPay at checkout. Admin-only, and audited server-side. */
+export function setTorobPayEnabled(enabled: boolean): Promise<TorobPayAdminStatus> {
+  return apiRequest<TorobPayAdminStatus>('/admin/payments/torobpay', {
+    method: 'PATCH',
+    body: { enabled },
+  })
+}
+
+/** Asks TorobPay about one payment; settles it here if it was still pending. */
+export function checkTorobPayPayment(paymentId: string): Promise<TorobPayPaymentCheck> {
+  return apiRequest<TorobPayPaymentCheck>(`/admin/payments/${paymentId}/torobpay-status`, {
+    method: 'POST',
+  })
+}
+
 /** Switches real payments on or off. Admin-only, and audited server-side. */
 export function setPaymentMode(live: boolean): Promise<PaymentModeStatus> {
   return apiRequest<PaymentModeStatus>('/admin/payments/mode', {
     method: 'PATCH',
     body: { live },
   })
+}
+
+export function getDiscountCodes(): Promise<{ discountCodes: DiscountCodeDto[] }> {
+  return apiRequest<{ discountCodes: DiscountCodeDto[] }>('/admin/discount-codes')
+}
+
+export function createDiscountCode(body: DiscountCodeBody): Promise<{ discountCode: DiscountCodeDto }> {
+  return apiRequest<{ discountCode: DiscountCodeDto }>('/admin/discount-codes', { method: 'POST', body })
+}
+
+export function updateDiscountCode(id: string, body: DiscountCodeBody): Promise<{ discountCode: DiscountCodeDto }> {
+  return apiRequest<{ discountCode: DiscountCodeDto }>(`/admin/discount-codes/${id}`, { method: 'PUT', body })
+}
+
+/** Refused (409) once an order has used the code: switch it off instead. */
+export function deleteDiscountCode(id: string): Promise<{ success: boolean }> {
+  return apiRequest<{ success: boolean }>(`/admin/discount-codes/${id}`, { method: 'DELETE' })
 }

@@ -4,6 +4,8 @@ import { validateRequest } from "../../shared/middleware/validate-request.js";
 import { z } from "zod";
 import { listPaymentsForAdmin, listTransactions, createRefund } from "./transaction.service.js";
 import { getPaymentModeStatus, setLiveMode } from "./payment-mode.service.js";
+import { getTorobPayAdminStatus, setTorobPayEnabled } from "./torobpay-settings.service.js";
+import { checkTorobPayPaymentForAdmin } from "./torobpay.service.js";
 
 const adminPaymentQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -27,6 +29,14 @@ const orderParamsSchema = z.object({
 
 const paymentModeBodySchema = z.object({
   live: z.boolean({ error: "حالت پرداخت الزامی است" }),
+});
+
+const torobPaySwitchBodySchema = z.object({
+  enabled: z.boolean({ error: "وضعیت ترب‌پی الزامی است" }),
+});
+
+const paymentParamsSchema = z.object({
+  id: z.guid(),
 });
 
 const refundBodySchema = z.object({
@@ -70,6 +80,34 @@ export default async function paymentAdminRoutes(
     async (request, reply) => {
       const body = request.body as { live: boolean };
       const data = await setLiveMode(body.live, request.user.id);
+      return reply.status(200).send({ success: true, data });
+    },
+  );
+
+  app.get("/payments/torobpay", { preHandler: adminPreHandler }, async (_request, reply) => {
+    return reply.status(200).send({ success: true, data: await getTorobPayAdminStatus() });
+  });
+
+  // Separate from the live/sandbox switch: TorobPay has no sandbox, and
+  // offering it is a business decision the owner may reverse on its own.
+  app.patch(
+    "/payments/torobpay",
+    { preHandler: [...adminPreHandler, validateRequest({ body: torobPaySwitchBodySchema })] },
+    async (request, reply) => {
+      const body = request.body as { enabled: boolean };
+      const data = await setTorobPayEnabled(body.enabled, request.user.id);
+      return reply.status(200).send({ success: true, data });
+    },
+  );
+
+  // Asks TorobPay for a payment's state, and settles it if it is still pending
+  // here — the way to rescue a customer who paid and never came back.
+  app.post(
+    "/payments/:id/torobpay-status",
+    { preHandler: [...adminPreHandler, validateRequest({ params: paymentParamsSchema })] },
+    async (request, reply) => {
+      const params = request.params as { id: string };
+      const data = await checkTorobPayPaymentForAdmin(params.id);
       return reply.status(200).send({ success: true, data });
     },
   );

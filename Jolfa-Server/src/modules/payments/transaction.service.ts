@@ -83,6 +83,16 @@ export async function createRefund(orderId: string, amount: number, actorId?: st
     throw new BadRequestError("سفارش قبلاً لغو شده است");
   }
 
+  // This route only writes to our ledger; it moves no money. For a card
+  // payment the shop refunds by hand, but a TorobPay customer is paying
+  // instalments that only TorobPay can stop, and TorobPay has no partial
+  // refund. Recording one here would show money returned that never was.
+  if (order.payment?.gateway === "TOROBPAY") {
+    throw new BadRequestError(
+      "بازگشت بخشی از مبلغ برای پرداخت‌های ترب‌پی ممکن نیست. برای بازگرداندن وجه، سفارش را لغو کنید.",
+    );
+  }
+
   const completedTransactions = order.transactions.filter((t) => t.status === "COMPLETED");
   const totalPaid = completedTransactions
     .filter((t) => t.type === "PAYMENT" || t.type === "RETRY")
