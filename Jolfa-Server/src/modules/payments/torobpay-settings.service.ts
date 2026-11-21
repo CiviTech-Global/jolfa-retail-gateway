@@ -53,7 +53,7 @@ export async function getTorobPayAdminStatus(): Promise<TorobPayAdminStatus> {
     canEnable: configured,
     blockedReason: configured
       ? null
-      : "اطلاعات پذیرندگی ترب‌پی (شناسه، کلید، نام کاربری و رمز عبور) روی سرور تنظیم نشده است.",
+      : "اطلاعات پذیرندگی ترب‌پی (کد پذیرنده، کلید، نام کاربری و رمز عبور) روی سرور تنظیم نشده است.",
   };
 }
 

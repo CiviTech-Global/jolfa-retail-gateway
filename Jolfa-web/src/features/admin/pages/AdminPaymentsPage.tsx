@@ -241,7 +241,7 @@ function TorobPayCard() {
 
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <div>
-            <dt className="text-xs text-muted-foreground">شناسه پذیرنده</dt>
+            <dt className="text-xs text-muted-foreground">کد پذیرنده</dt>
             <dd className="mt-1 font-medium tabular-nums">{data.clientHint ?? 'تنظیم نشده'}</dd>
           </div>
           <div className="min-w-0">
