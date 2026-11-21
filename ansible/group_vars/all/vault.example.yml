@@ -40,6 +40,9 @@ vault_zibal_merchant_id: ""
 
 # TorobPay merchant credentials, issued by TorobPay on activation. Empty keeps
 # the instalment option unavailable. Always real: TorobPay has no sandbox.
+# In TorobPay's merchant panel they are labelled, in order:
+#   کد پذیرنده -> client_id, کلید -> client_secret,
+#   نام کاربری -> username,  رمز عبور -> password.
 vault_torobpay_client_id: ""
 vault_torobpay_client_secret: ""
 vault_torobpay_username: ""

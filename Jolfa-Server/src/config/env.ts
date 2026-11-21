@@ -55,7 +55,8 @@ const envSchema = z.object({
    * TorobPay issues all four values when the shop's merchant account is
    * activated; the gateway stays unavailable, and cannot be switched on in the
    * admin panel, until every one of them is set. There is no sandbox host and
-   * no test merchant: these are always real credentials.
+   * no test merchant: these are always real credentials. TorobPay's panel
+   * labels them کد پذیرنده, کلید, نام کاربری and رمز عبور, in that order.
    */
   TOROBPAY_BASE_URL: z.string().url().default("https://cpg.torobpay.com"),
   TOROBPAY_CLIENT_ID: z.string().optional(),
