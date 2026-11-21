@@ -29,9 +29,21 @@ const PAGE_URL = `https://cpg.torobpay.com/payment/brief-details?payment_token=$
 type Reply = { status?: number; body: unknown };
 
 const ok = (response: unknown): Reply => ({ body: { successful: true, response } });
+/**
+ * A refusal in the shape the live service really sends (seen 21 Nov 2026):
+ * `errorData`, with the code as a string. The PDF documents `error.code` as a
+ * number instead; `failAsDocumented` covers that shape.
+ */
 const fail = (code: number, status = 400, user_message = ""): Reply => ({
   status,
-  body: { successful: false, error: { code, message: "err", data: null, user_message } },
+  body: {
+    successful: false,
+    errorData: { errorCode: String(code), message: "err", data: {}, ...(user_message ? { user_message } : {}) },
+  },
+});
+const failAsDocumented = (code: number, status = 400): Reply => ({
+  status,
+  body: { successful: false, error: { code, message: "err", data: null, user_message: "" } },
 });
 
 interface StubOptions {
@@ -45,6 +57,8 @@ interface StubOptions {
   cancel?: Reply;
   /** Answer the first authenticated call with 401, to exercise the token refresh. */
   expireFirstToken?: boolean;
+  /** What the login endpoint answers instead of a token. */
+  login?: Reply;
 }
 
 interface Call {
@@ -76,6 +90,7 @@ function stubTorobPay(options: StubOptions = {}) {
         });
 
       if (url.pathname === "/api/online/v1/oauth/token") {
+        if (options.login) return respond(options.login);
         return respond({ body: { access_token: `jwt-${calls.length}` } });
       }
       if (!expired) {
@@ -662,6 +677,37 @@ describe("admin controls (scenarios 8, 9)", () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.json().data).toMatchObject({ status: "SETTLE", localStatus: "COMPLETED" });
+  });
+});
+
+describe("reading TorobPay's refusals", () => {
+  it("still falls back to cancel when the too-late code comes in the documented shape", async () => {
+    const { stub, f, adminToken } = await paidOrder({ revert: failAsDocumented(1065) });
+
+    const res = await cancelAsAdmin(f, adminToken);
+
+    expect(res.statusCode).toBe(200);
+    expect(stub.paths()).toContain("payment/v1/cancel");
+  });
+
+  it("tells the owner when the username or password is wrong", async () => {
+    stubTorobPay({ login: fail(1024, 403) });
+    const app = await createTestApp();
+    const { user: admin } = await createTestAdmin();
+    const f = await placeOrder();
+    await prisma.payment.create({
+      data: { orderId: f.orderId, gateway: "TOROBPAY", amount: 1, authority: "tok-x", status: "COMPLETED" },
+    });
+    const payment = await prisma.payment.findUniqueOrThrow({ where: { orderId: f.orderId } });
+
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/v1/admin/payments/${payment.id}/torobpay-status`,
+      headers: { authorization: `Bearer ${getAuthToken(app, admin)}` },
+    });
+
+    expect(res.statusCode).toBe(502);
+    expect(JSON.stringify(res.json())).toContain("نام کاربری یا رمز عبور ترب‌پی نادرست است");
   });
 });
 

@@ -44,6 +44,10 @@ export const TOROBPAY_ERROR = {
   INVALID_ORDER_STATE: 1053,
   TOO_LATE_FOR_REVERT: 1065,
   INACTIVE_MERCHANT: 1099,
+  /** Token endpoint: no merchant with this client id and secret. */
+  NO_MERCHANT: 1017,
+  /** Token endpoint: wrong username or password (not in the PDF; seen live). */
+  INVALID_CREDENTIALS: 1024,
 } as const;
 
 /**
@@ -90,14 +94,43 @@ export function torobPayClientHint(): string | null {
   return id.length <= 8 ? `${id.slice(0, 2)}…` : `${id.slice(0, 4)}…${id.slice(-2)}`;
 }
 
+interface ErrorBody {
+  code?: number | string;
+  errorCode?: number | string;
+  message?: string;
+  user_message?: string;
+  userMessage?: string;
+  data?: unknown;
+}
+
 interface Envelope<T> {
   successful?: boolean;
   response?: T;
-  error?: {
-    code?: number;
-    message?: string;
-    user_message?: string;
-    data?: unknown;
+  /** The shape the PDF documents. */
+  error?: ErrorBody;
+  /**
+   * The shape the live service actually sends (seen 21 Nov 2026):
+   * `{"successful":false,"errorData":{"errorCode":"1024","message":"..."}}`,
+   * with the code as a string. Both are read, so the fallbacks that branch on
+   * a code (1053, 1065) work whichever one TorobPay uses.
+   */
+  errorData?: ErrorBody;
+}
+
+interface ParsedError {
+  code: number | null;
+  message: string | null;
+  userMessage: string | null;
+}
+
+function parseError(envelope: Envelope<unknown>): ParsedError {
+  const body = envelope.errorData ?? envelope.error ?? {};
+  const rawCode = body.errorCode ?? body.code;
+  const code = rawCode === undefined || rawCode === null ? NaN : Number(rawCode);
+  return {
+    code: Number.isFinite(code) ? code : null,
+    message: body.message ?? null,
+    userMessage: (body.user_message ?? body.userMessage)?.trim() || null,
   };
 }
 
@@ -137,13 +170,9 @@ async function readEnvelope<T>(response: Response, path: string): Promise<Envelo
 }
 
 function toError(envelope: Envelope<unknown>, httpStatus: number, path: string): TorobPayError {
-  const code = typeof envelope.error?.code === "number" ? envelope.error.code : null;
+  const { code, message, userMessage } = parseError(envelope);
   // Logged without the request body: it holds the customer's address and phone.
-  logger.warn(
-    { path, httpStatus, torobCode: code, message: envelope.error?.message },
-    "torobpay rejected a request",
-  );
-  const userMessage = envelope.error?.user_message?.trim();
+  logger.warn({ path, httpStatus, torobCode: code, message }, "torobpay rejected a request");
   return new TorobPayError(
     userMessage || "درخواست توسط ترب‌پی پذیرفته نشد. لطفاً دوباره تلاش کنید.",
     // Our own answer to the browser: a refusal by the upstream gateway is a
@@ -179,11 +208,21 @@ async function getAccessToken(): Promise<string> {
     envelope.response?.access_token ?? (envelope as { access_token?: string }).access_token;
 
   if (!response.ok || !token) {
+    const { code, message } = parseError(envelope);
     logger.error(
-      { httpStatus: response.status, torobCode: envelope.error?.code },
+      { httpStatus: response.status, torobCode: code, message },
       "torobpay refused the merchant credentials",
     );
-    throw new TorobPayError("ورود به ترب‌پی ناموفق بود. اطلاعات پذیرنده را بررسی کنید.", 502, envelope.error?.code ?? null);
+    // Which half is wrong tells the owner what to re-copy from TorobPay's panel.
+    const reason =
+      code === TOROBPAY_ERROR.INVALID_CREDENTIALS
+        ? "نام کاربری یا رمز عبور ترب‌پی نادرست است."
+        : code === TOROBPAY_ERROR.NO_MERCHANT
+          ? "کد پذیرنده یا کلید ترب‌پی نادرست است."
+          : code === TOROBPAY_ERROR.INACTIVE_MERCHANT
+            ? "حساب پذیرنده در ترب‌پی غیرفعال است."
+            : "ورود به ترب‌پی ناموفق بود. اطلاعات پذیرنده را بررسی کنید.";
+    throw new TorobPayError(reason, 502, code);
   }
 
   cachedToken = { value: token, expiresAt: Date.now() + TOKEN_TTL_MS };
