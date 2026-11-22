@@ -14,6 +14,12 @@ import {
   formatTaxPercent,
   parseTaxPercent,
 } from "../orders/tax.service.js";
+import {
+  FEE_LABEL_MAX_LENGTH,
+  ORDER_FEE_AMOUNT_KEYS,
+  ORDER_FEE_LABEL_KEYS,
+} from "../orders/fees.service.js";
+import { parseTomanAmount } from "../orders/shipping.service.js";
 import type { SettingUpdateBody } from "./settings.types.js";
 
 /**
@@ -45,6 +51,28 @@ function normalizeSettingValue(key: string, value: string): string {
     }
     // The name is optional; clearing it brings the default back.
     return label || DEFAULT_TAX_LABEL;
+  }
+
+  if (ORDER_FEE_AMOUNT_KEYS.has(key)) {
+    const amount = parseTomanAmount(value);
+    if (amount === null) {
+      throw new AppError(
+        "مبلغ باید عددی صحیح و نامنفی به تومان باشد.",
+        400,
+        "INVALID_SETTING_VALUE",
+      );
+    }
+    return String(amount);
+  }
+
+  const feeDefaultLabel = ORDER_FEE_LABEL_KEYS.get(key);
+  if (feeDefaultLabel !== undefined) {
+    const label = value.trim();
+    if (label.length > FEE_LABEL_MAX_LENGTH) {
+      throw new AppError("عنوان هزینه نباید بیشتر از ۱۰۰ نویسه باشد.", 400, "INVALID_SETTING_VALUE");
+    }
+    // Clearing the name brings the default back.
+    return label || feeDefaultLabel;
   }
 
   return value;

@@ -10,7 +10,7 @@ import { Input, Textarea } from '@/components/ui/Input'
 import { Switch } from '@/components/ui/Switch'
 import { FormError, FormField } from '@/components/ui/FormField'
 import { cn, formatPrice } from '@/lib/utils'
-import { useShippingCosts, useTaxSettings } from '@/features/cms/hooks'
+import { useOrderFees, useShippingCosts, useTaxSettings } from '@/features/cms/hooks'
 import { useCart } from '@/features/cart/context'
 import {
   createOrder,
@@ -197,6 +197,8 @@ export function CheckoutPage() {
   // On the items alone, as on the server: delivery is never taxed, so switching
   // delivery method changes the total but not the tax.
   const tax = useTaxSettings()
+  const feeLines = useOrderFees()
+  const feesTotal = feeLines.reduce((sum, fee) => sum + fee.amount, 0)
 
   // The code is re-checked whenever the items total changes: a code with a
   // minimum, or a percentage, depends on it. The server prices it again when
@@ -214,7 +216,7 @@ export function CheckoutPage() {
 
   // VAT is on the items after the discount; delivery is never taxed.
   const taxAmount = tax.enabled ? calculateTax(total - discountAmount, tax.basisPoints) : 0
-  const finalTotal = total - discountAmount + shippingCost + taxAmount
+  const finalTotal = total - discountAmount + shippingCost + feesTotal + taxAmount
 
   // Asked again whenever the total changes: TorobPay decides per amount, and
   // its limits are on the final total, delivery and tax included.
@@ -571,6 +573,12 @@ export function CheckoutPage() {
                 <span className="text-muted-foreground">هزینه ارسال</span>
                 <span className="text-foreground">{formatPrice(shippingCost)}</span>
               </div>
+              {feeLines.map((fee) => (
+                <div key={fee.key} className="mt-2 flex justify-between gap-3 text-sm">
+                  <span className="text-muted-foreground">{fee.label}</span>
+                  <span className="shrink-0 text-foreground">{formatPrice(fee.amount)}</span>
+                </div>
+              ))}
               {taxAmount > 0 && (
                 <div className="mt-2 flex justify-between gap-3 text-sm">
                   <span className="text-muted-foreground">

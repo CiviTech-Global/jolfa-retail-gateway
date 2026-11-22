@@ -8,6 +8,7 @@ import {
   Truck,
   ShieldCheck,
   Percent,
+  Package,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -28,6 +29,8 @@ export interface SettingMeta {
 /** Costs are whole Toman; the field is plain text so the admin can paste. */
 const SHIPPING_HELP =
   'به تومان و بدون جداکننده وارد کنید. اگر خالی یا نامعتبر باشد، مقدار پیش‌فرض اعمال می‌شود.'
+
+const FEE_HELP = 'به تومان و بدون جداکننده وارد کنید. مبلغ نامعتبر پذیرفته نمی‌شود.'
 
 export const SETTING_META: Record<string, SettingMeta> = {
   site_name: {
@@ -180,6 +183,39 @@ export const SETTING_META: Record<string, SettingMeta> = {
     placeholder: '۱۵۰۰۰۰',
   },
 
+  packaging_fee_enabled: {
+    label: 'دریافت هزینه بسته‌بندی',
+    help: 'با روشن کردن، این مبلغ به هر سفارش اضافه و در صفحه پرداخت و صورتحساب نمایش داده می‌شود.',
+    kind: 'boolean',
+  },
+  packaging_fee_label: {
+    label: 'عنوان هزینه بسته‌بندی',
+    help: 'همین عنوان به مشتری نمایش داده می‌شود. اگر خالی باشد، «هزینه بسته‌بندی» استفاده می‌شود.',
+    kind: 'text',
+  },
+  packaging_fee_amount: {
+    label: 'مبلغ هزینه بسته‌بندی',
+    help: FEE_HELP,
+    kind: 'text',
+    placeholder: '۲۰۰۰۰',
+  },
+  collect_freight_fee_enabled: {
+    label: 'دریافت هزینه پس‌کرایه',
+    help: 'با روشن کردن، این مبلغ به هر سفارش اضافه و در صفحه پرداخت و صورتحساب نمایش داده می‌شود.',
+    kind: 'boolean',
+  },
+  collect_freight_fee_label: {
+    label: 'عنوان هزینه پس‌کرایه',
+    help: 'همین عنوان به مشتری نمایش داده می‌شود. اگر خالی باشد، «هزینه پس‌کرایه» استفاده می‌شود.',
+    kind: 'text',
+  },
+  collect_freight_fee_amount: {
+    label: 'مبلغ هزینه پس‌کرایه',
+    help: FEE_HELP,
+    kind: 'text',
+    placeholder: '۳۰۰۰۰',
+  },
+
   vat_enabled: {
     label: 'افزودن مالیات به مبلغ پرداخت',
     help: 'با روشن کردن، مالیات فقط روی مبلغ کالاها محاسبه و به مبلغ قابل پرداخت مشتری اضافه می‌شود. به هزینه ارسال مالیات تعلق نمی‌گیرد.',
@@ -242,6 +278,12 @@ export const GROUP_META: Record<string, GroupMeta> = {
       'هزینه هر روش ارسال. تغییر این مبالغ بلافاصله در صفحه پرداخت دیده می‌شود و روی سفارش‌های جدید اعمال می‌گردد؛ سفارش‌های ثبت‌شده دست‌نخورده می‌مانند.',
     icon: Truck,
   },
+  fees: {
+    label: 'هزینه‌های جانبی سفارش',
+    description:
+      'هزینه بسته‌بندی و پس‌کرایه؛ هر کدام با عنوان و مبلغ دلخواه و قابل روشن و خاموش شدن. مبلغ ثابت به هر سفارش اضافه می‌شود و مشمول مالیات نیست. تغییرات فقط روی سفارش‌های جدید اعمال می‌شود.',
+    icon: Package,
+  },
   tax: {
     label: 'مالیات',
     description:
@@ -266,6 +308,7 @@ export const GROUP_ORDER = [
   'branding',
   'general',
   'shipping',
+  'fees',
   'tax',
   'products',
   'header',

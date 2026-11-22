@@ -42,8 +42,13 @@ export const SHIPPING_COST_KEYS: Record<ShippingMethod, string> = {
  * that is not a whole, non-negative number falls back to the default and says
  * so in the log.
  */
-function parseCost(raw: string | undefined, method: ShippingMethod): number {
-  if (raw === undefined) return SHIPPING_COST_DEFAULTS[method];
+/**
+ * A typed Toman amount as a whole, non-negative number; null when blank or not
+ * one. Shared by every admin-set charge (delivery, packaging, پس‌کرایه) so they
+ * all accept the same input.
+ */
+export function parseTomanAmount(raw: string | undefined): number | null {
+  if (raw === undefined) return null;
 
   // Persian and Arabic-Indic digits, since the admin types into an RTL page.
   const normalized = raw
@@ -53,17 +58,24 @@ function parseCost(raw: string | undefined, method: ShippingMethod): number {
     // Thousands separators, both the ASCII comma and the Persian one.
     .replace(/[,٬\s]/g, "");
 
-  if (normalized === "") return SHIPPING_COST_DEFAULTS[method];
+  if (normalized === "") return null;
 
   const value = Number(normalized);
-  if (!Number.isFinite(value) || !Number.isInteger(value) || value < 0) {
-    logger.warn(
-      { method, raw },
-      "shipping cost setting is not a whole non-negative number; using the default",
-    );
+  if (!Number.isFinite(value) || !Number.isInteger(value) || value < 0) return null;
+  return value;
+}
+
+function parseCost(raw: string | undefined, method: ShippingMethod): number {
+  const value = parseTomanAmount(raw);
+  if (value === null) {
+    if (raw !== undefined && raw.trim() !== "") {
+      logger.warn(
+        { method, raw },
+        "shipping cost setting is not a whole non-negative number; using the default",
+      );
+    }
     return SHIPPING_COST_DEFAULTS[method];
   }
-
   return value;
 }
 
