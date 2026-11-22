@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { getPublicSettings } from './api'
 import { parseTaxBasisPoints } from '@/features/orders/tax'
+import type { FeeLine } from '@/features/orders/fees'
 
 export function usePublicSettings() {
   return useQuery({
@@ -44,6 +45,39 @@ export function useShippingCosts(): { POST: number; COURIER: number } {
     POST: toCost(post, 80_000),
     COURIER: toCost(courier, 150_000),
   }
+}
+
+/**
+ * Packaging and پس‌کرایه as the shop owner has set them: only the ones switched
+ * on with a positive amount, for display at checkout. As with delivery, the
+ * amount charged is resolved again on the server from the same rows.
+ */
+export function useOrderFees(): FeeLine[] {
+  const packagingEnabled = usePublicSettingValue('packaging_fee_enabled')
+  const packagingLabel = usePublicSettingValue('packaging_fee_label')
+  const packagingAmount = usePublicSettingValue('packaging_fee_amount')
+  const freightEnabled = usePublicSettingValue('collect_freight_fee_enabled')
+  const freightLabel = usePublicSettingValue('collect_freight_fee_label')
+  const freightAmount = usePublicSettingValue('collect_freight_fee_amount')
+
+  const toLine = (
+    key: string,
+    enabled: string | undefined,
+    label: string | undefined,
+    amount: string | undefined,
+    fallbackLabel: string,
+  ): FeeLine | null => {
+    // Read directly, not with usePublicSettingBoolean: a missing price setting must mean off.
+    if (enabled?.trim().toLowerCase() !== 'true') return null
+    const value = Number(amount)
+    if (!Number.isInteger(value) || value <= 0) return null
+    return { key, label: label?.trim() || fallbackLabel, amount: value }
+  }
+
+  return [
+    toLine('packaging', packagingEnabled, packagingLabel, packagingAmount, 'هزینه بسته‌بندی'),
+    toLine('collectFreight', freightEnabled, freightLabel, freightAmount, 'هزینه پس‌کرایه'),
+  ].filter((line): line is FeeLine => line !== null)
 }
 
 export interface TaxSettings {

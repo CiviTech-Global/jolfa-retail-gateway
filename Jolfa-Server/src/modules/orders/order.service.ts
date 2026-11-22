@@ -9,6 +9,7 @@ import { logAudit, buildChangeMetadata } from "../../shared/audit/audit.service.
 import { shippingAddressSchema } from "./order.types.js";
 import { resolveShippingCost } from "./shipping.service.js";
 import { getTaxConfig, orderTaxFor } from "./tax.service.js";
+import { getOrderFeesConfig, orderFeesFor, totalOrderFees } from "./fees.service.js";
 import { reverseTorobPayForCancellation } from "../payments/torobpay.service.js";
 import { applyDiscountCode } from "../discounts/discount.service.js";
 import type {
@@ -101,6 +102,8 @@ export async function createOrder(userId: string, data: OrderCreateBody) {
   const shippingCost = await resolveShippingCost(data.shippingMethod);
   // Read before the transaction, not inside it: see orderTaxFor.
   const taxConfig = await getTaxConfig();
+  // Packaging and پس‌کرایه, likewise from settings and never from the request.
+  const fees = orderFeesFor(await getOrderFeesConfig());
 
   const orderNumber = generateOrderNumber();
   const shippingDetails = await resolveShippingDetails(userId, data);
@@ -116,7 +119,8 @@ export async function createOrder(userId: string, data: OrderCreateBody) {
     // is due on what the customer actually pays for the goods. Resolved on the
     // server for the same reason as the delivery cost.
     const tax = orderTaxFor(taxConfig, totalAmount - discount.discountAmount);
-    const finalAmount = totalAmount - discount.discountAmount + shippingCost + tax.taxAmount;
+    const finalAmount =
+      totalAmount - discount.discountAmount + shippingCost + totalOrderFees(fees) + tax.taxAmount;
 
     const address = await tx.address.create({
       data: {
@@ -150,6 +154,7 @@ export async function createOrder(userId: string, data: OrderCreateBody) {
         shippingCost,
         ...discount,
         ...tax,
+        ...fees,
         finalAmount,
         shippingAddressId: address.id,
         notes: data.customerNote,

@@ -22,6 +22,7 @@ import { ScrollReveal } from '@/components/motion/ScrollReveal'
 import { ApiError } from '@/api/errors'
 import { getOrder, requestPayment } from '../api'
 import { formatTaxLabel } from '../tax'
+import { orderFeeLines } from '../fees'
 import {
   ORDER_STATUS_HELP,
   ORDER_STATUS_LABELS,
@@ -294,6 +295,14 @@ export function OrderDetailPage() {
                     </span>
                   </div>
                 )}
+                {orderFeeLines(order).map((fee) => (
+                  <div key={fee.key} className="flex justify-between gap-3">
+                    <span className="text-muted-foreground">{fee.label}</span>
+                    <span className="shrink-0 tabular-nums text-foreground">
+                      {formatPrice(fee.amount)}
+                    </span>
+                  </div>
+                ))}
                 {order.taxAmount > 0 && (
                   <div className="flex justify-between gap-3">
                     <span className="text-muted-foreground">

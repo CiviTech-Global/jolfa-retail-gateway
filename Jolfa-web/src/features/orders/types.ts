@@ -40,6 +40,11 @@ export interface OrderDto {
   taxAmount: number
   taxLabel: string | null
   taxBasisPoints: number
+  /** Packaging and پس‌کرایه, as charged and named at the time. Null label means not charged. */
+  packagingFee: number
+  packagingFeeLabel: string | null
+  collectFreightFee: number
+  collectFreightFeeLabel: string | null
   finalAmount: number
   trackingNumber: string | null
   notes: string | null

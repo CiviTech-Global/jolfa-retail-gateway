@@ -3,6 +3,7 @@ import {
   DEFAULT_TAX_PERCENT,
   TAX_SETTING_KEYS,
 } from "../orders/tax.service.js";
+import { ORDER_FEES, ORDER_FEE_KINDS } from "../orders/fees.service.js";
 
 /**
  * Canonical list of settings the storefront relies on.
@@ -148,6 +149,19 @@ export const DEFAULT_SETTINGS: SettingDefault[] = [
     isPublic: true,
     description: "Delivery cost by courier, in Toman",
   },
+
+  // Packaging and پس‌کرایه: flat per-order charges, each with an admin-set
+  // name. Public and server-resolved like delivery; seeded off, and seeding
+  // never overwrites a value, so a deploy cannot change what customers pay.
+  ...ORDER_FEE_KINDS.flatMap((kind): SettingDefault[] => {
+    const { keys, defaultLabel } = ORDER_FEES[kind];
+    const name = kind === "packaging" ? "packaging fee" : "collect-freight (پس‌کرایه) fee";
+    return [
+      { key: keys.enabled, value: "false", group: "fees", isPublic: true, description: `Charge the ${name}` },
+      { key: keys.label, value: defaultLabel, group: "fees", isPublic: true, description: `Name of the ${name} shown to the customer` },
+      { key: keys.amount, value: "0", group: "fees", isPublic: true, description: `Amount of the ${name}, in Toman` },
+    ];
+  }),
 
   // Tax on the customer's payment. Public for the same reason as delivery, and
   // resolved again on the server when the order is written. Seeded off, and

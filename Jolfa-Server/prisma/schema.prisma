@@ -201,6 +201,12 @@ model Order {
   taxAmount         Int           @default(0) @map("tax_amount")
   taxLabel          String?       @map("tax_label") @db.VarChar(100)
   taxBasisPoints    Int           @default(0) @map("tax_basis_points")
+  /// Packaging and پس‌کرایه fees with the names shown to the customer, copied
+  /// from the settings when the order was placed. Null label means not charged.
+  packagingFee           Int     @default(0) @map("packaging_fee")
+  packagingFeeLabel      String? @map("packaging_fee_label") @db.VarChar(100)
+  collectFreightFee      Int     @default(0) @map("collect_freight_fee")
+  collectFreightFeeLabel String? @map("collect_freight_fee_label") @db.VarChar(100)
   finalAmount       Int           @map("final_amount")
   shippingAddressId String        @map("shipping_address_id") @db.Uuid
   trackingNumber    String?       @map("tracking_number") @db.VarChar(100)

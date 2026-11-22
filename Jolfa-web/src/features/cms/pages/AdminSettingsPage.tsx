@@ -443,6 +443,12 @@ export function AdminSettingsPage() {
     list.push(setting)
     grouped.set(setting.group, list)
   }
+  // Within a group, show fields in the order the catalog declares them (e.g. a
+  // fee's switch, then its name, then its amount) rather than by raw key.
+  // Uncatalogued keys keep the API's order, after the known ones.
+  const catalogOrder = new Map(Object.keys(SETTING_META).map((key, index) => [key, index]))
+  const rank = (key: string) => catalogOrder.get(key) ?? Number.MAX_SAFE_INTEGER
+  for (const list of grouped.values()) list.sort((a, b) => rank(a.key) - rank(b.key))
   const orderedGroups = [
     ...GROUP_ORDER.filter((key) => grouped.has(key)),
     ...[...grouped.keys()].filter((key) => !GROUP_ORDER.includes(key)),

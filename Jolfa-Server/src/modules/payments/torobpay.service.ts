@@ -170,7 +170,12 @@ export async function startTorobPayPayment(
       cartId: order.orderNumber,
       totalAmountRial: amountRial,
       taxAmountRial: tomanToRial(order.taxAmount),
-      shippingAmountRial: tomanToRial(order.shippingCost),
+      // TorobPay's cart has no line for packaging or پس‌کرایه; they are
+      // delivery-side charges, so they travel with shipping and the itemised
+      // cart still adds up to the amount charged.
+      shippingAmountRial: tomanToRial(
+        order.shippingCost + order.packagingFee + order.collectFreightFee,
+      ),
       items: details.items.map((item) => ({
         id: item.productId,
         name: item.productTitle,
